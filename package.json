@@ -1,0 +1,32 @@
+{
+  "name": "ts-npm-template",
+  "version": "1.0.0",
+  "repository": "https://github.com/alii/ts-npm-template",
+  "author": "Alistair Smith <alistairsmith01@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "test": "eslint . --fix&&jest",
+    "prepublishOnly": "npm run test&&npm run build",
+    "build": "tsc"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.12.0",
+    "@typescript-eslint/parser": "^4.12.0",
+    "eslint": "^7.17.0",
+    "jest": "^26.6.3",
+    "prettier": "^2.2.1",
+    "ts-jest": "^26.4.4",
+    "tslib": "^2.1.0",
+    "typescript": "^4.1.3"
+  },
+  "files": [
+    "package.json",
+    "readme.md",
+    "dist"
+  ],
+  "prettier": {
+    "printWidth": 120
+  }
+}
