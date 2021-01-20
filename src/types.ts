@@ -3,7 +3,7 @@ export type DeepPartial<T> = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type SchemaFunction<T = any> = (body?: T | Partial<T> | DeepPartial<T> | null) => Promise<T>;
+export type SchemaFunction<T = any> = (body?: T | Partial<T> | DeepPartial<T> | null) => Promise<T | boolean>;
 
 export type Method = "get" | "post" | "put" | "delete" | "patch";
 

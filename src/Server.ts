@@ -2,7 +2,7 @@
 import "reflect-metadata";
 import express, { ErrorRequestHandler, NextFunction, RequestHandler, Request, Response } from "express";
 import { MetadataKeys, Method, SchemaFunction } from "./types";
-import { HttpException } from "./exceptions";
+import { HttpException, ValidationException } from "./exceptions";
 import cookieParser from "cookie-parser";
 import "express-async-errors";
 import * as http from "http";
@@ -45,7 +45,14 @@ export class Server {
 
         if (schema) {
           const mw: RequestHandler = async (req, res, next) => {
-            req.body = await schema(req.body);
+            const result = await schema(req.body);
+
+            if (result === false) {
+              throw new ValidationException();
+            }
+
+            req.body = result;
+
             next();
           };
 
