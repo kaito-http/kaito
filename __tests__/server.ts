@@ -10,7 +10,9 @@ class Home {
   }
 
   @Post("/")
-  @Schema<{ name: string }>((body) => typeof body?.name === "string")
+  @Schema<{ name: string }>(async (body) => {
+    return { name: body?.name ? body.name : "" };
+  })
   async post(req: Request, res: Response) {
     res.json(req.body);
   }
