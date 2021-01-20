@@ -16,4 +16,26 @@ yarn add @kaito-http/core
 
 ## Quick start
 
-Kaito is simple to use. From the ground up, we left it fairly unopinionated to let your creativity run wild.
+Kaito is simple to use. From the ground up, we left it fairly unopinionated to _let your creativity run wild_.
+
+## Basic Example
+
+```ts
+import { Request, Response } from "express";
+
+@Controller("/")
+class Home {
+  @Get("/")
+  async get(req: Request, res: Response) {
+    res.json({ success: true });
+  }
+
+  @Post("/")
+  @Schema<{ name: string }>(async (body) => typeof body?.name === "string")
+  async post(req: Request, res: Response) {
+    res.json(req.body);
+  }
+}
+
+const server = new Server(process.env.PORT || "8080", [new Home()]);
+```
