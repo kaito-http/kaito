@@ -11,7 +11,7 @@ import {
 } from "./types";
 import { createHttpTerminator } from "http-terminator";
 import Trouter, { HTTPMethod } from "trouter";
-import http, { IncomingMessage, ServerResponse, STATUS_CODES } from "http";
+import http, { IncomingMessage, ServerResponse } from "http";
 
 import { lead, parse } from "./utils/url";
 import querystring from "querystring";
