@@ -36,9 +36,12 @@ export interface KaitoRequest<
   body: Body;
 }
 
-export interface KaitoResponse<Body = unknown> {
-  json(body: Body): void;
+export interface KaitoResponse<Json = unknown> {
   raw: OutgoingMessage;
+  write: OutgoingMessage["write"];
+  end: OutgoingMessage["end"];
+  json(body: Json): void;
+  text(body: string): void;
 }
 
 /**

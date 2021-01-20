@@ -49,6 +49,13 @@ export class Server extends Trouter {
         response.write(JSON.stringify(body));
         response.end();
       },
+      text(body: string) {
+        response.setHeader("Content-Type", "text/plain");
+        response.write(body);
+        response.end();
+      },
+      write: response.write,
+      end: response.end,
       raw: response,
     };
 
