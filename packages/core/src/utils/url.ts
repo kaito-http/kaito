@@ -1,5 +1,3 @@
-import { IncomingMessage } from "http";
-
 const URL_REGEX = /([^:/?#]+:)?(?:(?:\/\/)(?:([^/?#]*:[^@/]+)@)?([^/:?#]+)(?:(?::)(\d+))?)?(\/?[^?#]*)?(\?[^#]*)?(#[^\s]*)?/;
 const URL_FRAGMENTS = ["protocol", "auth", "hostname", "port", "pathname", "search", "hash"] as const;
 

@@ -6,7 +6,7 @@ export type DeepPartial<T> = {
   [P in keyof T]?: DeepPartial<T[P]>;
 };
 
-export type SchemaFunction<T = unknown> = (body?: T | Partial<T> | DeepPartial<T> | null) => Promise<T | boolean>;
+export type SchemaFunction<T = unknown> = (body?: T | Partial<T> | DeepPartial<T> | null) => T | boolean;
 
 export type Method = "get" | "post" | "put" | "delete" | "patch";
 
@@ -24,9 +24,9 @@ export enum MetadataKeys {
 }
 
 export interface KaitoRequest<
+  Body = unknown,
   Query = querystring.ParsedUrlQuery,
-  Params = Record<string, string | string[]>,
-  Body = unknown
+  Params = Record<string, string | string[]>
 > {
   raw: IncomingMessage;
   url: ParsedUrl | null;
@@ -47,12 +47,16 @@ export interface KaitoResponse<Json = unknown> {
 /**
  * Shorter Alias for KaitoRequest
  */
-export type KRQ = KaitoRequest;
+export type KRQ<
+  Body = unknown,
+  Query = querystring.ParsedUrlQuery,
+  Params = Record<string, string | string[]>
+> = KaitoRequest<Body, Query, Params>;
 
 /**
  * Shorter Alias for KaitoResponse
  */
-export type KRS = KaitoResponse;
+export type KRS<Json = unknown> = KaitoResponse<Json>;
 
 export type RequestHandler =
   | ((req: KaitoRequest, res: KaitoResponse) => void)

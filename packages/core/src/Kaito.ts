@@ -9,33 +9,44 @@ import {
   SchemaFunction,
   ServerConstructorOptions,
 } from "./types";
-import Trouter, { FindResult, HTTPMethod } from "trouter";
+import { createHttpTerminator } from "http-terminator";
+import Trouter, { HTTPMethod } from "trouter";
 import http, { IncomingMessage, OutgoingMessage } from "http";
+
 import { lead, parse } from "./utils/url";
 import querystring from "querystring";
+import { ValidationException } from "./exceptions";
 
-export class Server extends Trouter {
-  readonly server: http.Server;
+export class Kaito extends Trouter<RequestHandler> {
+  readonly server = http.createServer();
+  readonly terminate = createHttpTerminator({
+    server: this.server,
+  });
 
   constructor(options: ServerConstructorOptions) {
     super();
-    this.server = http.createServer();
     this.addControllers(options.controllers);
     this.requestHandler = this.requestHandler.bind(this);
   }
 
+  static waitForStream(request: IncomingMessage) {
+    let body: string;
+
+    return new Promise((resolve) => {
+      request.on("data", (chunk: Buffer) => (body += chunk.toString()));
+      request.on("end", () => resolve(body));
+    });
+  }
+
   private async requestHandler(request: IncomingMessage, response: OutgoingMessage) {
-    const { handlers, params } = this.find(
-      (request.method as HTTPMethod) || "GET",
-      request.url || "/"
-    ) as FindResult<RequestHandler>;
+    const { handlers, params } = this.find((request.method as HTTPMethod) || "GET", request.url || "/");
 
     if (!request.url) return;
 
     const parsed = parse(request.url);
 
     const req: KaitoRequest = {
-      body: request,
+      body: await Kaito.waitForStream(request),
       params,
       pathname: "",
       query: querystring.parse(request.url),
@@ -44,9 +55,9 @@ export class Server extends Trouter {
     };
 
     const res: KaitoResponse = {
-      json(body: unknown): void {
+      json(json: unknown): void {
         response.setHeader("Content-Type", "application/json");
-        response.write(JSON.stringify(body));
+        response.write(JSON.stringify(json));
         response.end();
       },
       text(body: string) {
@@ -74,13 +85,12 @@ export class Server extends Trouter {
    */
   listen(port?: string | number) {
     this.server.listen(port || process.env.PORT);
-    this.server.on("request", this.requestHandler);
+    this.server.on("request", this.requestHandler.bind(this));
     return this;
   }
 
-  stop(callback?: (err?: Error) => unknown) {
-    this.server.off("request", this.requestHandler);
-    this.server.close(callback);
+  stop(callback?: () => unknown) {
+    this.terminate.terminate().then(() => callback && callback());
   }
 
   private addControllers(controllers: object[]) {
@@ -99,9 +109,25 @@ export class Server extends Trouter {
           throw new Error(`Method ${endpoint} cannot have a schema as it is a GET only route.`);
         }
 
-        const handler = controller[methodKey as keyof typeof controller];
+        const handler = controller[methodKey as keyof typeof controller] as RequestHandler;
 
-        this[httpMethod](endpoint, handler);
+        if (schema) {
+          this[httpMethod](endpoint, (req, res) => {
+            const result = schema(req.body);
+
+            console.log("schema result", result);
+
+            if (result === false) {
+              throw new ValidationException();
+            }
+
+            req.body = result;
+
+            return handler(req, res);
+          });
+        } else {
+          this[httpMethod](endpoint, handler);
+        }
       }
     }
   }
