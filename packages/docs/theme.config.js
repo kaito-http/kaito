@@ -33,8 +33,8 @@ export default {
   head: (
     <>
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <meta name="description" content="kaito: typescript http framework" />
-      <meta name="og:title" content="kaito: typescript http framework" />
+      <meta name="description" content="Kaito: An HTTP Framework for TypeScript" />
+      <meta name="og:title" content="Kaito: An HTTP Framework for TypeScript" />
     </>
   ),
 };
