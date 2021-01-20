@@ -1,22 +1,23 @@
-import { Server, Controller, Get, Post, Schema } from "../src";
-import { Request, Response } from "express";
+import { Server, Controller, Get, Post, Schema, KRQ, KRS } from "../src";
 import fetch from "node-fetch";
 
 @Controller("/")
 class Home {
   @Get("/")
-  async get(req: Request, res: Response) {
+  async get(req: KRQ, res: KRS) {
     res.json({ success: true });
   }
 
   @Post("/")
   @Schema<{ name: string }>(async (body) => typeof body?.name === "string")
-  async post(req: Request, res: Response) {
+  async post(req: KRQ, res: KRS) {
     res.json(req.body);
   }
 }
 
-const app = new Server(process.env.PORT || "8080", [new Home()]);
+const app = new Server({
+  controllers: [new Home()],
+}).listen(8080);
 
 describe("core-http", () => {
   afterAll(() => {

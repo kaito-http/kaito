@@ -1,5 +1,6 @@
 import { IncomingMessage, OutgoingMessage } from "http";
 import { ParsedUrl } from "./utils/url";
+import * as querystring from "querystring";
 
 export type DeepPartial<T> = {
   [P in keyof T]?: DeepPartial<T[P]>;
@@ -23,21 +24,32 @@ export enum MetadataKeys {
 }
 
 export interface KaitoRequest<
-  Query = Record<string, string | string[]>,
+  Query = querystring.ParsedUrlQuery,
   Params = Record<string, string | string[]>,
   Body = unknown
 > {
   raw: IncomingMessage;
-  url: ParsedUrl;
+  url: ParsedUrl | null;
   pathname: string;
   query: Query;
   params: Params;
   body: Body;
 }
 
-export interface KaitoResponse extends OutgoingMessage {
-  json(): void;
+export interface KaitoResponse<Body = unknown> {
+  json(body: Body): void;
+  raw: OutgoingMessage;
 }
+
+/**
+ * Shorter Alias for KaitoRequest
+ */
+export type KRQ = KaitoRequest;
+
+/**
+ * Shorter Alias for KaitoResponse
+ */
+export type KRS = KaitoResponse;
 
 export type RequestHandler =
   | ((req: KaitoRequest, res: KaitoResponse) => void)
