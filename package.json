@@ -1,7 +1,7 @@
 {
-  "name": "ts-npm-template",
+  "name": "kaito-http",
   "version": "1.0.0",
-  "repository": "https://github.com/alii/ts-npm-template",
+  "repository": "https://github.com/alii/kaito",
   "author": "Alistair Smith <alistairsmith01@gmail.com>",
   "license": "MIT",
   "scripts": {
@@ -12,6 +12,9 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.2",
+    "@types/express": "^4.17.11",
+    "@types/node-fetch": "^2.5.8",
     "@typescript-eslint/eslint-plugin": "^4.12.0",
     "@typescript-eslint/parser": "^4.12.0",
     "eslint": "^7.17.0",
@@ -28,5 +31,12 @@
   ],
   "prettier": {
     "printWidth": 120
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.5",
+    "express": "^4.17.1",
+    "express-async-errors": "^3.1.1",
+    "node-fetch": "^2.6.1",
+    "reflect-metadata": "^0.1.13"
   }
 }
