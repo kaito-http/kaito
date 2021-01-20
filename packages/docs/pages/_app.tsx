@@ -1,7 +1,7 @@
-import React from "react";
-import { AppProps } from "next/app";
+import * as React from "react";
 import "nextra-theme-docs/style.css";
+import { AppProps } from "next/app";
 
-export default function App({ Component, pageProps }: AppProps) {
+export default function Nextra({ Component, pageProps }: AppProps) {
   return <Component {...pageProps} />;
 }

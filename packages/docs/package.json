@@ -6,11 +6,11 @@
   "author": "Alistair Smith",
   "license": "MIT",
   "dependencies": {
-    "next": "^10.0.3",
+    "next": "^10.0.5",
     "nextra": "^0.4.0",
     "nextra-theme-docs": "^1.1.0",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1"
+    "react": "^16.14.0",
+    "react-dom": "^16.14.0"
   },
   "scripts": {
     "dev": "next dev",
