@@ -13,6 +13,8 @@ export type Method = "get" | "post" | "put" | "delete" | "patch";
 export interface ServerConstructorOptions {
   // eslint-disable-next-line @typescript-eslint/ban-types
   controllers: object[];
+
+  onError?(error: Error, req: KaitoRequest, res: KaitoResponse): unknown;
 }
 
 export enum MetadataKeys {
@@ -42,6 +44,7 @@ export interface KaitoResponse<Json = unknown> {
   end: OutgoingMessage["end"];
   json(body: Json): void;
   text(body: string): void;
+  status(code: number): KaitoResponse<Json>;
 }
 
 /**

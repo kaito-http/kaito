@@ -11,13 +11,14 @@ import {
 } from "./types";
 import { createHttpTerminator } from "http-terminator";
 import Trouter, { HTTPMethod } from "trouter";
-import http, { IncomingMessage, OutgoingMessage } from "http";
+import http, { IncomingMessage, ServerResponse, STATUS_CODES } from "http";
 
 import { lead, parse } from "./utils/url";
 import querystring from "querystring";
-import { ValidationException } from "./exceptions";
+import { HttpException, ValidationException } from "./exceptions";
 
 export class Kaito extends Trouter<RequestHandler> {
+  readonly kaitoOptions;
   readonly server = http.createServer();
   readonly terminate = createHttpTerminator({
     server: this.server,
@@ -27,6 +28,7 @@ export class Kaito extends Trouter<RequestHandler> {
     super();
     this.addControllers(options.controllers);
     this.requestHandler = this.requestHandler.bind(this);
+    this.kaitoOptions = options;
   }
 
   static waitForStream(request: IncomingMessage) {
@@ -38,7 +40,7 @@ export class Kaito extends Trouter<RequestHandler> {
     });
   }
 
-  private async requestHandler(request: IncomingMessage, response: OutgoingMessage) {
+  private async requestHandler(request: IncomingMessage, response: ServerResponse) {
     const { handlers, params } = this.find((request.method as HTTPMethod) || "GET", request.url || "/");
 
     if (!request.url) return;
@@ -64,6 +66,10 @@ export class Kaito extends Trouter<RequestHandler> {
         response.setHeader("Content-Type", "text/plain");
         response.write(body);
         response.end();
+      },
+      status(code: number) {
+        response.statusCode = code;
+        return res;
       },
       write: response.write,
       end: response.end,
@@ -113,22 +119,45 @@ export class Kaito extends Trouter<RequestHandler> {
 
         if (schema) {
           this[httpMethod](endpoint, (req, res) => {
-            const result = schema(req.body);
+            try {
+              const result = schema(req.body);
 
-            console.log("schema result", result);
+              if (result === false) {
+                throw new ValidationException();
+              }
 
-            if (result === false) {
-              throw new ValidationException();
+              req.body = result;
+
+              return handler(req, res);
+            } catch (e) {
+              if (this.kaitoOptions.onError) {
+                this.kaitoOptions.onError(e, req, res);
+              } else {
+                Kaito.defaultErrorHandler(e, req, res);
+              }
             }
-
-            req.body = result;
-
-            return handler(req, res);
           });
         } else {
           this[httpMethod](endpoint, handler);
         }
       }
+    }
+  }
+
+  static defaultErrorHandler(err: Error, req: KaitoRequest, res: KaitoResponse) {
+    if (err instanceof HttpException) {
+      return res.status(err.code).json({
+        message: err.message,
+        code: err.code,
+        error: "HttpException",
+      });
+    } else {
+      console.error(err);
+      return res.status(500).json({
+        message: "Something went wrong on our side",
+        error: err.constructor.name,
+        code: 500,
+      });
     }
   }
 }
