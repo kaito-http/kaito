@@ -17,9 +17,9 @@ const PoweredByVercel = () => (
 
 export default {
   repository: "https://github.com/kaito-http/kaito",
-  docsRepository: "https://github.com/kaito-http/kaito/tree/main/docs",
+  docsRepository: "https://github.com/kaito-http/kaito",
   branch: "main",
-  path: "/",
+  path: "/packages/docs",
   titleSuffix: " – Kaito",
   nextLinks: false,
   prevLinks: false,
