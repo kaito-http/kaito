@@ -1,29 +1,24 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import "reflect-metadata";
-import express, { ErrorRequestHandler, NextFunction, RequestHandler, Request, Response } from "express";
-import { MetadataKeys, Method, SchemaFunction } from "./types";
-import { HttpException, ValidationException } from "./exceptions";
-import cookieParser from "cookie-parser";
-import "express-async-errors";
-import * as http from "http";
+import { MetadataKeys, Method, SchemaFunction, ServerConstructorOptions } from "./types";
+import Trouter from "trouter";
+import http from "http";
 
-export class Server {
-  readonly app = express();
-  readonly _server: http.Server;
+export class Server extends Trouter {
+  readonly server: http.Server;
 
-  constructor(port: number | string, controllers: object[]) {
-    this.app.use(express.json());
-    this.app.use(express.urlencoded({ extended: true }));
-    this.app.use(cookieParser());
-
-    this.addControllers(controllers);
-    this.app.use(Server.errorHandler);
-
-    this._server = this.app.listen(port);
+  constructor(options: ServerConstructorOptions) {
+    super();
+    this.server = http.createServer();
+    this.addControllers(options.controllers);
   }
 
-  stop() {
-    this._server.close();
+  /**
+   * Listen on the specified port. If no port is specified, it will try to use the environment variable PORT
+   * @param port
+   */
+  listen(port?: string | number) {
+    this.server.listen(port || process.env.PORT);
   }
 
   private addControllers(controllers: object[]) {
@@ -33,57 +28,19 @@ export class Server {
 
       for (const methodKey of methodKeys) {
         const httpMethod: Method = Reflect.getMetadata(MetadataKeys.HTTP_METHOD, controller, methodKey);
-        const routeName: string = Reflect.getMetadata(MetadataKeys.ROUTE_PATH, controller, methodKey);
-        const handler: RequestHandler = controller[methodKey as keyof typeof controller];
-
-        const endpoint = controllerBase + routeName;
         const schema: SchemaFunction | undefined = Reflect.getMetadata(MetadataKeys.SCHEMA, controller, methodKey);
+
+        const routeName: string = Reflect.getMetadata(MetadataKeys.ROUTE_PATH, controller, methodKey);
+        const endpoint = controllerBase + routeName;
 
         if (httpMethod === "get" && schema) {
           throw new Error(`Method ${endpoint} cannot have a schema as it is a GET only route.`);
         }
 
-        if (schema) {
-          const mw: RequestHandler = async (req, res, next) => {
-            const result = await schema(req.body);
+        const handler = controller[methodKey as keyof typeof controller];
 
-            if (result === false) {
-              throw new ValidationException();
-            }
-
-            req.body = result;
-
-            next();
-          };
-
-          this.app[httpMethod](endpoint, mw, handler);
-        } else {
-          this.app[httpMethod](endpoint, handler);
-        }
+        // todo
       }
     }
   }
-
-  static readonly errorHandler: ErrorRequestHandler = (
-    err: Error,
-    req: Request,
-    res: Response,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _next: NextFunction
-  ) => {
-    if (err instanceof HttpException) {
-      return res.status(err.code).json({
-        message: err.message,
-        code: err.code,
-        error: "HttpException",
-      });
-    } else {
-      console.error(err);
-      return res.status(500).json({
-        message: "Something went wrong on our side",
-        error: err.constructor.name,
-        code: 500,
-      });
-    }
-  };
 }
