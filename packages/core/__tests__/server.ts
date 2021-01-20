@@ -18,7 +18,7 @@ class Home {
 
 const app = new Server(process.env.PORT || "8080", [new Home()]);
 
-describe("kaito-http", () => {
+describe("core-http", () => {
   afterAll(() => {
     app.stop();
   });

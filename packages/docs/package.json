@@ -1,0 +1,23 @@
+{
+  "name": "@kaito-http/docs",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Alistair Smith",
+  "license": "MIT",
+  "dependencies": {
+    "next": "^10.0.3",
+    "nextra": "^0.4.0",
+    "nextra-theme-docs": "^1.1.0",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "start": "next start",
+    "build": "next build"
+  },
+  "devDependencies": {
+    "@types/react": "^17.0.0"
+  }
+}
