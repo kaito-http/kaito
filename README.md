@@ -51,5 +51,5 @@ const server = new Server(process.env.PORT || "8080", [new Home()]);
 
 #### utility
 
-- `@Schema` - lets you check a request body to match a certain schema. if this function returns `true`, req.body will be exactly as sent in the request. if the function returns `false`, the request will fail, and an error will be thrown and caught. if the function returns neither true nor false, the request will continue, and the result from the schema function will be the value of `req.body`
+- `@Schema<ExpectedType>` - lets you check a request body to match a certain schema. if this function returns `true`, req.body will be exactly as sent in the request. if the function returns `false`, the request will fail, and an error will be thrown and caught. if the function returns neither true nor false, the request will continue, and the result from the schema function will be the value of `req.body`
 - `@Controller` - tells `Reflect` that this class is a controller, and mounts your methods onto the express instance
