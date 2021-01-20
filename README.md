@@ -2,6 +2,10 @@
 
 ### typescript http framework built on top of express
 
+### installation
+
+`yarn add kaito-http` (or, with npm `npm i --save kaito-http`)
+
 ### features
 
 - ✍ built in schema + body validation support
