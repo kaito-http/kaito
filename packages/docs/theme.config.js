@@ -24,7 +24,7 @@ export default {
   nextLinks: false,
   prevLinks: false,
   footerText: (
-    <a href="https://vercel.com?utm_source=kaito&utm_campaign=oss">
+    <a href="https://vercel.com?utm_source=kaito-http&utm_campaign=oss">
       <PoweredByVercel />
     </a>
   ),

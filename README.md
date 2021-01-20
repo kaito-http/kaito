@@ -1,6 +1,6 @@
 # `kaito-http`
 
-[![Vercel](./static/powered-by-vercel.svg)](https://vercel.com?utm_source=kaito&utm_campaign=oss)
+[![Vercel](./static/powered-by-vercel.svg)](https://vercel.com?utm_source=kaito-http&utm_campaign=oss)
 
 ### typescript http framework built on top of express
 
