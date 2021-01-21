@@ -1,14 +1,14 @@
 import { Kaito, Controller, Get, Post, Schema, KRQ, KRT } from "../src";
 import fetch from "node-fetch";
 
-@Controller("/")
+@Controller("/test")
 class Home {
-  @Get("/")
+  @Get("/get")
   async get(): KRT<{ success: boolean }> {
     return { success: true };
   }
 
-  @Post("/")
+  @Post("/post")
   @Schema<{ name: string }>((body) => typeof body?.name === "string")
   async post(req: KRQ<{ name: string }>): KRT<{ name: string }> {
     return req.body;
@@ -23,12 +23,12 @@ describe("core-http", () => {
   afterAll(() => app.stop());
 
   it("GET / with a correct endpoint", async () => {
-    const res = await fetch("http://localhost:8080/");
+    const res = await fetch("http://localhost:8080/test/get");
     expect(await res.json()).toEqual({ success: true });
   });
 
   it("POST / with a valid body", async () => {
-    const res = await fetch("http://localhost:8080/", {
+    const res = await fetch("http://localhost:8080/test/post", {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: "Hey" }),
       method: "POST",
@@ -38,7 +38,7 @@ describe("core-http", () => {
   });
 
   it("POST / with an invalid body", async () => {
-    const res = await fetch("http://localhost:8080/", {
+    const res = await fetch("http://localhost:8080/test/post", {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ age: 10 }),
       method: "POST",
