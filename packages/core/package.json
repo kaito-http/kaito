@@ -1,6 +1,6 @@
 {
   "name": "@kaito-http/core",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "An HTTP Framework for TypeScript",
   "repository": {
     "type": "git",
@@ -12,7 +12,7 @@
   "scripts": {
     "test": "eslint . --fix&&jest",
     "prepublishOnly": "npm run test&&npm run build",
-    "build": "tsc --project tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
