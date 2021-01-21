@@ -1,5 +1,6 @@
 import "reflect-metadata";
-import { MetadataKeys, Method, SchemaFunction } from "./types";
+import { MetadataKeys, Method } from "./types";
+import { AnySchema } from "yup";
 
 export const method = (method: Method) => (path: `/${string}` = "/"): MethodDecorator => (target, property) => {
   Reflect.defineMetadata(MetadataKeys.HTTP_METHOD, method, target, property);
@@ -10,8 +11,7 @@ export const method = (method: Method) => (path: `/${string}` = "/"): MethodDeco
   Reflect.defineMetadata(MetadataKeys.AVAILABLE_ROUTE_METHODS, [...existing, property], target);
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const Schema = <T = any>(schema: SchemaFunction<T>): MethodDecorator => (target, property) => {
+export const Schema = (schema: AnySchema): MethodDecorator => (target, property) => {
   Reflect.defineMetadata(MetadataKeys.SCHEMA, schema, target, property);
 };
 

@@ -33,6 +33,10 @@ export function parse(url: string) {
   return parts as ParsedUrl;
 }
 
+export function generateEndpoint(base: string, path: string) {
+  return lead(base) + lead(path);
+}
+
 export function lead(path: string): string {
   // Faster than using .startsAt as memory is not allocated for a substring
   return path.charCodeAt(0) === FORWARD_SLASH_CHAR_CODE ? path : "/" + path;

@@ -23,6 +23,7 @@
     "test": "yarn workspace @kaito-http/core test",
     "docs:dev": "yarn workspace @kaito-http/docs dev",
     "docs:build": "yarn workspace @kaito-http/docs build",
-    "release": "yarn workspace @kaito-http/core publish --access public"
+    "release": "yarn workspace @kaito-http/core publish --access public",
+    "core:build": "yarn workspace @kaito-http/core build"
   }
 }

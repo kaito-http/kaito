@@ -1,5 +1,6 @@
-import { Kaito, Controller, Get, Post, Schema, KRQ, KRT } from "../src";
+import { Kaito, Controller, Get, Post, Schema, KTX, KRT } from "../src";
 import fetch from "node-fetch";
+import * as yup from "yup";
 
 @Controller("/test")
 class Home {
@@ -8,10 +9,15 @@ class Home {
     return { success: true };
   }
 
+  @Get("/:value")
+  async param(ctx: KTX): KRT<{ hello: string }> {
+    return { hello: ctx.params.value as string };
+  }
+
   @Post("/post")
-  @Schema<{ name: string }>((body) => typeof body?.name === "string")
-  async post(req: KRQ<{ name: string }>): KRT<{ name: string }> {
-    return req.body;
+  @Schema(yup.object({ name: yup.string().required() }).required())
+  async post(ctx: KTX<{ name: string }>): KRT<{ name: string }> {
+    return ctx.body;
   }
 }
 
@@ -35,6 +41,11 @@ describe("core-http", () => {
     });
 
     expect(res.status).toBe(200);
+  });
+
+  it("GET with a query param", async () => {
+    const res = await fetch("http://localhost:8080/test/world");
+    expect(await res.json()).toEqual({ hello: "world" });
   });
 
   it("POST / with an invalid body", async () => {
