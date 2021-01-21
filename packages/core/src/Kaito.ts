@@ -9,7 +9,6 @@ import {
   SchemaFunction,
   ServerConstructorOptions,
 } from "./types";
-import { createHttpTerminator } from "http-terminator";
 import Trouter, { HTTPMethod } from "trouter";
 import http, { IncomingMessage, ServerResponse } from "http";
 
@@ -20,9 +19,6 @@ import { HttpException, ValidationException } from "./exceptions";
 export class Kaito extends Trouter<RequestHandler> {
   readonly kaitoOptions;
   readonly server = http.createServer();
-  readonly terminate = createHttpTerminator({
-    server: this.server,
-  });
 
   constructor(options: ServerConstructorOptions) {
     super();
@@ -31,8 +27,8 @@ export class Kaito extends Trouter<RequestHandler> {
     this.kaitoOptions = options;
   }
 
-  static waitForStream(request: IncomingMessage) {
-    let body: string;
+  static waitForStream(request: IncomingMessage): Promise<string> {
+    let body = "";
 
     return new Promise((resolve) => {
       request.on("data", (chunk: Buffer) => (body += chunk.toString()));
@@ -47,8 +43,10 @@ export class Kaito extends Trouter<RequestHandler> {
 
     const parsed = parse(request.url);
 
+    const body = await Kaito.waitForStream(request);
+
     const req: KaitoRequest = {
-      body: await Kaito.waitForStream(request),
+      body: request.headers["content-type"]?.toLowerCase() === "application/json" ? JSON.parse(body) : body,
       params,
       pathname: "",
       query: querystring.parse(request.url),
@@ -59,13 +57,11 @@ export class Kaito extends Trouter<RequestHandler> {
     const res: KaitoResponse = {
       json(json: unknown): void {
         response.setHeader("Content-Type", "application/json");
-        response.write(JSON.stringify(json));
-        response.end();
+        response.end(JSON.stringify(json));
       },
       text(body: string) {
         response.setHeader("Content-Type", "text/plain");
-        response.write(body);
-        response.end();
+        response.end(body);
       },
       status(code: number) {
         response.statusCode = code;
@@ -95,8 +91,8 @@ export class Kaito extends Trouter<RequestHandler> {
     return this;
   }
 
-  stop(callback?: () => unknown) {
-    this.terminate.terminate().then(() => callback && callback());
+  stop(callback?: (error?: Error) => unknown) {
+    this.server.close(callback);
   }
 
   private addControllers(controllers: object[]) {
