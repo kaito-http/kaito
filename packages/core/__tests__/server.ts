@@ -1,16 +1,16 @@
-import { Kaito, Controller, Get, Post, Schema, KRQ } from "../src";
+import { Kaito, Controller, Get, Post, Schema, KRQ, KRT } from "../src";
 import fetch from "node-fetch";
 
 @Controller("/")
 class Home {
   @Get("/")
-  async get() {
+  async get(): KRT<{ success: boolean }> {
     return { success: true };
   }
 
   @Post("/")
   @Schema<{ name: string }>((body) => typeof body?.name === "string")
-  async post(req: KRQ<{ name: string }>) {
+  async post(req: KRQ<{ name: string }>): KRT<{ name: string }> {
     return req.body;
   }
 }

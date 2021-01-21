@@ -6,5 +6,5 @@
     "target": "ES6",
     "noEmit": false
   },
-  "exclude": ["node_modules", "dist", "__tests__", "jest.config.js"]
+  "exclude": ["node_modules", "dist", "jest.config.js"]
 }

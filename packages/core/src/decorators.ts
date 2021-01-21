@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { MetadataKeys, Method, SchemaFunction } from "./types";
 
-export const method = (method: Method) => (path: `/${string}`): MethodDecorator => (target, property) => {
+export const method = (method: Method) => (path: `/${string}` = "/"): MethodDecorator => (target, property) => {
   Reflect.defineMetadata(MetadataKeys.HTTP_METHOD, method, target, property);
   Reflect.defineMetadata(MetadataKeys.ROUTE_PATH, path, target, property);
 
@@ -15,7 +15,7 @@ export const Schema = <T = any>(schema: SchemaFunction<T>): MethodDecorator => (
   Reflect.defineMetadata(MetadataKeys.SCHEMA, schema, target, property);
 };
 
-export const Controller = (path: `/${string}`): ClassDecorator => (target) => {
+export const Controller = (path: `/${string}` = "/"): ClassDecorator => (target) => {
   if (!path.startsWith("/")) {
     throw new Error(`Path must start with / for ${target}`);
   }
