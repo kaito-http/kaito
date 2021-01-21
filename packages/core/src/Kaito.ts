@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import "reflect-metadata";
 import {
+  KaitoAdvancedJsonType,
+  KaitoAdvancedTextType,
   KaitoRequest,
-  KaitoResponse,
+  KaitoReturnType,
   MetadataKeys,
   Method,
   RequestHandler,
@@ -52,31 +54,54 @@ export class Kaito extends Trouter<RequestHandler> {
       query: querystring.parse(request.url),
       raw: request,
       url: parsed,
-    };
-
-    const res: KaitoResponse = {
-      json(json: unknown): void {
-        response.setHeader("Content-Type", "application/json");
-        response.end(JSON.stringify(json));
-      },
-      text(body: string) {
-        response.setHeader("Content-Type", "text/plain");
-        response.end(body);
-      },
-      status(code: number) {
-        response.statusCode = code;
-        return res;
-      },
-      write: response.write,
-      end: response.end,
-      raw: response,
+      res: response,
     };
 
     for (const handler of handlers) {
-      const result = handler(req, res);
+      const result = (await handler(req)) as KaitoReturnType<unknown>;
 
-      if (result instanceof Promise) {
-        res.json(await result);
+      if (result === undefined) {
+        return req.res.end();
+      }
+
+      if (typeof result === "object") {
+        if (result === null) {
+          req.res.end();
+          // TODO: Improve this error message to be more specific
+          throw new Error("Cannot return null");
+        }
+
+        if ("json" in result) {
+          const { json, status = 200, headers = {} } = result as KaitoAdvancedJsonType<unknown>;
+
+          response.writeHead(status, {
+            "Content-Type": "application/json",
+            ...headers,
+          });
+
+          response.end(JSON.stringify(json));
+        } else if ("text" in result) {
+          const { text, status = 200, headers = {} } = result as KaitoAdvancedTextType;
+
+          response.writeHead(status, {
+            "Content-Type": "text/plain",
+            ...headers,
+          });
+
+          response.end(text);
+        } else {
+          response.writeHead(200, {
+            "Content-Type": "application/json",
+          });
+
+          response.end(JSON.stringify(result));
+        }
+      } else {
+        response.writeHead(200, {
+          "Content-Type": "application/json",
+        });
+
+        response.end(JSON.stringify(result));
       }
     }
   }
@@ -114,7 +139,7 @@ export class Kaito extends Trouter<RequestHandler> {
         const handler = controller[methodKey as keyof typeof controller] as RequestHandler;
 
         if (schema) {
-          this[httpMethod](endpoint, (req, res) => {
+          this[httpMethod](endpoint, (req) => {
             try {
               const result = schema(req.body);
 
@@ -124,12 +149,12 @@ export class Kaito extends Trouter<RequestHandler> {
 
               req.body = result;
 
-              return handler(req, res);
+              return handler(req);
             } catch (e) {
               if (this.kaitoOptions.onError) {
-                this.kaitoOptions.onError(e, req, res);
+                this.kaitoOptions.onError(e, req);
               } else {
-                Kaito.defaultErrorHandler(e, req, res);
+                Kaito.defaultErrorHandler(e, req);
               }
             }
           });
@@ -140,20 +165,30 @@ export class Kaito extends Trouter<RequestHandler> {
     }
   }
 
-  static defaultErrorHandler(err: Error, req: KaitoRequest, res: KaitoResponse) {
+  static defaultErrorHandler(err: Error, req: KaitoRequest) {
+    req.res.setHeader("Content-Type", "application/json");
+
     if (err instanceof HttpException) {
-      return res.status(err.code).json({
+      req.res.statusCode = err.code;
+
+      const body = JSON.stringify({
         message: err.message,
         code: err.code,
         error: "HttpException",
       });
+
+      req.res.end(body);
     } else {
       console.error(err);
-      return res.status(500).json({
+      req.res.statusCode = 500;
+
+      const body = JSON.stringify({
         message: "Something went wrong on our side",
         error: err.constructor.name,
         code: 500,
       });
+
+      req.res.end(body);
     }
   }
 }

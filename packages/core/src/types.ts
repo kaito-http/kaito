@@ -1,4 +1,4 @@
-import { IncomingMessage, OutgoingMessage } from "http";
+import { IncomingMessage, ServerResponse, OutgoingHttpHeaders } from "http";
 import { ParsedUrl } from "./utils/url";
 import * as querystring from "querystring";
 
@@ -13,8 +13,7 @@ export type Method = "get" | "post" | "put" | "delete" | "patch";
 export interface ServerConstructorOptions {
   // eslint-disable-next-line @typescript-eslint/ban-types
   controllers: object[];
-
-  onError?(error: Error, req: KaitoRequest, res: KaitoResponse): unknown;
+  onError?(error: Error, req: KaitoRequest): unknown;
 }
 
 export enum MetadataKeys {
@@ -31,20 +30,12 @@ export interface KaitoRequest<
   Params = Record<string, string | string[]>
 > {
   raw: IncomingMessage;
+  res: ServerResponse;
   url: ParsedUrl | null;
   pathname: string;
   query: Query;
   params: Params;
   body: Body;
-}
-
-export interface KaitoResponse<Json = unknown> {
-  raw: OutgoingMessage;
-  write: OutgoingMessage["write"];
-  end: OutgoingMessage["end"];
-  json(body: Json): void;
-  text(body: string): void;
-  status(code: number): KaitoResponse<Json>;
 }
 
 /**
@@ -56,11 +47,9 @@ export type KRQ<
   Params = Record<string, string | string[]>
 > = KaitoRequest<Body, Query, Params>;
 
-/**
- * Shorter Alias for KaitoResponse
- */
-export type KRS<Json = unknown> = KaitoResponse<Json>;
+export type KaitoAdvancedJsonType<Body> = { json: Body; status?: number; headers?: OutgoingHttpHeaders };
+export type KaitoAdvancedTextType = { text: string; status?: number; headers?: OutgoingHttpHeaders };
+export type KaitoReturnType<Body> = Body | KaitoAdvancedTextType | KaitoAdvancedJsonType<Body>;
+export type RequestHandler = <Body>(req: KaitoRequest) => Promise<KaitoReturnType<Body>> | void;
 
-export type RequestHandler =
-  | ((req: KaitoRequest, res: KaitoResponse) => void)
-  | ((req: KaitoRequest) => Promise<unknown>);
+export type KRT<B> = Promise<KaitoReturnType<B>>;
