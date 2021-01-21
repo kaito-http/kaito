@@ -21,21 +21,23 @@ Kaito is simple to use. From the ground up, we left it fairly unopinionated to _
 ## Basic Example
 
 ```ts
-import { Request, Response } from "express";
+import { Kaito, Controller, Get, Post, Schema, KRQ } from "@kaito-http/core";
 
 @Controller("/")
 class Home {
   @Get("/")
-  async get(req: Request, res: Response) {
-    res.json({ success: true });
+  async get() {
+    return { success: true };
   }
 
   @Post("/")
-  @Schema<{ name: string }>(async (body) => typeof body?.name === "string")
-  async post(req: Request, res: Response) {
-    res.json(req.body);
+  @Schema<{ name: string }>((body) => typeof body?.name === "string")
+  async post(req: KRQ<{ name: string }>) {
+    return req.body;
   }
 }
 
-const server = new Server(process.env.PORT || "8080", [new Home()]);
+const app = new Kaito({
+  controllers: [new Home()],
+}).listen(8080);
 ```
