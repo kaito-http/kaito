@@ -64,6 +64,9 @@ export class Kaito extends Trouter<RequestHandler> {
         return req.res.end();
       }
 
+      // TODO: Reduce the .writeHead and .end calls into a single helper
+      // CC: @fyko
+
       if (typeof result === "object") {
         if (result === null) {
           req.res.end();
