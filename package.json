@@ -22,6 +22,7 @@
     "postinstall": "lerna bootstrap",
     "test": "yarn workspace @kaito-http/core test",
     "docs:dev": "yarn workspace @kaito-http/docs dev",
-    "docs:build": "yarn workspace @kaito-http/docs build"
+    "docs:build": "yarn workspace @kaito-http/docs build",
+    "release": "yarn workspace @kaito-http/core publish"
   }
 }

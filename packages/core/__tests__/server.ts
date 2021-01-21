@@ -1,27 +1,26 @@
-import { Server, Controller, Get, Post, Schema } from "../src";
-import { Request, Response } from "express";
+import { Kaito, Controller, Get, Post, Schema, KRQ } from "../src";
 import fetch from "node-fetch";
 
 @Controller("/")
 class Home {
   @Get("/")
-  async get(req: Request, res: Response) {
-    res.json({ success: true });
+  async get() {
+    return { success: true };
   }
 
   @Post("/")
-  @Schema<{ name: string }>(async (body) => typeof body?.name === "string")
-  async post(req: Request, res: Response) {
-    res.json(req.body);
+  @Schema<{ name: string }>((body) => typeof body?.name === "string")
+  async post(req: KRQ<{ name: string }>) {
+    return req.body;
   }
 }
 
-const app = new Server(process.env.PORT || "8080", [new Home()]);
+const app = new Kaito({
+  controllers: [new Home()],
+}).listen(8080);
 
 describe("core-http", () => {
-  afterAll(() => {
-    app.stop();
-  });
+  afterAll(() => app.stop());
 
   it("GET / with a correct endpoint", async () => {
     const res = await fetch("http://localhost:8080/");
