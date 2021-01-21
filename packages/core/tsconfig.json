@@ -3,8 +3,9 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "target": "ES6",
-    "noEmit": false
+    "target": "es6",
+    "noEmit": true,
+    "declaration": false
   },
   "exclude": ["node_modules", "dist", "jest.config.js"]
 }

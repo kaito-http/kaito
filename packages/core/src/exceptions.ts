@@ -12,12 +12,6 @@ export class HttpException extends Error {
   }
 }
 
-export class ValidationException extends HttpException {
-  constructor() {
-    super(422, "Invalid request body");
-  }
-}
-
 export class NotFoundException extends HttpException {
   constructor() {
     super(404, "That resource was not found");
