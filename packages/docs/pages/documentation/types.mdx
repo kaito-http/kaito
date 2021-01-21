@@ -45,5 +45,5 @@ Headers and status here are entirely optional.
 
 You shouldn't need to use this type too often, unless you are writing an interface that a class can implement.
 We plan to ship some built in interfaces in the future that will allow to strongly type controllers, but for now,
-`RequestHandler` is simply the method (or function) definition for a function that takes `req, res` and returns a
-`Promise` or nothing. This type is not aliased.
+`RequestHandler` is simply the method (or function) definition for a function that takes `req` and returns a
+`Promise` fufilled by `KRT`. This type is not aliased.
