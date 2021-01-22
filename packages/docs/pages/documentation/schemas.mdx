@@ -1,0 +1,24 @@
+import Callout from "nextra-theme-docs/callout";
+
+# Schemas
+
+Kaito has rich integration with [Yup](https://npmjs.org/package/yup), the schema validation library.
+It's easy to use with Kaito.
+
+## Basic Usage
+
+```ts
+import * as yup from 'yup';
+
+@Schema(yup.object({ name: yup.string() }))
+@Post("/body-test")
+async echoValidName(ktx: KTX<{ name: string }>) {
+  return ktx.body
+}
+```
+
+In this method, Kaito is parsing the incoming body from the request and validating it with Yup. If the schema is
+invalid, an error is thrown, and the request finishes before your class method is even called. A list of errors is
+then sent back to the sender.
+
+<Callout>You cannot use the @Schema decorator on a GET request!</Callout>

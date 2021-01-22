@@ -33,7 +33,7 @@ export function parse(url: string) {
   return parts as ParsedUrl;
 }
 
-export function generateEndpoint(base: string, path: string) {
+export function normalizePath(base: string, path: string) {
   return lead(base) + lead(path);
 }
 
