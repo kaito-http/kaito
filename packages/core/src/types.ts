@@ -1,6 +1,7 @@
 import { IncomingMessage, ServerResponse, OutgoingHttpHeaders } from "http";
 import { ParsedUrl } from "./utils/url";
 import * as querystring from "querystring";
+import { AnySchema } from "yup";
 
 export type Method = "get" | "post" | "put" | "delete" | "patch";
 
@@ -47,3 +48,8 @@ export type KaitoReturnType<Body> = void | NonNullable<Body> | KaitoAdvancedText
 export type RequestHandler = <Body>(ctx: KaitoContext) => Promise<KaitoReturnType<Body>> | void;
 
 export type KRT<B> = Promise<KaitoReturnType<B>>;
+
+export interface InternalKaitoRoute {
+  path: string;
+  schema?: AnySchema;
+}

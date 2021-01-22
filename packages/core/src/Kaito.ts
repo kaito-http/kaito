@@ -1,21 +1,14 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import "reflect-metadata";
-import {
-  KaitoAdvancedJsonType,
-  KaitoAdvancedTextType,
-  MetadataKeys,
-  Method,
-  RequestHandler,
-  ServerConstructorOptions,
-} from "./types";
+import { KaitoAdvancedJsonType, KaitoAdvancedTextType, RequestHandler, ServerConstructorOptions } from "./types";
 import Trouter, { HTTPMethod } from "trouter";
 import http, { IncomingMessage, OutgoingHttpHeaders, ServerResponse } from "http";
 
-import { generateEndpoint, parse } from "./utils/url";
+import { parse } from "./utils/url";
 import querystring from "querystring";
-import { defaultErrorHandler } from "./utils/defaultErrorHandler";
-import { AnySchema } from "yup";
+import { defaultErrorHandler } from "./utils/errors";
 import { Context } from "./structs/Context";
+import { readControllerMetadata } from "./utils/metadata";
 
 export class Kaito extends Trouter<RequestHandler> {
   readonly kaitoOptions;
@@ -109,23 +102,18 @@ export class Kaito extends Trouter<RequestHandler> {
 
   private addControllers(controllers: object[]) {
     for (const controller of controllers) {
-      const controllerBase: `/${string}` = Reflect.getMetadata(MetadataKeys.CONTROLLER_PATH, controller.constructor);
-      const methodKeys: string[] = Reflect.getMetadata(MetadataKeys.AVAILABLE_ROUTE_METHODS, controller) || [];
+      const metadata = readControllerMetadata(controller);
 
-      for (const methodKey of methodKeys) {
-        const httpMethod: Method = Reflect.getMetadata(MetadataKeys.HTTP_METHOD, controller, methodKey);
-        const schema: AnySchema | undefined = Reflect.getMetadata(MetadataKeys.SCHEMA, controller, methodKey);
+      for (const route of metadata.routes) {
+        const { method, schema, path, methodName } = route;
 
-        const routeName: string = Reflect.getMetadata(MetadataKeys.ROUTE_PATH, controller, methodKey);
-        const endpoint = generateEndpoint(controllerBase, routeName);
-
-        if (httpMethod === "get" && schema) {
-          throw new Error(`Method ${endpoint} cannot have a schema as it is a GET only route.`);
+        if (method === "get" && schema) {
+          throw new Error(`Method ${methodName} (${path}) cannot have a schema as it is a GET only route.`);
         }
 
-        const handler = controller[methodKey as keyof typeof controller] as RequestHandler;
+        const handler = controller[methodName] as RequestHandler;
 
-        this[httpMethod](endpoint, async (ctx) => {
+        this[method](path, async (ctx) => {
           if (schema) {
             ctx.body = await schema.validate(ctx.body);
           }

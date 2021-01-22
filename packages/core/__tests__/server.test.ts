@@ -44,8 +44,9 @@ describe("core-http", () => {
   });
 
   it("GET with a query param", async () => {
-    const res = await fetch("http://localhost:8080/test/world");
-    expect(await res.json()).toEqual({ hello: "world" });
+    const p = Math.floor(Math.random() * 1000).toString();
+    const res = await fetch(`http://localhost:8080/test/${p}`);
+    expect(await res.json()).toEqual({ hello: p });
   });
 
   it("POST / with an invalid body", async () => {
