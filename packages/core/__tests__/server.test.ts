@@ -27,10 +27,12 @@ const app = new Kaito({
   controllers: [new Home()],
 });
 
-app.listen(8080);
+const server = app.listen(8080);
 app.use(json);
 
 describe("core-http", () => {
+  afterAll(() => server.close());
+
   it("GET / with a correct endpoint", async () => {
     const res = await fetch("http://localhost:8080/test/get");
     expect(await res.json()).toEqual({ success: true });
