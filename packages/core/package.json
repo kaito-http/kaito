@@ -10,9 +10,10 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "test": "eslint . --fix&&jest",
+    "test": "eslint .&&jest",
     "prepublishOnly": "npm run test&&npm run build",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint . --fix"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
