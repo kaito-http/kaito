@@ -1,37 +1,14 @@
-import { Kaito, Controller, Get, Post, Schema, KTX, KRT, InferType, json } from "../src";
 import fetch from "node-fetch";
-import * as yup from "yup";
-
-const testingSchema = yup.object({ name: yup.string().required() }).required();
-
-@Controller("/test")
-class Home {
-  @Get("/get")
-  async get(): KRT<{ success: boolean }> {
-    return { success: true };
-  }
-
-  @Get("/:value")
-  async param(ctx: KTX): KRT<{ hello: string }> {
-    return { hello: ctx.params.value as string };
-  }
-
-  @Post("/post")
-  @Schema(testingSchema)
-  async post(ctx: InferType<typeof testingSchema>): KRT<{ name: string }> {
-    return ctx.body;
-  }
-}
-
-const app = new Kaito({
-  controllers: [new Home()],
-});
-
-const server = app.listen(8080);
-app.use(json);
+import { app } from "./server";
 
 describe("core-http", () => {
-  afterAll(() => server.close());
+  afterEach(() => {
+    app.close();
+  });
+
+  beforeEach(() => {
+    app.listen(8080);
+  });
 
   it("GET / with a correct endpoint", async () => {
     const res = await fetch("http://localhost:8080/test/get");

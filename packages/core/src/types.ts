@@ -7,6 +7,7 @@ export interface ServerConstructorOptions {
   // eslint-disable-next-line @typescript-eslint/ban-types
   controllers: object[];
   onError?(error: Error, ctx: KaitoContext): unknown;
+  logging?: boolean;
 }
 
 export enum MetadataKeys {
