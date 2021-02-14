@@ -1,6 +1,8 @@
-import { Kaito, Controller, Get, Post, Schema, KTX, KRT } from "../src";
+import { Kaito, Controller, Get, Post, Schema, KTX, KRT, InferType, json } from "../src";
 import fetch from "node-fetch";
 import * as yup from "yup";
+
+const testingSchema = yup.object({ name: yup.string().required() }).required();
 
 @Controller("/test")
 class Home {
@@ -15,19 +17,20 @@ class Home {
   }
 
   @Post("/post")
-  @Schema(yup.object({ name: yup.string().required() }).required())
-  async post(ctx: KTX<{ name: string }>): KRT<{ name: string }> {
+  @Schema(testingSchema)
+  async post(ctx: InferType<typeof testingSchema>): KRT<{ name: string }> {
     return ctx.body;
   }
 }
 
 const app = new Kaito({
   controllers: [new Home()],
-}).listen(8080);
+});
+
+app.listen(8080);
+app.use(json);
 
 describe("core-http", () => {
-  afterAll(() => app.stop());
-
   it("GET / with a correct endpoint", async () => {
     const res = await fetch("http://localhost:8080/test/get");
     expect(await res.json()).toEqual({ success: true });
