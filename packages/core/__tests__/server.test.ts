@@ -22,7 +22,8 @@ describe("core-http", () => {
       method: "POST",
     });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(204);
+    expect(res.headers.get("X-Example")).toEqual("Mad ratio");
   });
 
   it("GET with a query param", async () => {

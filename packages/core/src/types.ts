@@ -1,5 +1,6 @@
 import { IncomingMessage, ServerResponse, OutgoingHttpHeaders } from "http";
 import * as querystring from "querystring";
+import { Reply } from "./utils/reply";
 
 export type Method = "get" | "post" | "put" | "delete" | "patch";
 
@@ -30,6 +31,7 @@ export interface KaitoContext<
   query: Query;
   params: Params;
   body: Body;
+  ip: string;
 }
 
 /**
@@ -43,7 +45,8 @@ export type KTX<
 
 export type KaitoAdvancedJsonType<Body> = { json: NonNullable<Body>; status?: number; headers?: OutgoingHttpHeaders };
 export type KaitoAdvancedTextType = { text: string; status?: number; headers?: OutgoingHttpHeaders };
-export type KaitoReturnType<Body> = void | NonNullable<Body> | KaitoAdvancedTextType | KaitoAdvancedJsonType<Body>;
-export type RequestHandler = <Body>(ctx: KaitoContext) => Promise<KaitoReturnType<Body>> | void;
 
+export type KaitoReturnType<Body> = void | NonNullable<Body> | KaitoAdvancedTextType | Reply<Body>;
 export type KRT<B> = Promise<KaitoReturnType<B>>;
+
+export type RequestHandler = <Body>(ctx: KaitoContext) => Promise<KaitoReturnType<Body>> | void;
