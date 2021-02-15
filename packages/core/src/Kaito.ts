@@ -6,6 +6,7 @@ import { readControllerMetadata } from "./utils/metadata";
 import { App, Request } from "@tinyhttp/app";
 import { Server } from "http";
 import { defaultErrorHandler } from "./utils/errors";
+import { Reply } from "./utils/reply";
 
 export class Kaito extends App {
   readonly kaitoOptions;
@@ -78,6 +79,8 @@ export class Kaito extends App {
         const handler = controller[methodName] as RequestHandler;
 
         this[method](path, async (req, res) => {
+          const ip = (req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.ip) as string;
+
           const ctx: KaitoContext = {
             body: await parseBody(req),
             params: req.params as Record<string, string>,
@@ -86,6 +89,7 @@ export class Kaito extends App {
             url: req.url,
             req,
             res,
+            ip,
           };
 
           try {
@@ -95,8 +99,20 @@ export class Kaito extends App {
 
             const result = await handler(ctx);
 
+            if (result instanceof Reply) {
+              for (const [k, v] of Object.entries(result.data.headers ?? {})) {
+                if (!v) continue;
+                res.setHeader(k, v);
+              }
+
+              res.status(result.data.status ?? 200).json(result.data.json);
+
+              return;
+            }
+
             res.json(result);
           } catch (e) {
+            this.log(e);
             defaultErrorHandler(e, ctx);
           }
         });

@@ -11,8 +11,8 @@
   "private": false,
   "scripts": {
     "test": "eslint .&&jest",
-    "prepublishOnly": "npm run test&&npm run build",
-    "build": "rollup -c",
+    "prepublishOnly": "yarn test&&yarn build",
+    "build": "yarn test&&rollup -c",
     "lint": "eslint . --fix"
   },
   "main": "dist/index.js",
