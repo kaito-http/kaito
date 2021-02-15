@@ -6,5 +6,5 @@
     "rootDir": "src",
     "outDir": "dist"
   },
-  "exclude": ["node_modules", "dist", "jest.config.js", "__tests__"]
+  "exclude": ["node_modules", "dist", "jest.config.js", "__tests__", "jest-server.ts"]
 }

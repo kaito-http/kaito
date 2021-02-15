@@ -1,4 +1,4 @@
-import { Kaito, Controller, Get, Post, Schema, KTX, KRT, InferType } from "../src";
+import { Kaito, Controller, Get, Post, Schema, KTX, KRT, InferType } from "./src";
 import * as yup from "yup";
 
 const testingSchema = yup.object({ name: yup.string().required() }).required();

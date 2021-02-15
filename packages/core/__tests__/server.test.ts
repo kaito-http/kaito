@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import { app } from "./server";
+import { app } from "../jest-server";
 
 describe("core-http", () => {
   afterEach(() => {
