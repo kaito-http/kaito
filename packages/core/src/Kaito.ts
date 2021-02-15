@@ -3,7 +3,7 @@ import "reflect-metadata";
 
 import { KaitoContext, RequestHandler, ServerConstructorOptions } from "./types";
 import { readControllerMetadata } from "./utils/metadata";
-import { App } from "@tinyhttp/app";
+import { App, Request } from "@tinyhttp/app";
 import { Server } from "http";
 import { defaultErrorHandler } from "./utils/errors";
 
@@ -16,6 +16,7 @@ export class Kaito extends App {
 
     this.addControllers(options.controllers);
     this.kaitoOptions = options;
+
     this.use = this.use.bind(this);
   }
 
@@ -78,7 +79,7 @@ export class Kaito extends App {
 
         this[method](path, async (req, res) => {
           const ctx: KaitoContext = {
-            body: req.body,
+            body: await parseBody(req),
             params: req.params as Record<string, string>,
             path: req.path,
             query: req.query,
@@ -101,5 +102,21 @@ export class Kaito extends App {
         });
       }
     }
+  }
+}
+
+async function parseBody(request: Request) {
+  try {
+    if (request.headers["content-type"]?.toLowerCase() !== "application/json") return null;
+
+    let result = "";
+
+    for await (const chunk of request) {
+      result += chunk;
+    }
+
+    return JSON.parse(result);
+  } catch (e) {
+    return null;
   }
 }
