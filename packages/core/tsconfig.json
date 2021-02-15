@@ -3,7 +3,8 @@
   "compilerOptions": {
     "target": "es6",
     "noEmit": true,
-    "declaration": false
+    "declaration": false,
+    "sourceMap": true
   },
   "include": ["__tests__", "."],
   "exclude": ["node_modules", "dist", "jest.config.js"]
