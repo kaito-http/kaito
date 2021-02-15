@@ -44,8 +44,12 @@ export class Kaito extends App {
     }
   }
 
+  /**
+   * Close and shutdown the server
+   * @param cb An optional callback that can run when complete
+   */
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  close(cb: (err?: Error) => unknown = () => {}) {
+  close(cb?: (err?: Error) => unknown) {
     if (this.kaitoOptions.logging) {
       this.log("shutting down");
     }
@@ -61,7 +65,7 @@ export class Kaito extends App {
       return;
     }
 
-    cb();
+    cb && cb();
   }
 
   private addControllers(controllers: object[]) {
