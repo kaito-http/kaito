@@ -1,26 +1,35 @@
-name: test
-on: push
+name: Testing
+on: [push, pull_request]
 
 jobs:
-  test:
+  lint:
+    name: ESLint
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
+     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-      - name: Use cached node_modules
-        uses: actions/cache@v2
-        with:
-          path: node_modules
-          key: nodeModules-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            nodeModules-
+      - name: Install Node
+        uses: actions/setup-node@v2
 
-      - name: Install modules
-        run: yarn install --frozen-lockfile
-        env:
-          CI: true
+      - name: Install dependencies
+        run: yarn
 
-      - name: Run tests
-        run: yarn test
-        env:
-          CI: true
+      - name: Run Lint
+        run: yarn lint
+
+  jest:
+      name: Jest Tests
+      runs-on: ubuntu-latest
+     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install Node
+        uses: actions/setup-node@v2
+
+      - name: Install dependencies
+        run: yarn
+
+      - name: Run Tests
+        run: yarn test 
