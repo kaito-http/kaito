@@ -8,17 +8,22 @@ It's easy to use with Kaito.
 ## Basic Usage
 
 ```ts
+import { Post, Schema, KRT, InferType } from "../src";
 import * as yup from 'yup';
 
-@Schema(yup.object({ name: yup.string() }))
-@Post("/body-test")
-async echoValidName(ktx: KTX<{ name: string }>) {
-  return ktx.body
+const testingSchema = yup.object({ name: yup.string().required() }).required();
+
+@Post("/post")
+@Schema(testingSchema)
+async post(ctx: InferType<typeof testingSchema>): KRT<{ name: string }> {
+  return ctx.body;
 }
 ```
 
 In this method, Kaito is parsing the incoming body from the request and validating it with Yup. If the schema is
 invalid, an error is thrown, and the request finishes before your class method is even called. A list of errors is
 then sent back to the sender.
+
+It would be wise to abstract the schemas into another file, for reuse across your app.
 
 <Callout>You cannot use the @Schema decorator on a GET request!</Callout>

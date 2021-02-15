@@ -1,7 +1,5 @@
 import { IncomingMessage, ServerResponse, OutgoingHttpHeaders } from "http";
-import { ParsedUrl } from "./utils/url";
 import * as querystring from "querystring";
-import { AnySchema } from "yup";
 
 export type Method = "get" | "post" | "put" | "delete" | "patch";
 
@@ -9,6 +7,7 @@ export interface ServerConstructorOptions {
   // eslint-disable-next-line @typescript-eslint/ban-types
   controllers: object[];
   onError?(error: Error, ctx: KaitoContext): unknown;
+  logging?: boolean;
 }
 
 export enum MetadataKeys {
@@ -24,10 +23,10 @@ export interface KaitoContext<
   Query = querystring.ParsedUrlQuery,
   Params = Record<string, string | string[]>
 > {
-  raw: IncomingMessage;
+  req: IncomingMessage;
   res: ServerResponse;
-  url: Partial<ParsedUrl> | null;
-  pathname: string;
+  url: string;
+  path: string;
   query: Query;
   params: Params;
   body: Body;
@@ -48,8 +47,3 @@ export type KaitoReturnType<Body> = void | NonNullable<Body> | KaitoAdvancedText
 export type RequestHandler = <Body>(ctx: KaitoContext) => Promise<KaitoReturnType<Body>> | void;
 
 export type KRT<B> = Promise<KaitoReturnType<B>>;
-
-export interface InternalKaitoRoute {
-  path: string;
-  schema?: AnySchema;
-}

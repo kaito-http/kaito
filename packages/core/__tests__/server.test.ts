@@ -1,32 +1,14 @@
-import { Kaito, Controller, Get, Post, Schema, KTX, KRT } from "../src";
 import fetch from "node-fetch";
-import * as yup from "yup";
-
-@Controller("/test")
-class Home {
-  @Get("/get")
-  async get(): KRT<{ success: boolean }> {
-    return { success: true };
-  }
-
-  @Get("/:value")
-  async param(ctx: KTX): KRT<{ hello: string }> {
-    return { hello: ctx.params.value as string };
-  }
-
-  @Post("/post")
-  @Schema(yup.object({ name: yup.string().required() }).required())
-  async post(ctx: KTX<{ name: string }>): KRT<{ name: string }> {
-    return ctx.body;
-  }
-}
-
-const app = new Kaito({
-  controllers: [new Home()],
-}).listen(8080);
+import { app } from "../jest-server";
 
 describe("core-http", () => {
-  afterAll(() => app.stop());
+  afterEach(() => {
+    app.close();
+  });
+
+  beforeEach(() => {
+    app.listen(8080);
+  });
 
   it("GET / with a correct endpoint", async () => {
     const res = await fetch("http://localhost:8080/test/get");

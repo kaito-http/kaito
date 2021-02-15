@@ -1,11 +1,26 @@
 name: test
 on: push
+
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Use cached node_modules
+        uses: actions/cache@v2
+        with:
+          path: node_modules
+          key: nodeModules-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            nodeModules-
+
       - name: Install modules
-        run: yarn
+        run: yarn install --frozen-lockfile
+        env:
+          CI: true
+
       - name: Run tests
         run: yarn test
+        env:
+          CI: true

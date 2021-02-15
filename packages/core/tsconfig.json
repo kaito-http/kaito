@@ -1,11 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
     "target": "es6",
     "noEmit": true,
     "declaration": false
   },
+  "include": ["__tests__", "."],
   "exclude": ["node_modules", "dist", "jest.config.js"]
 }

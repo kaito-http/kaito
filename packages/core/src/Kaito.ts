@@ -1,103 +1,67 @@
 /* eslint-disable @typescript-eslint/ban-types */
 import "reflect-metadata";
-import { KaitoAdvancedJsonType, KaitoAdvancedTextType, RequestHandler, ServerConstructorOptions } from "./types";
-import Trouter, { HTTPMethod } from "trouter";
-import http, { IncomingMessage, OutgoingHttpHeaders, ServerResponse } from "http";
 
-import { parse } from "./utils/url";
-import querystring from "querystring";
-import { defaultErrorHandler } from "./utils/errors";
-import { Context } from "./structs/Context";
+import { KaitoContext, RequestHandler, ServerConstructorOptions } from "./types";
 import { readControllerMetadata } from "./utils/metadata";
+import { App, Request } from "@tinyhttp/app";
+import { Server } from "http";
+import { defaultErrorHandler } from "./utils/errors";
 
-export class Kaito extends Trouter<RequestHandler> {
+export class Kaito extends App {
   readonly kaitoOptions;
-  readonly server = http.createServer();
+  readonly server: Server | null = null;
 
   constructor(options: ServerConstructorOptions) {
     super();
+
     this.addControllers(options.controllers);
-    this.requestHandler = this.requestHandler.bind(this);
     this.kaitoOptions = options;
-  }
 
-  static waitForStream(request: IncomingMessage): Promise<string> {
-    let body = "";
-
-    return new Promise((resolve) => {
-      request.on("data", (chunk: Buffer) => (body += chunk.toString()));
-      request.on("end", () => resolve(body));
-    });
-  }
-
-  private async requestHandler(request: IncomingMessage, response: ServerResponse) {
-    const { handlers, params } = this.find((request.method as HTTPMethod) || "GET", request.url || "/");
-
-    if (!request.url) return;
-
-    const parsed = parse(request.url);
-    const body = await Kaito.waitForStream(request);
-
-    const ctx = new Context({
-      body: request.headers["content-type"]?.toLowerCase() === "application/json" ? JSON.parse(body) : body,
-      params,
-      pathname: "",
-      query: querystring.parse(request.url),
-      raw: request,
-      url: parsed,
-      res: response,
-    });
-
-    const handler = handlers[0];
-
-    let result: unknown;
-
-    try {
-      result = await handler(ctx);
-    } catch (e) {
-      if (this.kaitoOptions.onError) {
-        return this.kaitoOptions.onError(e, ctx);
-      } else {
-        return defaultErrorHandler(e, ctx);
-      }
-    }
-
-    const sendJson = (data: unknown, status = 200, headers: OutgoingHttpHeaders = {}) => {
-      response
-        .writeHead(status, {
-          "Content-Type": "application/json",
-          ...headers,
-        })
-        .end(JSON.stringify(data));
-    };
-
-    if (typeof result === "object" && result !== null) {
-      if ("json" in result) {
-        const { json, status = 200, headers } = result as KaitoAdvancedJsonType<unknown>;
-        sendJson(json, status, headers);
-      } else if ("text" in result) {
-        const { text, status = 200, headers } = result as KaitoAdvancedTextType;
-        response.writeHead(status, { "Content-Type": "text/plain", ...headers }).end(text);
-      } else {
-        sendJson(result);
-      }
-    } else {
-      sendJson(result);
-    }
+    this.use = this.use.bind(this);
   }
 
   /**
    * Listen on the specified port. If no port is specified, it will try to use the environment variable PORT
    * @param port
    */
-  listen(port?: string | number) {
-    this.server.listen(port || process.env.PORT);
-    this.server.on("request", this.requestHandler.bind(this));
-    return this;
+  listen(port?: string | number): Server {
+    const parsed =
+      (typeof port === "string" ? parseInt(port) : port) ||
+      (process.env.PORT && parseInt(process.env.PORT)) ||
+      undefined;
+
+    // intentionally setting readonly property
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    this.server = super.listen(parsed, () => this.log(`starting on ${parsed}`));
+
+    return this.server;
   }
 
-  stop(callback?: (error?: Error) => unknown) {
-    this.server.close(callback);
+  protected log(...args: unknown[]) {
+    if (this.kaitoOptions.logging) {
+      console.log("[kaito/core]", ...args);
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  close(cb: (err?: Error) => unknown = () => {}) {
+    if (this.kaitoOptions.logging) {
+      this.log("shutting down");
+    }
+
+    if (this.server) {
+      this.server.removeAllListeners();
+      this.server.close(cb);
+
+      // intentionally setting readonly property
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      this.server = null;
+      return;
+    }
+
+    cb();
   }
 
   private addControllers(controllers: object[]) {
@@ -113,14 +77,46 @@ export class Kaito extends Trouter<RequestHandler> {
 
         const handler = controller[methodName] as RequestHandler;
 
-        this[method](path, async (ctx) => {
-          if (schema) {
-            ctx.body = await schema.validate(ctx.body);
-          }
+        this[method](path, async (req, res) => {
+          const ctx: KaitoContext = {
+            body: await parseBody(req),
+            params: req.params as Record<string, string>,
+            path: req.path,
+            query: req.query,
+            url: req.url,
+            req,
+            res,
+          };
 
-          return handler(ctx);
+          try {
+            if (schema) {
+              ctx.body = await schema.validate(ctx.body);
+            }
+
+            const result = await handler(ctx);
+
+            res.json(result);
+          } catch (e) {
+            defaultErrorHandler(e, ctx);
+          }
         });
       }
     }
+  }
+}
+
+async function parseBody(request: Request) {
+  try {
+    if (request.headers["content-type"]?.toLowerCase() !== "application/json") return null;
+
+    let result = "";
+
+    for await (const chunk of request) {
+      result += chunk;
+    }
+
+    return JSON.parse(result);
+  } catch (e) {
+    return null;
   }
 }
