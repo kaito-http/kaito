@@ -5,7 +5,7 @@ jobs:
   lint:
     name: ESLint
     runs-on: ubuntu-latest
-     steps:
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
@@ -19,9 +19,9 @@ jobs:
         run: yarn lint
 
   jest:
-      name: Jest Tests
-      runs-on: ubuntu-latest
-     steps:
+    name: Jest Tests
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
