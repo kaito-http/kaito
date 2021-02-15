@@ -14,6 +14,7 @@
     "printWidth": 120
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.15.0",
     "eslint": "^7.18.0",
     "lerna": "^3.22.1",
     "prettier": "^2.2.1"
@@ -23,6 +24,7 @@
     "test": "yarn workspace @kaito-http/core test",
     "docs:dev": "yarn workspace @kaito-http/docs dev",
     "docs:build": "yarn workspace @kaito-http/docs build",
+    "lint": "yarn workspace @kaito-http/core lint",
     "release": "yarn workspace @kaito-http/core publish --access public",
     "core:build": "yarn workspace @kaito-http/core build"
   }

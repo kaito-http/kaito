@@ -5,3 +5,4 @@ desktop.ini
 .vscode
 dist
 *.log
+yarn.lock
