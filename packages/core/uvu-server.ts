@@ -11,11 +11,7 @@ class Home {
   }
 
   @Get("/:value")
-  async param(
-    ctx: KTX<{
-      params: { value: string };
-    }>
-  ): KRT<{ hello: string }> {
+  async param(ctx: KTX<{ params: { value: string } }>): KRT<{ hello: string }> {
     return { hello: ctx.params.value };
   }
 

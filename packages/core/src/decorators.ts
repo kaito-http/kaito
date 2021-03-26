@@ -14,6 +14,10 @@ export const Schema = <T>(schema: ZodSchema<T>): MethodDecorator => (target, pro
   Reflect.defineMetadata(MetadataKeys.SCHEMA, schema, target, property);
 };
 
+export const QuerySchema = <T>(schema: ZodSchema<T>): MethodDecorator => (target, property) => {
+  Reflect.defineMetadata(MetadataKeys.QUERY_SCHEMA, schema, target, property);
+};
+
 export const Controller = (path: `/${string}` = "/"): ClassDecorator => (target) => {
   if (!path.startsWith("/")) {
     throw new Error(`Path must start with / for ${target}`);

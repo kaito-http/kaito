@@ -20,6 +20,7 @@ export interface ServerConstructorOptions {
 export const enum MetadataKeys {
   "HTTP_METHOD" = "kaito:http:method",
   "SCHEMA" = "kaito:route:schema",
+  "QUERY_SCHEMA" = "kaito:route:schema:query",
   "CONTROLLER_PATH" = "kaito:controller:path",
   "AVAILABLE_ROUTE_METHODS" = "kaito:route:methods",
   "ROUTE_PATH" = "kaito:route:path",

@@ -7,8 +7,8 @@ import { App } from "@tinyhttp/app";
 import { Server } from "http";
 import { defaultErrorHandler } from "./utils/errors";
 import { KatioReply } from "./utils/reply";
-import { json as parseJson } from "milliparsec";
 import { lead } from "./utils/url";
+import bp from "body-parser";
 
 export class Kaito extends App {
   readonly kaitoOptions;
@@ -22,7 +22,7 @@ export class Kaito extends App {
 
     this.use = this.use.bind(this);
 
-    this.use(parseJson);
+    this.use(bp.urlencoded());
   }
 
   /**
@@ -69,12 +69,10 @@ export class Kaito extends App {
 
   private addControllers(controllers: object[]) {
     for (const controller of controllers) {
-      const { routes, base } = readControllerMetadata(controller);
+      const { routes } = readControllerMetadata(controller);
 
       for (const route of routes) {
-        const { method, schema, path: routePath, methodName } = route;
-
-        const path = lead(base) + lead(routePath);
+        const { method, schema, path, methodName } = route;
 
         if (method === "get" && schema) {
           throw new Error(`Method ${methodName} (${path}) cannot have a schema as it is a GET only route.`);
