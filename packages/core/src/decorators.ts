@@ -14,7 +14,10 @@ export const Schema = <T>(schema: ZodSchema<T>): MethodDecorator => (target, pro
   Reflect.defineMetadata(MetadataKeys.SCHEMA, schema, target, property);
 };
 
-export const QuerySchema = <T>(schema: ZodSchema<T>): MethodDecorator => (target, property) => {
+export const QuerySchema = <T extends Record<string, string | string[]>>(schema: ZodSchema<T>): MethodDecorator => (
+  target,
+  property
+) => {
   Reflect.defineMetadata(MetadataKeys.QUERY_SCHEMA, schema, target, property);
 };
 

@@ -13,7 +13,7 @@ export function readControllerMetadata(controller: object) {
       const method: Method = Reflect.getMetadata(MetadataKeys.HTTP_METHOD, controller, methodKey);
 
       const schema: Schema<unknown> | undefined = Reflect.getMetadata(MetadataKeys.SCHEMA, controller, methodKey);
-      const querySchema: Schema<Record<string, string[]>> | undefined = Reflect.getMetadata(
+      const querySchema: Schema<Record<string, string | string[]>> | undefined = Reflect.getMetadata(
         MetadataKeys.QUERY_SCHEMA,
         controller,
         methodKey
