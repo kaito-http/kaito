@@ -53,7 +53,13 @@ export class Kaito extends App {
   close(cb?: (err?: Error) => unknown) {
     this.log("shutting down");
 
-    if (this.server) {
+    if (!this.server) {
+      this.log("trying to close a server that was never started");
+      cb?.(new Error("Could not close a server that was never started"));
+      return;
+    }
+
+    try {
       this.server.removeAllListeners();
       this.server.close(cb);
 
@@ -62,9 +68,11 @@ export class Kaito extends App {
       // @ts-ignore
       this.server = null;
       return;
-    }
 
-    cb?.();
+      cb?.();
+    } catch (e) {
+      cb?.(e);
+    }
   }
 
   private addControllers(controllers: object[]) {
