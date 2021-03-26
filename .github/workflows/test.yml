@@ -8,7 +8,12 @@ on:
 jobs:
   lint:
     name: ESLint
-    runs-on: ubuntu-latest
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -24,7 +29,12 @@ jobs:
 
   jest:
     name: Jest Tests
-    runs-on: ubuntu-latest
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
