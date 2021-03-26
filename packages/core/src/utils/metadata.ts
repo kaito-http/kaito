@@ -11,17 +11,24 @@ export function readControllerMetadata(controller: object) {
     base,
     routes: classMethods.map((methodKey) => {
       const method: Method = Reflect.getMetadata(MetadataKeys.HTTP_METHOD, controller, methodKey);
+
       const schema: Schema<unknown> | undefined = Reflect.getMetadata(MetadataKeys.SCHEMA, controller, methodKey);
+      const querySchema: Schema<Record<string, string[]>> | undefined = Reflect.getMetadata(
+        MetadataKeys.QUERY_SCHEMA,
+        controller,
+        methodKey
+      );
 
       const routePath: string = Reflect.getMetadata(MetadataKeys.ROUTE_PATH, controller, methodKey);
       const path = normalizePath(base, routePath);
 
       return {
-        methodName: methodKey as keyof typeof controller,
         path,
-        routePath,
         schema,
         method,
+        routePath,
+        querySchema,
+        methodName: methodKey as keyof typeof controller,
       };
     }),
   };

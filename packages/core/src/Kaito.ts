@@ -7,7 +7,6 @@ import { App } from "@tinyhttp/app";
 import { Server } from "http";
 import { defaultErrorHandler } from "./utils/errors";
 import { KatioReply } from "./utils/reply";
-import { lead } from "./utils/url";
 import bp from "body-parser";
 
 export class Kaito extends App {
@@ -80,7 +79,7 @@ export class Kaito extends App {
       const { routes } = readControllerMetadata(controller);
 
       for (const route of routes) {
-        const { method, schema, path, methodName } = route;
+        const { method, schema, path, methodName, querySchema } = route;
 
         if (method === "get" && schema) {
           throw new Error(`Method ${methodName} (${path}) cannot have a schema as it is a GET only route.`);
@@ -103,6 +102,10 @@ export class Kaito extends App {
           };
 
           try {
+            if (querySchema) {
+              ctx.query = querySchema.parse(ctx.query);
+            }
+
             if (schema) {
               ctx.body = await schema.parse(ctx.body);
             }
