@@ -24,7 +24,6 @@
         "@rollup/plugin-node-resolve": "^11.2.0",
         "@types/node": "^14.14.22",
         "@types/node-fetch": "^2.5.8",
-        "@types/yup": "^0.29.11",
         "@typescript-eslint/eslint-plugin": "^4.12.0",
         "@typescript-eslint/parser": "^4.12.0",
         "eslint": "^7.17.0",
@@ -44,10 +43,11 @@
     ],
     "dependencies": {
         "@tinyhttp/app": "^1.1.12",
+        "milliparsec": "^2.0.0",
         "reflect-metadata": "^0.1.13",
         "trouter": "^3.1.0",
         "tslib": "^2.1.0",
-        "yup": "^0.32.8"
+        "zod": "^1.11.13"
     },
     "bugs": {
         "url": "https://github.com/alii/kaito-http/issues"

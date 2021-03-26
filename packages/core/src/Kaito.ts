@@ -3,10 +3,12 @@ import "reflect-metadata";
 
 import { KaitoContext, RequestHandler, ServerConstructorOptions } from "./types";
 import { readControllerMetadata } from "./utils/metadata";
-import { App, Request } from "@tinyhttp/app";
+import { App } from "@tinyhttp/app";
 import { Server } from "http";
 import { defaultErrorHandler } from "./utils/errors";
-import { Reply } from "./utils/reply";
+import { KatioReply } from "./utils/reply";
+import { json as parseJson } from "milliparsec";
+import { lead } from "./utils/url";
 
 export class Kaito extends App {
   readonly kaitoOptions;
@@ -19,6 +21,8 @@ export class Kaito extends App {
     this.kaitoOptions = options;
 
     this.use = this.use.bind(this);
+
+    this.use(parseJson);
   }
 
   /**
@@ -46,10 +50,8 @@ export class Kaito extends App {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
-  close(cb: (err?: Error) => unknown = () => {}) {
-    if (this.kaitoOptions.logging) {
-      this.log("shutting down");
-    }
+  close(cb?: (err?: Error) => unknown) {
+    this.log("shutting down");
 
     if (this.server) {
       this.server.removeAllListeners();
@@ -62,15 +64,17 @@ export class Kaito extends App {
       return;
     }
 
-    cb();
+    cb?.();
   }
 
   private addControllers(controllers: object[]) {
     for (const controller of controllers) {
-      const metadata = readControllerMetadata(controller);
+      const { routes, base } = readControllerMetadata(controller);
 
-      for (const route of metadata.routes) {
-        const { method, schema, path, methodName } = route;
+      for (const route of routes) {
+        const { method, schema, path: routePath, methodName } = route;
+
+        const path = lead(base) + lead(routePath);
 
         if (method === "get" && schema) {
           throw new Error(`Method ${methodName} (${path}) cannot have a schema as it is a GET only route.`);
@@ -82,7 +86,7 @@ export class Kaito extends App {
           const ip = (req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.ip) as string;
 
           const ctx: KaitoContext = {
-            body: await parseBody(req),
+            body: req.body,
             params: req.params as Record<string, string>,
             path: req.path,
             query: req.query,
@@ -94,12 +98,12 @@ export class Kaito extends App {
 
           try {
             if (schema) {
-              ctx.body = await schema.validate(ctx.body);
+              ctx.body = await schema.parse(ctx.body);
             }
 
             const result = await handler(ctx);
 
-            if (result instanceof Reply) {
+            if (result instanceof KatioReply) {
               for (const [k, v] of Object.entries(result.data.headers ?? {})) {
                 if (!v) continue;
                 res.setHeader(k, v);
@@ -113,26 +117,14 @@ export class Kaito extends App {
             res.json(result);
           } catch (e) {
             this.log(e);
-            defaultErrorHandler(e, ctx);
+            if (this.kaitoOptions.onError) {
+              this.kaitoOptions.onError(e, ctx);
+            } else {
+              defaultErrorHandler(e, ctx);
+            }
           }
         });
       }
     }
-  }
-}
-
-async function parseBody(request: Request) {
-  try {
-    if (request.headers["content-type"]?.toLowerCase() !== "application/json") return null;
-
-    let result = "";
-
-    for await (const chunk of request) {
-      result += chunk;
-    }
-
-    return JSON.parse(result);
-  } catch (e) {
-    return null;
   }
 }

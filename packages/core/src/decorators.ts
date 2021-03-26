@@ -1,6 +1,5 @@
-import "reflect-metadata";
 import { MetadataKeys, Method } from "./types";
-import { AnySchema } from "yup";
+import { ZodSchema } from "zod";
 
 export const method = (method: Method) => (path: `/${string}` = "/"): MethodDecorator => (target, property) => {
   Reflect.defineMetadata(MetadataKeys.HTTP_METHOD, method, target, property);
@@ -11,7 +10,7 @@ export const method = (method: Method) => (path: `/${string}` = "/"): MethodDeco
   Reflect.defineMetadata(MetadataKeys.AVAILABLE_ROUTE_METHODS, [...existing, property], target);
 };
 
-export const Schema = (schema: AnySchema): MethodDecorator => (target, property) => {
+export const Schema = <T>(schema: ZodSchema<T>): MethodDecorator => (target, property) => {
   Reflect.defineMetadata(MetadataKeys.SCHEMA, schema, target, property);
 };
 

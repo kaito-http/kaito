@@ -1,7 +1,7 @@
-import { Kaito, Controller, Get, Post, Schema, KTX, KRT, InferType, r } from "./src";
-import * as yup from "yup";
+import { Kaito, Controller, Get, Post, Schema, KTX, KRT, reply } from "./src";
+import * as z from "zod";
 
-const testingSchema = yup.object({ name: yup.string().required() }).required();
+const testingSchema = z.object({ name: z.string() });
 
 @Controller("/test")
 class Home {
@@ -11,18 +11,22 @@ class Home {
   }
 
   @Get("/:value")
-  async param(ctx: KTX<null, null, { value: string }>): KRT<{ hello: string }> {
+  async param(
+    ctx: KTX<{
+      params: { value: string };
+    }>
+  ): KRT<{ hello: string }> {
     return { hello: ctx.params.value };
   }
 
   @Post("/post")
   @Schema(testingSchema)
-  async post(ctx: InferType<typeof testingSchema>): KRT<{ name: string }> {
-    return r({
+  async post(ctx: KTX<typeof testingSchema>): KRT<{ name: string }> {
+    return reply({
       json: ctx.body,
       status: 204,
       headers: {
-        "X-Example": "Mad ratio",
+        "X-Server-Time": Date.now(),
       },
     });
   }
