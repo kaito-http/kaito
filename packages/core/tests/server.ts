@@ -4,11 +4,11 @@ import { test } from "uvu";
 import { app } from "../uvu-server";
 
 test.before(() => void app.listen(8080));
-test.after(() => void app.close());
+test.after(() => app.close());
 
 test("GET / with a correct endpoint", async () => {
   const res = await fetch("http://localhost:8080/test/get");
-  assert.is(await res.json(), { success: true });
+  assert.is(JSON.stringify(await res.json()), JSON.stringify({ success: true }));
 });
 
 test("POST / with a valid body", async () => {
@@ -26,7 +26,7 @@ test("GET with a query param", async () => {
   const p = Math.floor(Math.random() * 1000).toString();
   const res = await fetch(`http://localhost:8080/test/${p}`);
 
-  assert.is(await res.json(), { hello: p });
+  assert.is(JSON.stringify(await res.json()), JSON.stringify({ hello: p }));
 });
 
 test("POST / with an invalid body", async () => {
