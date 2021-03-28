@@ -14,7 +14,11 @@ export class Kaito extends App {
   readonly server: Server | null = null;
 
   constructor(options: ServerConstructorOptions) {
-    super();
+    super({
+      settings: {
+        xPoweredBy: "kaito.cloud",
+      },
+    });
 
     this.addControllers(options.controllers);
     this.kaitoOptions = options;
