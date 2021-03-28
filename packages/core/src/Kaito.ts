@@ -25,7 +25,8 @@ export class Kaito extends App {
 
     this.use = this.use.bind(this);
 
-    this.use(bp.urlencoded());
+    this.use(bp.urlencoded({ extended: true }));
+    this.use(bp.json());
   }
 
   /**
@@ -66,13 +67,14 @@ export class Kaito extends App {
       this.server.removeAllListeners();
       this.server.close(cb);
 
+      cb?.();
+
       // intentionally setting readonly property
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       this.server = null;
-      return;
 
-      cb?.();
+      return;
     } catch (e) {
       cb?.(e);
     }
