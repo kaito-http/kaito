@@ -67,14 +67,12 @@ export class Kaito extends App {
       this.server.removeAllListeners();
       this.server.close(cb);
 
-      cb?.();
-
       // intentionally setting readonly property
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       this.server = null;
 
-      return;
+      cb?.();
     } catch (e) {
       cb?.(e);
     }
