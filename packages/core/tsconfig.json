@@ -6,6 +6,6 @@
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["__tests__", "."],
-  "exclude": ["node_modules", "dist", "jest.config.js"]
+  "include": ["tests", "."],
+  "exclude": ["node_modules", "dist"]
 }

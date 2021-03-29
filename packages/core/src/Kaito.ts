@@ -3,22 +3,44 @@ import "reflect-metadata";
 
 import { KaitoContext, RequestHandler, ServerConstructorOptions } from "./types";
 import { readControllerMetadata } from "./utils/metadata";
-import { App, Request } from "@tinyhttp/app";
+import { App } from "@tinyhttp/app";
 import { Server } from "http";
 import { defaultErrorHandler } from "./utils/errors";
-import { Reply } from "./utils/reply";
+import { blue, bold } from "colorette";
+import { IncomingMessage } from "node:http";
 
 export class Kaito extends App {
   readonly kaitoOptions;
   readonly server: Server | null = null;
 
   constructor(options: ServerConstructorOptions) {
-    super();
+    super({
+      settings: {
+        xPoweredBy: "kaito.cloud",
+      },
+    });
 
     this.addControllers(options.controllers);
     this.kaitoOptions = options;
 
     this.use = this.use.bind(this);
+  }
+
+  async parseBody<T>(req: IncomingMessage): Promise<T | null> {
+    const get = async () => {
+      let chunks = "";
+      for await (const chunk of req) chunks += chunk;
+      return chunks;
+    };
+
+    switch (req.headers["content-type"]?.toLowerCase()) {
+      case "application/json": {
+        return JSON.parse(await get());
+      }
+
+      default:
+        return null;
+    }
   }
 
   /**
@@ -39,19 +61,31 @@ export class Kaito extends App {
     return this.server;
   }
 
+  /**
+   * Prints something to the terminal if logging is enabled
+   * @param args Anything to be logged
+   */
   protected log(...args: unknown[]) {
     if (this.kaitoOptions.logging) {
-      console.log("[kaito/core]", ...args);
+      console.log(blue(bold("[kaito/core]")), ...args);
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  close(cb: (err?: Error) => unknown = () => {}) {
-    if (this.kaitoOptions.logging) {
-      this.log("shutting down");
+  /**
+   * Close and stop the server (useful for tests)
+   * @param cb Callback
+   * @returns
+   */
+  close(cb?: (err?: Error) => unknown) {
+    this.log("shutting down");
+
+    if (!this.server) {
+      this.log("trying to close a server that was never started");
+      cb?.(new Error("Could not close a server that was never started"));
+      return;
     }
 
-    if (this.server) {
+    try {
       this.server.removeAllListeners();
       this.server.close(cb);
 
@@ -59,18 +93,23 @@ export class Kaito extends App {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       this.server = null;
-      return;
-    }
 
-    cb();
+      cb?.();
+    } catch (e) {
+      cb?.(e);
+    }
   }
 
+  /**
+   * Add controllers and mount them to tinyhttp
+   * @param controllers An array of controllers
+   */
   private addControllers(controllers: object[]) {
     for (const controller of controllers) {
-      const metadata = readControllerMetadata(controller);
+      const { routes } = readControllerMetadata(controller);
 
-      for (const route of metadata.routes) {
-        const { method, schema, path, methodName } = route;
+      for (const route of routes) {
+        const { method, schema, path, methodName, querySchema } = route;
 
         if (method === "get" && schema) {
           throw new Error(`Method ${methodName} (${path}) cannot have a schema as it is a GET only route.`);
@@ -82,7 +121,7 @@ export class Kaito extends App {
           const ip = (req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.ip) as string;
 
           const ctx: KaitoContext = {
-            body: await parseBody(req),
+            body: await this.parseBody(req),
             params: req.params as Record<string, string>,
             path: req.path,
             query: req.query,
@@ -93,46 +132,28 @@ export class Kaito extends App {
           };
 
           try {
+            if (querySchema) {
+              ctx.query = await querySchema.parseAsync(ctx.query);
+            }
+
             if (schema) {
-              ctx.body = await schema.validate(ctx.body);
+              ctx.body = await schema.parseAsync(ctx.body);
             }
 
             const result = await handler(ctx);
 
-            if (result instanceof Reply) {
-              for (const [k, v] of Object.entries(result.data.headers ?? {})) {
-                if (!v) continue;
-                res.setHeader(k, v);
-              }
-
-              res.status(result.data.status ?? 200).json(result.data.json);
-
-              return;
-            }
-
-            res.json(result);
+            res
+              .writeHead(result?.status ?? 200, { "Content-Type": "application/json", ...result?.headers })
+              .end(JSON.stringify(result?.body ?? "OK"));
           } catch (e) {
-            this.log(e);
-            defaultErrorHandler(e, ctx);
+            if (this.kaitoOptions.onError) {
+              this.kaitoOptions.onError(e, ctx);
+            } else {
+              defaultErrorHandler(e, ctx);
+            }
           }
         });
       }
     }
-  }
-}
-
-async function parseBody(request: Request) {
-  try {
-    if (request.headers["content-type"]?.toLowerCase() !== "application/json") return null;
-
-    let result = "";
-
-    for await (const chunk of request) {
-      result += chunk;
-    }
-
-    return JSON.parse(result);
-  } catch (e) {
-    return null;
   }
 }

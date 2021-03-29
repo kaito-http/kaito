@@ -1,8 +1,7 @@
-import "reflect-metadata";
-import { MetadataKeys, Method } from "./types";
-import { AnySchema } from "yup";
+import { MetadataKeys, HTTPMethod } from "./types";
+import { ZodSchema } from "zod";
 
-export const method = (method: Method) => (path: `/${string}` = "/"): MethodDecorator => (target, property) => {
+export const method = (method: HTTPMethod) => (path: `/${string}` = "/"): MethodDecorator => (target, property) => {
   Reflect.defineMetadata(MetadataKeys.HTTP_METHOD, method, target, property);
   Reflect.defineMetadata(MetadataKeys.ROUTE_PATH, path, target, property);
 
@@ -11,8 +10,15 @@ export const method = (method: Method) => (path: `/${string}` = "/"): MethodDeco
   Reflect.defineMetadata(MetadataKeys.AVAILABLE_ROUTE_METHODS, [...existing, property], target);
 };
 
-export const Schema = (schema: AnySchema): MethodDecorator => (target, property) => {
+export const Schema = <T>(schema: ZodSchema<T>): MethodDecorator => (target, property) => {
   Reflect.defineMetadata(MetadataKeys.SCHEMA, schema, target, property);
+};
+
+export const QuerySchema = <T extends Record<string, string | string[]>>(schema: ZodSchema<T>): MethodDecorator => (
+  target,
+  property
+) => {
+  Reflect.defineMetadata(MetadataKeys.QUERY_SCHEMA, schema, target, property);
 };
 
 export const Controller = (path: `/${string}` = "/"): ClassDecorator => (target) => {
@@ -28,3 +34,4 @@ export const Post = method("post");
 export const Patch = method("patch");
 export const Put = method("put");
 export const Delete = method("delete");
+export const Method = (m: HTTPMethod) => method(m);
