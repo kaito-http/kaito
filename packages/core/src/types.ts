@@ -63,6 +63,12 @@ export type KTX<Config extends KaitoDefaultContextConfig | TypedSchema> = Config
   : never;
 
 export type KaitoReturnType<Body> = { body: NonNullable<Body>; status?: number; headers?: OutgoingHttpHeaders };
-export type KRT<B> = Promise<KaitoReturnType<B> | undefined>;
+
+export type KRTInner<B> = KaitoReturnType<B> | undefined;
+
+/**
+ * The return type for a kaito request handler
+ */
+export type KRT<B> = Promise<KRTInner<B>>;
 
 export type RequestHandler = <Body>(ctx: KaitoContext) => KRT<Body>;
