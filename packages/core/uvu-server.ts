@@ -1,4 +1,4 @@
-import { Kaito, Controller, Get, Post, Schema, KTX, KRT, reply } from "./src";
+import { Kaito, Controller, Get, Post, Schema, KTX, KRT } from "./src";
 import * as z from "zod";
 
 const testingSchema = z.object({ name: z.string() });
@@ -7,24 +7,24 @@ const testingSchema = z.object({ name: z.string() });
 class Home {
   @Get("/get")
   async get(): KRT<{ success: boolean }> {
-    return { success: true };
+    return { body: { success: true } };
   }
 
   @Get("/:value")
   async param(ctx: KTX<{ params: { value: string } }>): KRT<{ hello: string }> {
-    return { hello: ctx.params.value };
+    return { body: { hello: ctx.params.value } };
   }
 
   @Post("/post")
   @Schema(testingSchema)
   async post(ctx: KTX<typeof testingSchema>): KRT<{ name: string }> {
-    return reply({
-      json: ctx.body,
+    return {
+      body: ctx.body,
       status: 204,
       headers: {
-        "X-Server-Time": Date.now(),
+        "X-Example": Date.now(),
       },
-    });
+    };
   }
 }
 

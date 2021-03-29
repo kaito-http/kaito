@@ -1,4 +1,4 @@
-import { MetadataKeys, Method } from "../types";
+import { MetadataKeys, HTTPMethod } from "../types";
 import { Schema } from "zod";
 import { normalizePath } from "./url";
 
@@ -10,7 +10,7 @@ export function readControllerMetadata(controller: object) {
   return {
     base,
     routes: classMethods.map((methodKey) => {
-      const method: Method = Reflect.getMetadata(MetadataKeys.HTTP_METHOD, controller, methodKey);
+      const method: HTTPMethod = Reflect.getMetadata(MetadataKeys.HTTP_METHOD, controller, methodKey);
 
       const schema: Schema<unknown> | undefined = Reflect.getMetadata(MetadataKeys.SCHEMA, controller, methodKey);
       const querySchema: Schema<Record<string, string | string[]>> | undefined = Reflect.getMetadata(

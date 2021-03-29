@@ -1,7 +1,7 @@
-import { MetadataKeys, Method } from "./types";
+import { MetadataKeys, HTTPMethod } from "./types";
 import { ZodSchema } from "zod";
 
-export const method = (method: Method) => (path: `/${string}` = "/"): MethodDecorator => (target, property) => {
+export const method = (method: HTTPMethod) => (path: `/${string}` = "/"): MethodDecorator => (target, property) => {
   Reflect.defineMetadata(MetadataKeys.HTTP_METHOD, method, target, property);
   Reflect.defineMetadata(MetadataKeys.ROUTE_PATH, path, target, property);
 
@@ -34,3 +34,4 @@ export const Post = method("post");
 export const Patch = method("patch");
 export const Put = method("put");
 export const Delete = method("delete");
+export const Method = (m: HTTPMethod) => method(m);

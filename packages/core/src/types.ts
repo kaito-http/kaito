@@ -1,9 +1,8 @@
 import { IncomingMessage, ServerResponse, OutgoingHttpHeaders } from "http";
 import * as querystring from "querystring";
 import { infer as ZodInfer } from "zod";
-import { KatioReply } from "./utils/reply";
 
-export type Method = "get" | "post" | "put" | "delete" | "patch";
+export type HTTPMethod = "get" | "post" | "put" | "delete" | "patch";
 
 export interface ServerConstructorOptions {
   // eslint-disable-next-line @typescript-eslint/ban-types
@@ -63,10 +62,7 @@ export type KTX<Config extends KaitoDefaultContextConfig | TypedSchema> = Config
   ? KaitoContext<Config["body"], Config["query"], Config["params"]>
   : never;
 
-export type KaitoAdvancedJsonType<Body> = { json: NonNullable<Body>; status?: number; headers?: OutgoingHttpHeaders };
-export type KaitoAdvancedTextType = { text: string; status?: number; headers?: OutgoingHttpHeaders };
+export type KaitoReturnType<Body> = { body: NonNullable<Body>; status?: number; headers?: OutgoingHttpHeaders };
+export type KRT<B> = Promise<KaitoReturnType<B> | undefined>;
 
-export type KaitoReturnType<Body> = void | NonNullable<Body> | KaitoAdvancedTextType | KatioReply<Body>;
-export type KRT<B> = Promise<KaitoReturnType<B>>;
-
-export type RequestHandler = <Body>(ctx: KaitoContext) => Promise<KaitoReturnType<Body>> | void;
+export type RequestHandler = <Body>(ctx: KaitoContext) => KRT<Body>;

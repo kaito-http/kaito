@@ -6,6 +6,8 @@ import { app } from "../uvu-server";
 test.before(() => void app.listen(8080));
 test.after(() => app.close());
 
+const headers = { "Content-Type": "application/json" };
+
 test("GET / with a correct endpoint", async () => {
   const res = await fetch("http://localhost:8080/test/get");
   assert.is(JSON.stringify(await res.json()), JSON.stringify({ success: true }));
@@ -13,13 +15,13 @@ test("GET / with a correct endpoint", async () => {
 
 test("POST / with a valid body", async () => {
   const res = await fetch("http://localhost:8080/test/post", {
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ name: "Hey" }),
     method: "POST",
   });
 
   assert.is(res.status, 204);
-  assert.type(res.headers.get("X-Example"), "string");
+  assert.is(typeof res.headers.get("X-Example"), "string");
 });
 
 test("GET with a query param", async () => {
@@ -31,8 +33,8 @@ test("GET with a query param", async () => {
 
 test("POST / with an invalid body", async () => {
   const res = await fetch("http://localhost:8080/test/post", {
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ age: 10 }),
+    headers,
+    body: JSON.stringify({ not_age: "25" }),
     method: "POST",
   });
 

@@ -52,7 +52,7 @@
   ],
   "dependencies": {
     "@tinyhttp/app": "^1.2.18",
-    "body-parser": "^1.19.0",
+    "colorette": "^1.2.2",
     "reflect-metadata": "^0.1.13",
     "trouter": "^3.1.0",
     "tslib": "^2.1.0",

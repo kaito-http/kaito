@@ -6,8 +6,8 @@ import { readControllerMetadata } from "./utils/metadata";
 import { App } from "@tinyhttp/app";
 import { Server } from "http";
 import { defaultErrorHandler } from "./utils/errors";
-import { KatioReply } from "./utils/reply";
-import bp from "body-parser";
+import { blue, bold } from "colorette";
+import { IncomingMessage } from "node:http";
 
 export class Kaito extends App {
   readonly kaitoOptions;
@@ -24,9 +24,23 @@ export class Kaito extends App {
     this.kaitoOptions = options;
 
     this.use = this.use.bind(this);
+  }
 
-    this.use(bp.urlencoded({ extended: true }));
-    this.use(bp.json());
+  async parseBody<T>(req: IncomingMessage): Promise<T | null> {
+    const get = async () => {
+      let chunks = "";
+      for await (const chunk of req) chunks += chunk;
+      return chunks;
+    };
+
+    switch (req.headers["content-type"]?.toLowerCase()) {
+      case "application/json": {
+        return JSON.parse(await get());
+      }
+
+      default:
+        return null;
+    }
   }
 
   /**
@@ -47,13 +61,21 @@ export class Kaito extends App {
     return this.server;
   }
 
+  /**
+   * Prints something to the terminal if logging is enabled
+   * @param args Anything to be logged
+   */
   protected log(...args: unknown[]) {
     if (this.kaitoOptions.logging) {
-      console.log("[kaito/core]", ...args);
+      console.log(blue(bold("[kaito/core]")), ...args);
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  /**
+   * Close and stop the server (useful for tests)
+   * @param cb Callback
+   * @returns
+   */
   close(cb?: (err?: Error) => unknown) {
     this.log("shutting down");
 
@@ -78,6 +100,10 @@ export class Kaito extends App {
     }
   }
 
+  /**
+   * Add controllers and mount them to tinyhttp
+   * @param controllers An array of controllers
+   */
   private addControllers(controllers: object[]) {
     for (const controller of controllers) {
       const { routes } = readControllerMetadata(controller);
@@ -95,7 +121,7 @@ export class Kaito extends App {
           const ip = (req.headers["x-forwarded-for"] || req.connection.remoteAddress || req.ip) as string;
 
           const ctx: KaitoContext = {
-            body: req.body,
+            body: await this.parseBody(req),
             params: req.params as Record<string, string>,
             path: req.path,
             query: req.query,
@@ -107,29 +133,19 @@ export class Kaito extends App {
 
           try {
             if (querySchema) {
-              ctx.query = querySchema.parse(ctx.query);
+              ctx.query = await querySchema.parseAsync(ctx.query);
             }
 
             if (schema) {
-              ctx.body = await schema.parse(ctx.body);
+              ctx.body = await schema.parseAsync(ctx.body);
             }
 
             const result = await handler(ctx);
 
-            if (result instanceof KatioReply) {
-              for (const [k, v] of Object.entries(result.data.headers ?? {})) {
-                if (!v) continue;
-                res.setHeader(k, v);
-              }
-
-              res.status(result.data.status ?? 200).json(result.data.json);
-
-              return;
-            }
-
-            res.json(result);
+            res
+              .writeHead(result?.status ?? 200, { "Content-Type": "application/json", ...result?.headers })
+              .end(JSON.stringify(result?.body ?? "OK"));
           } catch (e) {
-            this.log(e);
             if (this.kaitoOptions.onError) {
               this.kaitoOptions.onError(e, ctx);
             } else {
