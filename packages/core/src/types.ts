@@ -37,7 +37,7 @@ export interface KaitoContext<
   query: Query;
   params: Params;
   body: Body;
-  ip: string;  
+  ip: string;
 }
 
 type KaitoDefaultContextConfig<B = unknown, Q = querystring.ParsedUrlQuery, P = Record<string, string | string[]>> = {
