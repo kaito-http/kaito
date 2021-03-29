@@ -12,14 +12,10 @@
   },
   "prettier": {
     "printWidth": 120
-  },
+  }, 
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^4.19.0",
-<<<<<<< HEAD
     "eslint": "^7.23.0",
-=======
-    "eslint": "^7.22.0",
->>>>>>> dbda5bd7a05362ee6bfa619e7186803021956a3c
     "lerna": "^4.0.0",
     "prettier": "^2.2.1"
   },
