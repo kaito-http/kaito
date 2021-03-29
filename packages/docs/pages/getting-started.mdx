@@ -21,19 +21,19 @@ Kaito is simple to use. From the ground up, we left it fairly unopinionated to _
 ## Basic Example
 
 ```ts
-import { Kaito, Controller, Get, Post, Schema, KRQ } from "@kaito-http/core";
+import { Kaito, Controller, Get, Post, Schema, KRQ, KRT } from "@kaito-http/core";
 
 @Controller("/")
 class Home {
   @Get("/")
-  async get() {
-    return { success: true };
+  async home(): KRT {
+    return { body: { success: true } };
   }
 
   @Post("/")
   @Schema<{ name: string }>((body) => typeof body?.name === "string")
-  async post(req: KRQ<{ name: string }>) {
-    return req.body;
+  async post(req: KRQ<{ name: string }>): KIRT {
+    return { body: req.body };
   }
 }
 
