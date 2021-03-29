@@ -38,7 +38,7 @@ export default {
         sourceMap: true,
         target: "es2019",
       },
-      exclude: ["node_modules", "dist", "jest.config.js", "jest-server.ts", "rollup.config.js", /__tests__/],
+      exclude: ["node_modules", "dist", "rollup.config.js", /__tests__/],
     }),
   ],
   external: [...Object.keys(pkg.dependencies || {}), ...Object.keys(pkg.peerDependencies || {})],

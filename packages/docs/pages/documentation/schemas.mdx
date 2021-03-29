@@ -2,16 +2,16 @@ import Callout from "nextra-theme-docs/callout";
 
 # Schemas
 
-Kaito has rich integration with [Yup](https://npmjs.org/package/yup), the schema validation library.
+Kaito has rich integration with [zod](https://npmjs.org/package/zod), the schema validation library.
 It's easy to use with Kaito.
 
 ## Basic Usage
 
 ```ts
 import { Post, Schema, KRT, InferType } from "@kaito-http/core";
-import * as yup from 'yup';
+import * as z from 'zod';
 
-const testingSchema = yup.object({ name: yup.string().required() }).required();
+const testingSchema = z.object({ name: z.string() });
 
 @Post("/post")
 @Schema(testingSchema)
@@ -20,7 +20,7 @@ async post(ctx: InferType<typeof testingSchema>): KRT<{ name: string }> {
 }
 ```
 
-In this method, Kaito is parsing the incoming body from the request and validating it with Yup. If the schema is
+In this method, Kaito is parsing the incoming body from the request and validating it with Zod. If the schema is
 invalid, an error is thrown, and the request finishes before your class method is even called. A list of errors is
 then sent back to the sender.
 
