@@ -1,56 +1,65 @@
 {
-    "name": "@kaito-http/core",
-    "version": "1.3.1",
-    "description": "An HTTP Framework for TypeScript",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/kaito-http/kaito.git"
+  "name": "@kaito-http/core",
+  "version": "1.3.1",
+  "description": "An HTTP Framework for TypeScript",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaito-http/kaito.git"
+  },
+  "author": "Alistair Smith <alistairsmith01@gmail.com>",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "test": "uvu -r ts-node/register tests",
+    "prepublishOnly": "yarn test&&yarn build",
+    "build": "yarn test&&rollup -c",
+    "lint": "eslint . --fix"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js"
     },
-    "author": "Alistair Smith <alistairsmith01@gmail.com>",
-    "license": "MIT",
-    "private": false,
-    "scripts": {
-        "test": "eslint .&&jest",
-        "prepublishOnly": "yarn test&&yarn build",
-        "build": "yarn test&&rollup -c",
-        "lint": "eslint . --fix"
-    },
-    "main": "dist/index.js",
-    "module": "dist/index.es.js",
-    "types": "dist/index.d.ts",
-    "devDependencies": {
-        "@rollup/plugin-commonjs": "^17.1.0",
-        "@rollup/plugin-eslint": "^8.0.1",
-        "@rollup/plugin-node-resolve": "^11.2.0",
-        "@types/node": "^14.14.22",
-        "@types/node-fetch": "^2.5.8",
-        "@types/yup": "^0.29.11",
-        "@typescript-eslint/eslint-plugin": "^4.12.0",
-        "@typescript-eslint/parser": "^4.12.0",
-        "eslint": "^7.17.0",
-        "jest": "^26.6.3",
-        "lerna": "^3.22.1",
-        "node-fetch": "^2.6.1",
-        "rollup": "^2.39.0",
-        "rollup-plugin-ts": "^1.3.7",
-        "ts-jest": "^26.4.4",
-        "tslib": "^2.1.0",
-        "typescript": "^4.1.3"
-    },
-    "files": [
-        "package.json",
-        "readme.md",
-        "dist"
-    ],
-    "dependencies": {
-        "@tinyhttp/app": "^1.1.12",
-        "reflect-metadata": "^0.1.13",
-        "trouter": "^3.1.0",
-        "tslib": "^2.1.0",
-        "yup": "^0.32.8"
-    },
-    "bugs": {
-        "url": "https://github.com/alii/kaito-http/issues"
-    },
-    "homepage": "https://github.com/kaito-http/kaito#readme"
+    "./package.json": "./package.json",
+    "./": "./"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^17.1.0",
+    "@rollup/plugin-eslint": "^8.0.1",
+    "@rollup/plugin-node-resolve": "^11.2.0",
+    "@types/body-parser": "^1.19.0",
+    "@types/node": "^14.14.36",
+    "@types/node-fetch": "^2.5.8",
+    "@typescript-eslint/eslint-plugin": "^4.19.0",
+    "@typescript-eslint/parser": "^4.19.0",
+    "eslint": "^7.22.0",
+    "lerna": "^4.0.0",
+    "node-fetch": "^2.6.1",
+    "rollup": "^2.42.4",
+    "rollup-plugin-ts": "^1.3.10",
+    "ts-node": "^9.1.1",
+    "tslib": "^2.1.0",
+    "typescript": "^4.2.3",
+    "uvu": "^0.5.1"
+  },
+  "files": [
+    "package.json",
+    "readme.md",
+    "dist"
+  ],
+  "dependencies": {
+    "@tinyhttp/app": "^1.2.18",
+    "colorette": "^1.2.2",
+    "reflect-metadata": "^0.1.13",
+    "trouter": "^3.1.0",
+    "tslib": "^2.1.0",
+    "zod": "^1.11.13"
+  },
+  "bugs": {
+    "url": "https://github.com/kaito-http/kaito/issues"
+  },
+  "homepage": "https://github.com/kaito-http/kaito#readme"
 }
