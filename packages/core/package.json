@@ -20,13 +20,6 @@
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js"
-    },
-    "./package.json": "./package.json",
-    "./": "./"
-  },
   "devDependencies": {
     "@types/body-parser": "^1.19.0",
     "@types/node": "^14.14.37",
