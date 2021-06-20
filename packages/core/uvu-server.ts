@@ -1,34 +1,51 @@
-import { Kaito, Controller, Get, Post, Schema, KTX, KRT } from "./src";
 import * as z from "zod";
+import {Method, Server} from "./src";
 
-const testingSchema = z.object({ name: z.string() });
+export const app = new Server();
 
-@Controller("/test")
-class Home {
-  @Get("/get")
-  async get(): KRT<{ success: boolean }> {
-    return { body: { success: true } };
-  }
+app.route(
+	Method.GET,
+	"/",
+	{
+		query: z.object({
+			test: z.number(),
+		}),
+	},
+	async ctx => {
+		return {test: ctx.query.test};
+	}
+);
 
-  @Get("/:value")
-  async param(ctx: KTX<{ params: { value: string } }>): KRT<{ hello: string }> {
-    return { body: { hello: ctx.params.value } };
-  }
+app.route(
+	Method.POST,
+	"/users/:id/:hi",
+	{
+		query: z.object({
+			limit: z.number(),
+			skip: z.number(),
+			since: z.string(),
+		}),
+		body: z.object({
+			example: z.string(),
+		}),
+		params: z.object({
+			id: z.string(),
+			hi: z.string(),
+		}),
+	},
+	async ctx => {
+		const example = ctx.body.example;
 
-  @Post("/post")
-  @Schema(testingSchema)
-  async post(ctx: KTX<typeof testingSchema>): KRT<{ name: string }> {
-    return {
-      body: ctx.body,
-      status: 204,
-      headers: {
-        "X-Example": Date.now(),
-      },
-    };
-  }
-}
-
-export const app = new Kaito({
-  controllers: [new Home()],
-  logging: true,
-});
+		return {
+			limit: ctx.query.limit,
+			offset: ctx.query.skip,
+			where: {
+				example,
+				user: ctx.params.id,
+				since: {
+					gt: ctx.query.since,
+				},
+			},
+		};
+	}
+);

@@ -1,55 +1,51 @@
 {
-  "name": "@kaito-http/core",
-  "version": "1.3.4",
-  "description": "An HTTP Framework for TypeScript",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/kaito-http/kaito.git"
-  },
-  "author": "Alistair Smith <alistairsmith01@gmail.com>",
-  "license": "MIT",
-  "private": false,
-  "type": "module",
-  "scripts": {
-    "test": "uvu -r ts-node/register tests",
-    "prepublishOnly": "yarn test&&yarn build",
-    "bundle": "yarn test&&yarn build",
-    "build": "tsup src/index.ts --dts --format esm,cjs",
-    "lint": "eslint . --fix"
-  },
-  "main": "dist/index.cjs",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "devDependencies": {
-    "@types/body-parser": "^1.19.0",
-    "@types/node": "^14.14.41",
-    "@types/node-fetch": "^2.5.10",
-    "@typescript-eslint/eslint-plugin": "^4.22.0",
-    "@typescript-eslint/parser": "^4.22.0",
-    "eslint": "^7.25.0",
-    "lerna": "^4.0.0",
-    "node-fetch": "^2.6.1",
-    "ts-node": "^9.1.1",
-    "tslib": "^2.2.0",
-    "tsup": "^4.9.1",
-    "typescript": "^4.2.4",
-    "uvu": "^0.5.1"
-  },
-  "files": [
-    "package.json",
-    "readme.md",
-    "dist"
-  ],
-  "dependencies": {
-    "@tinyhttp/app": "^1.2.23",
-    "colorette": "^1.2.2",
-    "reflect-metadata": "^0.1.13",
-    "trouter": "^3.2.0",
-    "tslib": "^2.2.0",
-    "zod": "^1.11.13"
-  },
-  "bugs": {
-    "url": "https://github.com/kaito-http/kaito/issues"
-  },
-  "homepage": "https://github.com/kaito-http/kaito#readme"
+	"name": "@kaito-http/core",
+	"version": "1.3.4",
+	"description": "An HTTP Framework for TypeScript",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kaito-http/kaito.git"
+	},
+	"author": "Alistair Smith <alistairsmith01@gmail.com>",
+	"license": "MIT",
+	"private": false,
+	"type": "module",
+	"scripts": {
+		"test": "uvu -r ts-node/register tests",
+		"prepublishOnly": "yarn test&&yarn build",
+		"bundle": "yarn test&&yarn build",
+		"build": "tsup src/index.ts --dts --format esm,cjs",
+		"lint": "eslint . --fix"
+	},
+	"main": "dist/index.cjs",
+	"module": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"devDependencies": {
+		"@types/body-parser": "^1.19.0 ",
+		"@types/node": "^15.12.2",
+		"@types/node-fetch": "^2.5.10",
+		"lerna": "^4.0.0",
+		"node-fetch": "^2.6.1",
+		"ts-node": "^10.0.0",
+		"tsup": "^4.11.2",
+		"typescript": "4.2",
+		"uvu": "^0.5.1",
+		"zod": "^3.2.0"
+	},
+	"files": [
+		"package.json",
+		"readme.md",
+		"dist"
+	],
+	"dependencies": {
+		"@tinyhttp/app": "^1.3.8",
+		"colorette": "^1.2.2"
+	},
+	"bugs": {
+		"url": "https://github.com/kaito-http/kaito/issues"
+	},
+	"homepage": "https://github.com/kaito-http/kaito#readme",
+	"peerDependencies": {
+		"zod": "^3.2.0"
+	}
 }

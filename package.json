@@ -1,32 +1,29 @@
 {
-  "name": "kaito-http",
-  "version": "1.0.0",
-  "repository": "https://github.com/kaito-http/kaito",
-  "author": "Alistair Smith <alistairsmith01@gmail.com>",
-  "license": "MIT",
-  "private": true,
-  "workspaces": {
-    "packages": [
-      "packages/*"
-    ]
-  },
-  "prettier": {
-    "printWidth": 120
-  },
-  "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^4.19.0",
-    "@typescript-eslint/parser": "^4.22.0",
-    "eslint": "^7.23.0",
-    "lerna": "^4.0.0",
-    "prettier": "^2.2.1"
-  },
-  "scripts": {
-    "postinstall": "lerna bootstrap",
-    "test": "yarn workspace @kaito-http/core test",
-    "docs:dev": "yarn workspace @kaito-http/docs dev",
-    "docs:build": "yarn workspace @kaito-http/docs build",
-    "lint": "yarn workspace @kaito-http/core lint",
-    "release": "yarn workspace @kaito-http/core publish --access public",
-    "core:build": "yarn workspace @kaito-http/core build"
-  }
+	"name": "kaito-http",
+	"version": "1.0.0",
+	"repository": "https://github.com/kaito-http/kaito",
+	"author": "Alistair Smith <alistairsmith01@gmail.com>",
+	"license": "MIT",
+	"private": true,
+	"workspaces": {
+		"packages": [
+			"packages/*"
+		]
+	},
+	"devDependencies": {
+		"@typescript-eslint/eslint-plugin": "^4.27.0",
+		"@typescript-eslint/parser": "^4.27.0",
+		"eslint": "^7.28.0",
+		"lerna": "^4.0.0",
+		"prettier": "^2.3.1"
+	},
+	"scripts": {
+		"postinstall": "lerna bootstrap",
+		"test": "yarn workspace @kaito-http/core test",
+		"docs:dev": "yarn workspace @kaito-http/docs dev",
+		"docs:build": "yarn workspace @kaito-http/docs build",
+		"lint": "yarn workspace @kaito-http/core lint",
+		"release": "yarn workspace @kaito-http/core publish --access public",
+		"core:build": "yarn workspace @kaito-http/core build"
+	}
 }
