@@ -1,24 +1,22 @@
-import * as z from "zod";
-import {Method, Server} from "./src";
+import * as z from 'zod';
+import {Method, Server} from './src';
 
 export const app = new Server();
 
 app.route(
 	Method.GET,
-	"/",
+	'/',
 	{
 		query: z.object({
 			test: z.number(),
 		}),
 	},
-	async ctx => {
-		return {test: ctx.query.test};
-	}
+	async ctx => ({test: ctx.query.test})
 );
 
 app.route(
 	Method.POST,
-	"/users/:id/:hi",
+	'/users/:id/:hi',
 	{
 		query: z.object({
 			limit: z.number(),
@@ -34,7 +32,7 @@ app.route(
 		}),
 	},
 	async ctx => {
-		const example = ctx.body.example;
+		const {example} = ctx.body;
 
 		return {
 			limit: ctx.query.limit,

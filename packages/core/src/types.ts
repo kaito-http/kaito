@@ -9,11 +9,11 @@ export type ExtractRouteParams<T extends string> = string extends T
 	: EmptyObject;
 
 export const enum Method {
-	GET = "get",
-	POST = "post",
-	DELETE = "delete",
-	PUT = "put",
-	PATCH = "patch",
+	GET = 'get',
+	POST = 'post',
+	DELETE = 'delete',
+	PUT = 'put',
+	PATCH = 'patch',
 }
 
 export enum QueryType {

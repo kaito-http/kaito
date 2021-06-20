@@ -24,6 +24,7 @@
 		"@types/body-parser": "^1.19.0 ",
 		"@types/node": "^15.12.2",
 		"@types/node-fetch": "^2.5.10",
+		"eslint": "^7.28.0",
 		"lerna": "^4.0.0",
 		"node-fetch": "^2.6.1",
 		"ts-node": "^10.0.0",

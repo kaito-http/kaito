@@ -1,1 +1,1 @@
-module.exports = require("nextra")("nextra-theme-docs", "./theme.config.js")();
+module.exports = require('nextra')('nextra-theme-docs', './theme.config.js')();
