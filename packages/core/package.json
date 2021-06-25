@@ -14,7 +14,7 @@
 		"test": "uvu -r ts-node/register tests",
 		"prepublishOnly": "yarn test&&yarn build",
 		"bundle": "yarn test&&yarn build",
-		"build": "tsup src/index.ts --dts --format esm,cjs",
+		"build": "tsup src/index.ts --dts --format esm,cjs --minify",
 		"lint": "eslint . --fix"
 	},
 	"main": "dist/index.cjs",

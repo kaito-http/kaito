@@ -1,4 +1,3 @@
-/* eslint-disable capitalized-comments */
 import {App, Request, Response} from '@tinyhttp/app';
 import {z, ZodNumber, ZodObject, ZodString, ZodTypeAny} from 'zod';
 import {ExtractRouteParams, Method} from './types';
@@ -42,25 +41,23 @@ export class Server {
 
 	public route<
 		Path extends string,
-		Query extends ZodObject<Record<string, ZodString | ZodNumber>> | never,
-		Body extends ZodTypeAny | never,
-		ParamsValidation extends
-			| ZodObject<Record<keyof ExtractRouteParams<Path>, ZodString | ZodNumber>>
-			| never
+		Query extends ZodObject<Record<string, ZodString | ZodNumber>>,
+		Body extends ZodTypeAny,
+		ParamsValidation extends ZodObject<
+			Record<keyof ExtractRouteParams<Path>, ZodString | ZodNumber>
+		>
 	>(
 		method: Method,
 		path: Path,
-		schemas: (null extends Body ? {body?: Body} : {body: Body}) &
-			(null extends Query ? {query?: Query} : {query: Query}) &
-			(null extends ParamsValidation
-				? {params?: ParamsValidation}
-				: {params: ParamsValidation}),
+		schemas: {
+			body: Body;
+			query: Query;
+			params: ParamsValidation;
+		},
 		handler: (context: {
-			params: ParamsValidation extends NonNullable<ParamsValidation>
-				? z.infer<ParamsValidation>
-				: undefined;
-			body: Body extends NonNullable<Body> ? z.infer<Body> : undefined;
-			query: Query extends NonNullable<Query> ? z.infer<Query> : undefined;
+			params: z.infer<ParamsValidation> | null;
+			body: z.infer<Body> | null;
+			query: z.infer<Query> | null;
 			res: Response;
 			req: Request;
 		}) => unknown
@@ -71,6 +68,8 @@ export class Server {
 			handler({
 				params: params?.parse(req.params) ?? null,
 				query: query?.parse(req.query) ?? null,
+				// Intentional assignment of any
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				body: body?.parse(req.body) ?? null,
 				req,
 				res,
