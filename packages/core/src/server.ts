@@ -55,9 +55,9 @@ export class Server {
 			params: ParamsValidation;
 		},
 		handler: (context: {
-			params: z.infer<ParamsValidation> | null;
-			body: z.infer<Body> | null;
-			query: z.infer<Query> | null;
+			params: z.infer<ParamsValidation>;
+			body: z.infer<Body>;
+			query: z.infer<Query>;
 			res: Response;
 			req: Request;
 		}) => unknown
@@ -66,11 +66,9 @@ export class Server {
 
 		this.app[method](path, (req, res) =>
 			handler({
-				params: params?.parse(req.params) ?? null,
-				query: query?.parse(req.query) ?? null,
-				// Intentional assignment of any
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				body: body?.parse(req.body) ?? null,
+				params: params?.parse(req.params),
+				query: query?.parse(req.query),
+				body: body?.parse(req.body),
 				req,
 				res,
 			})
