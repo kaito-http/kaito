@@ -1,77 +1,29 @@
 import {App, Request, Response} from '@tinyhttp/app';
-import {z, ZodNumber, ZodObject, ZodString, ZodTypeAny} from 'zod';
-import {ExtractRouteParams, Method} from './types';
-import * as http from 'http';
+import {AnyZodObject} from 'zod';
+import {Context, ExtractRouteParams, Method} from './types';
 
-export class Server {
-	public server: http.Server | null = null;
-
-	private readonly app: App;
-
-	constructor() {
-		this.app = new App({
-			settings: {
-				xPoweredBy: 'kaito.cloud',
-			},
-		});
-	}
-
-	public stop() {
-		this.server?.close();
-		this.server = null;
-	}
-
-	public start(
-		port: number | string | undefined = process.env.PORT,
-		address?: string,
-		callback?: () => unknown
-	) {
-		if (!port) {
-			throw new Error('No port was specified. Got undefined');
-		}
-
-		this.server = this.app.listen(
-			typeof port === 'number' ? port : parseInt(port, 10),
-			callback,
-			address
-		);
-
-		return this.server;
-	}
-
-	public route<
+export class Kaito extends App {
+	public http<
 		Path extends string,
-		Query extends ZodObject<Record<string, ZodString | ZodNumber>>,
-		Body extends ZodTypeAny,
-		ParamsValidation extends ZodObject<
-			Record<keyof ExtractRouteParams<Path>, ZodString | ZodNumber>
-		>
+		Body extends AnyZodObject,
+		Query extends AnyZodObject
 	>(
 		method: Method,
 		path: Path,
-		schemas: {
-			body: Body;
-			query: Query;
-			params: ParamsValidation;
-		},
-		handler: (context: {
-			params: z.infer<ParamsValidation>;
-			body: z.infer<Body>;
-			query: z.infer<Query>;
-			res: Response;
-			req: Request;
-		}) => unknown
+		schemas: {body: Body; query: Query},
+		callback: (
+			req: Context<Path, Body, Query>,
+			data: {req: Request; res: Response}
+		) => unknown
 	) {
-		const {query = null, body = null, params = null} = schemas;
+		this[method](path, (req, res) => {
+			const context: Context<Path, Body, Query> = {
+				body: schemas.body.parse(req.body),
+				params: req.params as ExtractRouteParams<Path>,
+				query: schemas.query.parse(req.query),
+			};
 
-		this.app[method](path, (req, res) =>
-			handler({
-				params: params?.parse(req.params),
-				query: query?.parse(req.query),
-				body: body?.parse(req.body),
-				req,
-				res,
-			})
-		);
+			return callback(context, {req, res});
+		});
 	}
 }

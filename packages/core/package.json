@@ -11,7 +11,6 @@
 	"private": false,
 	"type": "module",
 	"scripts": {
-		"test": "uvu -r ts-node/register tests",
 		"prepublishOnly": "yarn test&&yarn build",
 		"bundle": "yarn test&&yarn build",
 		"build": "tsup src/index.ts --dts --format esm,cjs --minify",
@@ -30,7 +29,6 @@
 		"ts-node": "^10.0.0",
 		"tsup": "^4.11.2",
 		"typescript": "4.2",
-		"uvu": "^0.5.1",
 		"zod": "^3.2.0"
 	},
 	"files": [

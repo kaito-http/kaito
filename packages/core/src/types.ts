@@ -1,3 +1,5 @@
+import {AnyZodObject, infer as ZodInfer} from 'zod';
+
 export type EmptyObject = Record<string, never>;
 
 export type ExtractRouteParams<T extends string> = string extends T
@@ -8,15 +10,20 @@ export type ExtractRouteParams<T extends string> = string extends T
 	? Record<Param, string>
 	: EmptyObject;
 
+export type Context<
+	Path extends string,
+	Body extends AnyZodObject,
+	Query extends AnyZodObject
+> = {
+	params: ExtractRouteParams<Path>;
+	body: ZodInfer<Body>;
+	query: ZodInfer<Query>;
+};
+
 export const enum Method {
 	GET = 'get',
 	POST = 'post',
 	DELETE = 'delete',
 	PUT = 'put',
 	PATCH = 'patch',
-}
-
-export enum QueryType {
-	STRING,
-	NUMBER,
 }
