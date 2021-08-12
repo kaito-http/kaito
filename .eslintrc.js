@@ -1,3 +1,5 @@
+const path = require('path');
+
 module.exports = {
 	env: {
 		es2021: true,
@@ -13,7 +15,7 @@ module.exports = {
 	parserOptions: {
 		ecmaVersion: 12,
 		sourceType: 'module',
-		project: './tsconfig.base.json',
+		project: path.join(__dirname, 'tsconfig.base.json'),
 	},
 	plugins: ['@typescript-eslint'],
 	rules: {
