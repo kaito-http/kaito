@@ -6,6 +6,7 @@ module.exports = {
 		node: true,
 	},
 	extends: [
+		'next',
 		'eslint:recommended',
 		'plugin:@typescript-eslint/recommended',
 		'xo',
@@ -21,6 +22,8 @@ module.exports = {
 	rules: {
 		'@typescript-eslint/indent': 'off',
 		'@typescript-eslint/comma-dangle': 'off',
+		'@typescript-eslint/triple-slash-reference': 'off',
+		'@typescript-eslint/naming-convention': 'off',
 		'@typescript-eslint/ban-types': [
 			'error',
 			{

@@ -17,11 +17,12 @@
 		"@preconstruct/cli": "^2.1.5",
 		"@typescript-eslint/eslint-plugin": "^5.2.0",
 		"@typescript-eslint/parser": "^5.2.0",
-		"eslint": "^8.1.0",
+		"eslint": "^7.1.0",
+		"eslint-config-next": "^12.0.2",
 		"eslint-config-xo": "^0.39.0",
 		"eslint-config-xo-typescript": "^0.47.1",
-		"lerna": "^4.0.0",
-		"prettier": "^2.4.1"
+		"prettier": "^2.4.1",
+		"typescript": "^4.4.4"
 	},
 	"scripts": {
 		"dev": "preconstruct dev",
@@ -30,7 +31,7 @@
 		"docs:build": "yarn workspace @kaito-http/docs build",
 		"lint": "yarn workspace @kaito-http/core lint",
 		"release": "yarn workspace @kaito-http/core publish --access public",
-		"core:build": "yarn workspace @kaito-http/core build"
+		"build": "preconstruct build"
 	},
 	"packageManager": "yarn@3.1.0",
 	"preconstruct": {
