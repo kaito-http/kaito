@@ -1,0 +1,15 @@
+{
+	"name": "@kaito-http/examples-basic",
+	"packageManager": "yarn@3.1.0",
+	"dependencies": {
+		"@kaito-http/core": "workspace:^",
+		"zod": "^3.11.6"
+	},
+	"devDependencies": {
+		"tsup": "^5.5.0"
+	},
+	"scripts": {
+		"start": "node dist/index.js",
+		"build": "tsup-node src/index.ts"
+	}
+}

@@ -1,6 +1,6 @@
 {
 	"name": "@kaito-http/core",
-	"version": "1.3.4",
+	"version": "2.0.0",
 	"description": "An HTTP Framework for TypeScript",
 	"repository": {
 		"type": "git",
@@ -8,7 +8,6 @@
 	},
 	"author": "Alistair Smith <alistairsmith01@gmail.com>",
 	"license": "MIT",
-	"type": "module",
 	"scripts": {
 		"prepublishOnly": "yarn test&&yarn build",
 		"bundle": "yarn test&&yarn build",
@@ -17,7 +16,7 @@
 	},
 	"main": "dist/kaito-http-core.cjs.js",
 	"module": "dist/kaito-http-core.esm.js",
-	"types": "dist/index.d.ts",
+	"types": "dist/kaito-http-core.cjs.d.ts",
 	"devDependencies": {
 		"@types/body-parser": "^1.19.0 ",
 		"@types/node": "^15.12.2",
@@ -28,7 +27,7 @@
 		"ts-node": "^10.0.0",
 		"tsup": "^4.11.2",
 		"typescript": "4.2",
-		"zod": "^3.2.0"
+		"zod": "^3.11.6"
 	},
 	"files": [
 		"package.json",
@@ -44,6 +43,6 @@
 	},
 	"homepage": "https://github.com/kaito-http/kaito#readme",
 	"peerDependencies": {
-		"zod": "^3.2.0"
+		"zod": "*"
 	}
 }
