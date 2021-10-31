@@ -19,9 +19,17 @@ module.exports = {
 	},
 	plugins: ['@typescript-eslint'],
 	rules: {
-		'@typescript-eslint/indent': 0,
-		'@typescript-eslint/explicit-module-boundary-types': 0,
-		'@typescript-eslint/comma-dangle': 0,
+		'@typescript-eslint/indent': 'off',
+		'@typescript-eslint/comma-dangle': 'off',
+		'@typescript-eslint/ban-types': [
+			'error',
+			{
+				extendDefaults: true,
+				types: {
+					'{}': false,
+				},
+			},
+		],
 	},
 	ignorePatterns: ['dist', '.eslintrc.js'],
 };

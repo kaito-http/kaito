@@ -7,25 +7,35 @@
 	"private": true,
 	"workspaces": {
 		"packages": [
-			"packages/*"
+			"packages/*",
+			"apps/*"
 		]
 	},
 	"devDependencies": {
-		"@typescript-eslint/eslint-plugin": "^4.29.1",
-		"@typescript-eslint/parser": "^4.29.1",
-		"eslint": "^7.32.0",
-		"eslint-config-xo": "^0.38.0",
-		"eslint-config-xo-typescript": "^0.44.0",
+		"@babel/preset-env": "^7.16.0",
+		"@babel/preset-typescript": "^7.16.0",
+		"@preconstruct/cli": "^2.1.5",
+		"@typescript-eslint/eslint-plugin": "^5.2.0",
+		"@typescript-eslint/parser": "^5.2.0",
+		"eslint": "^8.1.0",
+		"eslint-config-xo": "^0.39.0",
+		"eslint-config-xo-typescript": "^0.47.1",
 		"lerna": "^4.0.0",
-		"prettier": "^2.3.2"
+		"prettier": "^2.4.1"
 	},
 	"scripts": {
-		"postinstall": "lerna bootstrap",
+		"dev": "preconstruct dev",
 		"test": "yarn workspace @kaito-http/core test",
 		"docs:dev": "yarn workspace @kaito-http/docs dev",
 		"docs:build": "yarn workspace @kaito-http/docs build",
 		"lint": "yarn workspace @kaito-http/core lint",
 		"release": "yarn workspace @kaito-http/core publish --access public",
 		"core:build": "yarn workspace @kaito-http/core build"
+	},
+	"packageManager": "yarn@3.1.0",
+	"preconstruct": {
+		"packages": [
+			"packages/*"
+		]
 	}
 }

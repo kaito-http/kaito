@@ -5,3 +5,5 @@ desktop.ini
 .vscode
 dist
 *.log
+.yarn/*
+!.yarn/releases
