@@ -147,7 +147,7 @@ export function createServer<
 		let result;
 
 		try {
-			result = await handler.run({ctx: context, input});
+			result = await handler.run({ctx: context, input: input.data});
 		} catch (e: unknown) {
 			await res.send({
 				success: false,
