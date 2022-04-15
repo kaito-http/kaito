@@ -3,13 +3,25 @@
 	"packageManager": "yarn@3.1.0",
 	"dependencies": {
 		"@kaito-http/core": "workspace:^",
-		"zod": "^3.11.6"
+		"zod": "^3.14.4"
 	},
 	"devDependencies": {
-		"tsup": "^5.5.0"
+		"tsup": "^5.12.5"
 	},
 	"scripts": {
 		"start": "node dist/index.js",
 		"build": "tsup-node src/index.ts"
-	}
+	},
+	"author": "Alistair Smith <hi@alistair.sh>",
+	"description": "Functional HTTP Framework for TypeScript",
+	"homepage": "https://github.com/kaito-http/kaito",
+	"keywords": [
+		"typescript",
+		"fastify",
+		"http",
+		"framework"
+	],
+	"license": "MIT",
+	"repository": "https://github.com/kaito-http/kaito",
+	"version": "2.0.1"
 }
