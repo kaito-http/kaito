@@ -6,11 +6,13 @@
 		"zod": "^3.14.4"
 	},
 	"devDependencies": {
+		"ts-node-dev": "^1.1.8",
 		"tsup": "^5.12.5"
 	},
 	"scripts": {
 		"start": "node dist/index.js",
-		"build": "tsup-node src/index.ts"
+		"build": "tsup-node src/index.ts",
+		"dev": "tsnd src/index.ts"
 	},
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"description": "Functional HTTP Framework for TypeScript",

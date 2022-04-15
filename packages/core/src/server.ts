@@ -1,16 +1,13 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 
-import fastify, {FastifyReply, FastifyRequest} from 'fastify';
+import http from 'http';
 import {z, ZodTypeAny} from 'zod';
+import {WrappedError} from './error';
+import {KaitoRequest} from './req';
+import {KaitoResponse} from './res';
+import {getInput, Method} from './util';
 
-export enum Method {
-	GET = 'GET',
-	POST = 'POST',
-	PATCH = 'PATCH',
-	DELETE = 'DELETE',
-}
-
-export type GetContext<T> = (req: FastifyRequest, res: FastifyReply) => Promise<T>;
+export type GetContext<T> = (req: KaitoRequest, res: KaitoResponse) => Promise<T>;
 
 type Never = [never];
 
@@ -92,14 +89,21 @@ export class Router<Ctx, Procs extends ProcsInit<Ctx>> {
 		return new Router<NewCtx & Ctx, MergedProcs>(mergedProcs);
 	};
 
-	public readonly get = this.create(Method.GET);
-	public readonly post = this.create(Method.POST);
-	public readonly patch = this.create(Method.PATCH);
-	public readonly delete = this.create(Method.DELETE);
+	public readonly get = this.create('GET');
+	public readonly post = this.create('POST');
+	public readonly put = this.create('PUT');
+	public readonly patch = this.create('PATCH');
+	public readonly delete = this.create('DELETE');
+	public readonly head = this.create('HEAD');
+	public readonly options = this.create('OPTIONS');
+	public readonly connect = this.create('CONNECT');
+	public readonly trace = this.create('TRACE');
+	public readonly acl = this.create('ACL');
+	public readonly bind = this.create('BIND');
 }
 
 export class KaitoError extends Error {
-	constructor(public readonly code: number, message: string, public readonly cause?: Error | undefined) {
+	constructor(public readonly status: number, message: string, public readonly cause?: Error | undefined) {
 		super(message);
 	}
 }
@@ -108,7 +112,7 @@ export function createRouter<Ctx>() {
 	return new Router<Ctx, {}>({});
 }
 
-export type InferApiResponseType<
+export type InferAPIResponseType<
 	R extends AnyRouter<unknown>,
 	M extends Method,
 	Path extends Extract<Values<ReturnType<R['getProcs']>>, {method: M}>['name']
@@ -117,62 +121,68 @@ export type InferApiResponseType<
 export function createServer<Ctx, R extends Router<Ctx, ProcsInit<Ctx>>>(config: {
 	getContext: GetContext<Ctx>;
 	router: R;
-	onError(error: {error: Error; req: FastifyRequest; res: FastifyReply}): Promise<{code: number; message: string}>;
+	onError(error: {error: Error; req: KaitoRequest; res: KaitoResponse}): Promise<{status: number; message: string}>;
 	log?: ((message: string) => unknown) | false;
 }) {
-	const tree = config.router.getProcs();
-	const app = fastify();
+	const log = (message: string) => {
+		if (config.log === undefined) {
+			console.log(message);
+		} else if (config.log) {
+			config.log(message);
+		}
+	};
 
-	app.setErrorHandler<Error>(async (error, req, res) => {
-		if (error instanceof KaitoError) {
-			await res.status(error.code).send({
+	const tree = config.router.getProcs();
+
+	const server = http.createServer(async (incomingMessage, serverResponse) => {
+		const start = Date.now();
+
+		const req = new KaitoRequest(incomingMessage);
+		const res = new KaitoResponse(serverResponse);
+
+		try {
+			const handler = tree[req.url.pathname];
+
+			if (!handler) {
+				throw new KaitoError(404, `Cannot ${req.method} this route.`);
+			}
+
+			const input = handler.input?.parse((await getInput(req)) ?? undefined) as unknown;
+
+			const context = await config.getContext(req, res);
+			const data = await handler.run({ctx: context, input});
+
+			res.json({
+				success: true,
+				data,
+				message: 'OK',
+			});
+		} catch (error: unknown) {
+			if (error instanceof KaitoError) {
+				res.status(error.status).json({
+					success: false,
+					data: null,
+					message: error.message,
+				});
+
+				return;
+			}
+
+			const {status, message} = await config.onError({error: WrappedError.from(error), req, res}).catch(() => ({
+				status: 500,
+				message: 'Something went wrong',
+			}));
+
+			res.status(status).json({
 				success: false,
 				data: null,
-				message: error.message,
+				message,
 			});
-
-			return;
+		} finally {
+			const finish = Date.now();
+			log(`${req.method} ${req.fullURL} ${res.raw.statusCode} ${finish - start}ms`);
 		}
-
-		const {code, message} = await config.onError({error, req, res}).catch(() => ({
-			code: 500,
-			message: 'Something went wrong',
-		}));
-
-		await res.status(code).send({
-			success: false,
-			data: null,
-			message,
-		});
 	});
 
-	app.all('*', async (req, res) => {
-		const logMessage = `${req.hostname} ${req.method} ${req.url}`;
-
-		if (config.log === undefined) {
-			console.log(logMessage);
-		} else if (config.log) {
-			config.log(logMessage);
-		}
-
-		const url = new URL(`${req.protocol}://${req.hostname}${req.url}`);
-		const handler = tree[url.pathname];
-
-		if (!handler) {
-			throw new KaitoError(404, `Cannot ${req.method} this route.`);
-		}
-
-		const context = await config.getContext(req, res);
-
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const input = handler.input?.parse(req.method === 'GET' ? req.query : req.body) ?? null;
-
-		await res.send({
-			success: true, // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			data: await handler.run({ctx: context, input}),
-			message: 'OK',
-		});
-	});
-
-	return app;
+	return server;
 }

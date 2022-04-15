@@ -11,7 +11,6 @@
 	"devDependencies": {
 		"@types/body-parser": "^1.19.2",
 		"@types/node": "^17.0.24",
-		"@types/node-fetch": "^2.6.1",
 		"typescript": "4.6",
 		"zod": "^3.14.4"
 	},
@@ -20,10 +19,6 @@
 		"readme.md",
 		"dist"
 	],
-	"dependencies": {
-		"colorette": "^2.0.16",
-		"fastify": "^3.28.0"
-	},
 	"bugs": {
 		"url": "https://github.com/kaito-http/kaito/issues"
 	},
@@ -36,5 +31,8 @@
 		"fastify",
 		"http",
 		"framework"
-	]
+	],
+	"dependencies": {
+		"raw-body": "^2.5.1"
+	}
 }
