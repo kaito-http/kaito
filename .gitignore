@@ -7,3 +7,5 @@ dist
 *.log
 .yarn/*
 !.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
