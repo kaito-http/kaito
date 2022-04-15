@@ -6,11 +6,13 @@
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
 	"dependencies": {
-		"next": "^12.0.2",
-		"nextra": "^1.1.0",
-		"nextra-theme-docs": "^1.2.6",
-		"react": "^17.0.2",
-		"react-dom": "^17.0.2"
+		"next": "^12.1.5",
+		"nextra": "alpha",
+		"nextra-theme-docs": "alpha",
+		"prism-react-renderer": "^1.3.1",
+		"prismjs": "^1.27.0",
+		"react": "^18.0.0",
+		"react-dom": "^18.0.0"
 	},
 	"scripts": {
 		"dev": "next dev",
@@ -18,7 +20,7 @@
 		"build": "next build"
 	},
 	"devDependencies": {
-		"@types/react": "^17.0.33"
+		"@types/react": "^18.0.5"
 	},
 	"description": "Functional HTTP Framework for TypeScript",
 	"homepage": "https://github.com/kaito-http/kaito",

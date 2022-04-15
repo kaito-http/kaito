@@ -6,7 +6,7 @@
 
 #### Functional HTTP Framework for TypeScript
 
-View the [documentation here](https://kaito.cloud)
+View the [documentation here](https://http.kaito.cloud)
 
 #### Credits
 

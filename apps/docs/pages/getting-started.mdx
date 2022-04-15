@@ -14,45 +14,50 @@ Or with npm:
 npm install @kaito-http/core
 ```
 
-## Quick start
+## Concepts
 
-Kaito is simple to use. From the ground up, we left it fairly unopinionated to _let your creativity run wild_.
+Kaito is very simple to use, it revolves around a few basic concepts. Before we dive into a code example, let's go through the three most important principles.
 
-## Basic Example
+### Procedure
+
+A procedure is a function that is available on the API. Simply put, it's something that will exist over HTTP and returns a single value that will be JSON encoded. Below is a basic example
 
 ```ts
-import {Kaito, Controller, Get, Post, Schema, KTX, KRT} from './src';
-import * as z from 'zod';
-
-const testingSchema = z.object({name: z.string()});
-
-@Controller('/test')
-class Home {
-	@Get('/get')
-	async get(): KRT<{success: boolean}> {
-		return {body: {success: true}};
-	}
-
-	@Get('/:value')
-	async param(ctx: KTX<{params: {value: string}}>): KRT<{hello: string}> {
-		return {body: {hello: ctx.params.value}};
-	}
-
-	@Post('/post')
-	@Schema(testingSchema)
-	async post(ctx: KTX<typeof testingSchema>): KRT<{name: string}> {
-		return {
-			body: ctx.body,
-			status: 204,
-			headers: {
-				'X-Example': Date.now(),
-			},
-		};
-	}
-}
-
-export const app = new Kaito({
-	controllers: [new Home()],
-	logging: true,
+export const getUsers = router().get('users', {
+	async run() {
+		return database.getUsers();
+	},
 });
+```
+
+### Router
+
+The Kaito router is a class that holds all of our procedures, their type information. Every app will have one router.
+
+### Context
+
+Context is a variable that is generated on every single request. It is up to developers what to place inside their context, but it will be available to access in every single procedure. For example, you could include the `req` and `res` objects, a method to get the current user (replacing middleware), etc.
+
+## Quickstart
+
+```typescript
+import {createGetContext, InferContext, createRouter} from '@kaito-http/core';
+
+// Define the time that we started the server at
+const serverStarted = Date.now();
+
+// Provide context to every procedure — our uptime and `req` & `res` objects
+export const getContext = createGetContext(async (req, res) => ({
+	req,
+	res,
+	uptime: Date.now() - serverStarted,
+}));
+
+// Export a type of our context
+export type AppContext = InferContext<typeof getContext>;
+
+// Define a context-typed router
+export function router() {
+	return createRouter<AppContext>();
+}
 ```

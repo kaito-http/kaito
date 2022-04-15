@@ -10,14 +10,13 @@ We wouldn't recommend using this for a future project unless you enjoy broken co
 ### Features
 
 - ✍ built in zod schema + body validation support
-- ⚡ ultra quick. faster than express, built on top of [tinyhttp](https://www.npmjs.com/package/@tinyhttp/app)
+- ⚡ ultra quick. faster than express with just one dependency
 - 💪 robust
-- 💨 extremely easy to use, built with decorators
+- 💨 extremely easy to use, functional pattern
 
 ## What is Kaito?
 
-Kaito is a minimalistic, HTTP framework for Node.js and TypeScript. It can also work in JavaScript environments, but
-this may change in the future.
+Kaito is a minimalistic, HTTP framework for Node.js and TypeScript.
 
 <Callout emoji="⚠">Kaito is not production ready, please use it with caution</Callout>
 
@@ -27,14 +26,9 @@ Kaito is not:
 
 - Stable
 - Battle tested
-- For writing really low amounts of code - for now. We'll eventually have a solid API for writing very little code
 
-## What's planned?
+## Principles
 
-In hopefully chronological order...
-
-- Middleware
-- Easy JWT management
-- Type-safe sessions (for singleton servers)
-- Database support (wanting to create a rich integration with [Prisma](https://prisma.io))
-- Support for child & parent controllers
+- No middleware! I've always disliked the middleware pattern, for two reasons. The first is that it's difficult to make guarantees about where and the order that middleware run, and secondly it's hard to provide robust type information for middleware
+- JSON only. This makes it über easy to build an API without having to think about what's happening behind the scenes
+- e2e types. Kaito supports exporting the entire API as a TypeScript interfaces, including all response types. This allows for easy building of a client
