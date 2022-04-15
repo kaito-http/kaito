@@ -118,7 +118,7 @@ export function createServer<Ctx, R extends Router<Ctx, ProcsInit<Ctx>>>(config:
 	getContext: GetContext<Ctx>;
 	router: R;
 	onError(error: {error: Error; req: FastifyRequest; res: FastifyReply}): Promise<{code: number; message: string}>;
-	log?: (message: string) => unknown | false;
+	log?: ((message: string) => unknown) | false;
 }) {
 	const tree = config.router.getProcs();
 	const app = fastify();
@@ -147,7 +147,7 @@ export function createServer<Ctx, R extends Router<Ctx, ProcsInit<Ctx>>>(config:
 	});
 
 	app.all('*', async (req, res) => {
-		const logMessage = `${req.hostname} ${req.method} ${req.routerPath}`;
+		const logMessage = `${req.hostname} ${req.method} ${req.url}`;
 
 		if (config.log === undefined) {
 			console.log(logMessage);
