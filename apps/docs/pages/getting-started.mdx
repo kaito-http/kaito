@@ -2,16 +2,16 @@
 
 ## Installation
 
-Inside your project directory, run
+Kaito depends on `zod` for schema validation, make sure you install it too.
 
 ```
-yarn add @kaito-http/core
+yarn add @kaito-http/core zod
 ```
 
 Or with npm:
 
 ```
-npm install @kaito-http/core
+npm install @kaito-http/core zod
 ```
 
 ## Concepts
@@ -63,3 +63,39 @@ export function router() {
 	return createRouter<AppContext>();
 }
 ```
+
+Secondly, we'll need to create a router, a server, and our first procedure.
+
+```typescript
+import {createServer} from '@kaito-http/core';
+import {router, getContext} from './context';
+
+const app = router().get('/', {
+	async run({ctx}) {
+		return {
+			uptime: ctx.uptime,
+			time_now: Date.now(),
+		};
+	},
+});
+
+const server = createServer({
+	getContext,
+	router: app,
+
+	// Define an `onError` handler in case something goes wrong inside of the route.
+	// More on that that later.
+	async onError({error}) {
+		console.log(error);
+
+		return {
+			status: 500,
+			message: error.message,
+		};
+	},
+});
+
+server.listen(8080);
+```
+
+Awesome! So we now have a server that can be accessed at `http://localhost:8080/` that mounts a GET procedure to `/` which will respond with the server's uptime, and the time now. If you run this file and navigate to `http://localhost:8080/`, you'll see that result.

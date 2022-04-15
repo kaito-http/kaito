@@ -1,25 +1,14 @@
-import {z} from 'zod';
 import {createServer} from '@kaito-http/core';
 import {createRouter, getContext} from './context';
 
-const router = createRouter()
-	.get('/', {
-		input: z.object({username: z.string()}),
-		async run({ctx, input}) {
-			return {
-				uptime: Math.floor(ctx.uptime / 1000),
-				username: input.username,
-			};
-		},
-	})
-	.merge(
-		'/prefix/',
-		createRouter().get('test', {
-			async run() {
-				return 'bruh' as const;
-			},
-		})
-	);
+const router = createRouter().get('/', {
+	async run({ctx}) {
+		return {
+			uptime: ctx.uptime,
+			time_now: Date.now(),
+		};
+	},
+});
 
 const server = createServer({
 	router,
