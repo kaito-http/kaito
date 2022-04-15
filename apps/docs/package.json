@@ -1,7 +1,7 @@
 {
 	"name": "@kaito-http/docs",
 	"private": true,
-	"version": "2.0.2",
+	"version": "2.1.0",
 	"main": "index.js",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
@@ -24,7 +24,6 @@
 	"homepage": "https://github.com/kaito-http/kaito",
 	"keywords": [
 		"typescript",
-		"fastify",
 		"http",
 		"framework"
 	],
