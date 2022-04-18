@@ -28,7 +28,7 @@ Kaito supports Router Merging, which is bringing one router's procedures into an
 import {v1} from './routers/v1';
 import {v2} from './routers/v1';
 
-export const api = createRouter().merge('/v1/', v1).merge('/v2/', v2);
+export const api = createRouter().merge('/v1', v1).merge('/v2', v2);
 ```
 
-You can expect all type information to be carried over, and query URLs
+You can expect all type information to be carried over as well as the route names and their prefixes.

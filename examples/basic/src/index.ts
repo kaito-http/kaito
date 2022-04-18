@@ -1,4 +1,5 @@
 import {createServer} from '@kaito-http/core';
+import {z} from 'zod';
 import {createRouter, getContext} from './context';
 
 const router = createRouter()
@@ -13,8 +14,12 @@ const router = createRouter()
 	.merge(
 		'/v2',
 		createRouter().get('/test', {
-			async run({ctx}) {
-				return ctx.uptime;
+			input: z.string(),
+			async run({ctx, input}) {
+				return {
+					uptime: ctx.uptime,
+					input,
+				};
 			},
 		})
 	);
