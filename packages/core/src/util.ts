@@ -8,6 +8,25 @@ export function getLastEntryInMultiHeaderValue(headerValue: string | string[]) {
 	return lastIndex === -1 ? normalized.trim() : normalized.slice(lastIndex + 1).trim();
 }
 
+type RemoveEndSlashes<T extends string> = T extends `${infer U}/` ? U : T;
+type AddStartSlashes<T extends string> = T extends `/${infer U}` ? `/${U}` : `/${T}`;
+
+export type NormalizePath<T extends string> = AddStartSlashes<RemoveEndSlashes<T>>;
+
+export function normalizePath<T extends string>(path: T): NormalizePath<T> {
+	let result: string = path;
+
+	if (!result.startsWith('/')) {
+		result = `/${result}`;
+	}
+
+	if (result.endsWith('/')) {
+		result = result.slice(-1);
+	}
+
+	return result as NormalizePath<T>;
+}
+
 // Type for import('http').METHODS
 export type Method =
 	| 'ACL'

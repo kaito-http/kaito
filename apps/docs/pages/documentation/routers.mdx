@@ -1,0 +1,34 @@
+import Callout from 'nextra-theme-docs/callout';
+
+# Routers
+
+Routers hold all of our procedures and their metadata. Cruically, they also provide a `.find()` method that Kaito's server uses to locate a procedure on each request.
+
+## Creating a Router
+
+Routers can be created with the `createRouter` function exported by `@kaito-http/core`. Example below:
+
+<Callout emoji="⚠">The example below is not the recommend approach, please continue reading afterwards</Callout>{' '}
+
+```ts
+import {createRouter} from '@kaito-http/core';
+
+const router = createRouter().get('/', {
+	// ...
+});
+```
+
+This will be an instance of `Router`, with a few TypeScript generics to store our procedure response types.
+
+## Router Merging
+
+Kaito supports Router Merging, which is bringing one router's procedures into another, with a prefix. This is incredibly useful, for example, for having multiple versions of an API.
+
+```ts
+import {v1} from './routers/v1';
+import {v2} from './routers/v1';
+
+export const api = createRouter().merge('/v1/', v1).merge('/v2/', v2);
+```
+
+You can expect all type information to be carried over, and query URLs

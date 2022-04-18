@@ -1,14 +1,23 @@
 import {createServer} from '@kaito-http/core';
 import {createRouter, getContext} from './context';
 
-const router = createRouter().get('/test', {
-	async run({ctx}) {
-		return {
-			uptime: ctx.uptime,
-			time_now: Date.now(),
-		};
-	},
-});
+const router = createRouter()
+	.get('/test', {
+		async run({ctx}) {
+			return {
+				uptime: ctx.uptime,
+				time_now: Date.now(),
+			};
+		},
+	})
+	.merge(
+		'/v2',
+		createRouter().get('/test', {
+			async run({ctx}) {
+				return ctx.uptime;
+			},
+		})
+	);
 
 const server = createServer({
 	router,

@@ -1,0 +1,36 @@
+import Link from 'next/link';
+
+# Procedures
+
+Procedures are the basic building blocks of Kaito. They represent a single HTTP route with an optional input schema and async execution logic.
+
+## Creating a Procedure
+
+Creating a procedure requires us to have a router already established. If you don't, please checkout the <Link href="/getting-started#concepts">getting started</Link> guide.
+
+Here's an extremely basic example of a ping/pong procedure.
+
+```ts
+const router = createRouter().get('/ping', {
+	async run() {
+		return 'PONG';
+	},
+});
+```
+
+## Input
+
+Procedures can also take an input schema provided by Zod. Internally, Kaito validates all request bodies so you can be absolutely certain you are processing the right data.
+
+```ts
+import {z} from 'zod';
+
+const router = createRouter().get('/echo', {
+	input: z.string(),
+	async run({input}) {
+		return input;
+	},
+});
+```
+
+Zod schemas can be of any shape or size, including objects, booleans, numbers and literals. For more reference, please read the <Link href="https://github.com/colinhacks/zod#basic-usage">Zod Documentation</Link>.

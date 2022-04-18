@@ -5,7 +5,7 @@ import {z, ZodTypeAny} from 'zod';
 import {WrappedError} from './error';
 import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';
-import {getInput, Method} from './util';
+import {getInput, Method, NormalizePath, normalizePath} from './util';
 
 export type GetContext<T> = (req: KaitoRequest, res: KaitoResponse) => Promise<T>;
 
@@ -25,14 +25,14 @@ export type Proc<Ctx, Result, Input extends z.ZodTypeAny | Never = Never> = Read
 	run(arg: ContextWithInput<Ctx, Input extends ZodTypeAny ? z.infer<Input> : undefined>): Promise<Result>;
 }>;
 
-export interface RouterProc<Path extends string = string, M extends Method = Method> {
+export interface RouterProc<Path extends string, M extends Method> {
 	method: M;
 	path: Path;
 	pattern: RegExp;
 }
 
 export type AnyProcs<Ctx> = {
-	[Path in string]: Proc<Ctx, unknown, z.ZodTypeAny> & RouterProc<Path>;
+	[Path in string]: Proc<Ctx, unknown, z.ZodTypeAny> & RouterProc<Path, Method>;
 };
 
 export type AnyRouter<Ctx> = Router<Ctx, AnyProcs<Ctx>>;
@@ -40,23 +40,6 @@ export type AnyRouter<Ctx> = Router<Ctx, AnyProcs<Ctx>>;
 export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
 	private readonly procs;
 	private readonly _procsArray;
-
-	/**
-	 * Ensures that the path does not start or end with a slash.
-	 * @param path
-	 * @private
-	 */
-	private static stripSlashes(path: string) {
-		if (path.startsWith('/')) {
-			path = path.slice(1);
-		}
-
-		if (path.endsWith('/')) {
-			path = path.slice(-1);
-		}
-
-		return path;
-	}
 
 	constructor(procs: Procs) {
 		this.procs = procs;
@@ -83,12 +66,14 @@ export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
 
 	private readonly create =
 		<M extends Method>(method: M) =>
-		<Path extends string, Result, Input extends z.ZodTypeAny>(path: Path, proc: Proc<Ctx, Result, Input>) => {
-			type Merged = Procs & Record<Path, typeof proc & RouterProc<Path, M>>;
+		<Path extends string, Result, Input extends z.ZodTypeAny>(
+			path: NormalizePath<Path>,
+			proc: Proc<Ctx, Result, Input>
+		) => {
+			type Merged = Procs & Record<NormalizePath<Path>, typeof proc & RouterProc<NormalizePath<Path>, M>>;
 
-			const stripped = Router.stripSlashes(path);
-
-			const pattern = new RegExp(`^/${stripped}/?$`, 'i');
+			const stripped = normalizePath(path);
+			const pattern = new RegExp(`^${stripped}/?$`, 'i');
 
 			const merged = {
 				...this.procs,
@@ -104,12 +89,14 @@ export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
 		};
 
 	public readonly merge = <Prefix extends string, NewCtx, NewProcs extends AnyProcs<NewCtx>>(
-		prefix: Prefix,
+		_prefix: NormalizePath<Prefix>,
 		router: Router<NewCtx, NewProcs>
 	) => {
+		const prefix = normalizePath(_prefix);
+
 		type MergedProcs = Procs & {
-			[P in `${Prefix}${Extract<keyof NewProcs, string>}`]: Omit<
-				NewProcs[P extends `${Prefix}${infer Rest}` ? Rest : never],
+			[P in `/${Prefix}${Extract<keyof NewProcs, string>}`]: Omit<
+				NewProcs[P extends `/${Prefix}${infer Rest}` ? Rest : never],
 				'path'
 			> & {
 				path: P;
@@ -117,7 +104,8 @@ export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
 		};
 
 		const newProcs = Object.entries(router.getProcs()).reduce((all, entry) => {
-			const [path, proc] = entry;
+			const [_path, proc] = entry;
+			const path = normalizePath(_path);
 
 			return {
 				...all,
