@@ -6,7 +6,7 @@ Routers hold all of our procedures and their metadata. Cruically, they also prov
 
 ## Creating a Router
 
-Routers can be created with the `createRouter` function exported by `@kaito-http/core`. Example below:
+Routers can be created as many times as you want in your app with the `createRouter` function exported by `@kaito-http/core`. Example below:
 
 <Callout emoji="⚠">The example below is not the recommend approach, please continue reading afterwards</Callout>{' '}
 
@@ -20,9 +20,13 @@ const router = createRouter().get('/', {
 
 This will be an instance of `Router`, with a few TypeScript generics to store our procedure response types.
 
+However, the recommended approach is to define, externally, a custom `createRouter` function that will include the type information from our `getContext` function.
+This is so that we do not have to copy and paste the type information into our `createRouter` function each time we would like to
+create another router.
+
 ## Router Merging
 
-Kaito supports Router Merging, which is bringing one router's procedures into another, with a prefix. This is incredibly useful, for example, for having multiple versions of an API.
+Kaito supports Router Merging, which is bringing one router's procedures into another, with a prefix. This is incredibly useful for larger apps, for example when you have multiple versions of an API.
 
 ```ts
 import {v1} from './routers/v1';
