@@ -15,7 +15,7 @@ const PoweredByVercel = () => (
 	</svg>
 );
 
-export default {
+const config = {
 	repository: 'https://github.com/kaito-http/kaito',
 	docsRepository: 'https://github.com/kaito-http/kaito',
 	branch: 'main',
@@ -38,3 +38,5 @@ export default {
 		</>
 	),
 };
+
+export default config;

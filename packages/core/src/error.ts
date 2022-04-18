@@ -1,13 +1,17 @@
 export class WrappedError<T> extends Error {
-	static from<T>(maybeError: T) {
+	public static maybe<T>(maybeError: T) {
 		if (maybeError instanceof Error) {
 			return maybeError;
 		}
 
-		return new WrappedError(maybeError);
+		return WrappedError.from(maybeError);
 	}
 
-	constructor(public readonly data: T) {
+	public static from<T>(data: T) {
+		return new WrappedError(data);
+	}
+
+	private constructor(public readonly data: T) {
 		super('Something was thrown, but it was not an instance of Error, so a WrappedError was created.');
 	}
 }

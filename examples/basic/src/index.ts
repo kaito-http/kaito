@@ -1,7 +1,7 @@
 import {createServer} from '@kaito-http/core';
 import {createRouter, getContext} from './context';
 
-const router = createRouter().get('/', {
+const router = createRouter().get('/test', {
 	async run({ctx}) {
 		return {
 			uptime: ctx.uptime,

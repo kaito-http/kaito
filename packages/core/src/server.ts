@@ -20,63 +20,110 @@ export type InferContext<T> = T extends GetContext<infer Value> ? Value : never;
 export type ContextWithInput<Ctx, Input> = {ctx: Ctx; input: Input};
 type Values<T> = T[keyof T];
 
-type Proc<Ctx, Result, Input extends z.ZodTypeAny | Never = Never> = Readonly<{
+export type Proc<Ctx, Result, Input extends z.ZodTypeAny | Never = Never> = Readonly<{
 	input?: Input;
 	run(arg: ContextWithInput<Ctx, Input extends ZodTypeAny ? z.infer<Input> : undefined>): Promise<Result>;
 }>;
 
-type ProcsInit<Ctx> = {
-	[Key in string]: Proc<Ctx, unknown, z.ZodTypeAny> & {
-		method: Method;
-		name: Key;
-	};
+export interface RouterProc<Path extends string = string, M extends Method = Method> {
+	method: M;
+	path: Path;
+	pattern: RegExp;
+}
+
+export type AnyProcs<Ctx> = {
+	[Path in string]: Proc<Ctx, unknown, z.ZodTypeAny> & RouterProc<Path>;
 };
 
-type AnyRouter<Ctx> = Router<Ctx, ProcsInit<Ctx>>;
+export type AnyRouter<Ctx> = Router<Ctx, AnyProcs<Ctx>>;
 
-export class Router<Ctx, Procs extends ProcsInit<Ctx>> {
-	private readonly procs: Procs;
+export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
+	private readonly procs;
+	private readonly _procsArray;
+
+	/**
+	 * Ensures that the path does not start or end with a slash.
+	 * @param path
+	 * @private
+	 */
+	private static stripSlashes(path: string) {
+		if (path.startsWith('/')) {
+			path = path.slice(1);
+		}
+
+		if (path.endsWith('/')) {
+			path = path.slice(-1);
+		}
+
+		return path;
+	}
 
 	constructor(procs: Procs) {
 		this.procs = procs;
+		this._procsArray = Object.values(procs);
 	}
 
 	getProcs() {
 		return this.procs;
 	}
 
+	find(method: Method, url: string) {
+		for (const proc of this._procsArray) {
+			if (proc.method !== method) {
+				continue;
+			}
+
+			if (proc.pattern.test(url)) {
+				return proc;
+			}
+		}
+
+		return null;
+	}
+
 	private readonly create =
 		<M extends Method>(method: M) =>
-		<Name extends string, Result, Input extends z.ZodTypeAny>(name: Name, proc: Proc<Ctx, Result, Input>) => {
-			type Merged = Procs & Record<Name, typeof proc & {method: M; name: Name}>;
+		<Path extends string, Result, Input extends z.ZodTypeAny>(path: Path, proc: Proc<Ctx, Result, Input>) => {
+			type Merged = Procs & Record<Path, typeof proc & RouterProc<Path, M>>;
 
-			return new Router<Ctx, Merged>({
+			const stripped = Router.stripSlashes(path);
+
+			const pattern = new RegExp(`^/${stripped}/?$`, 'i');
+
+			const merged = {
 				...this.procs,
-				[name]: {...proc, method, name},
-			} as Merged);
+				[path]: {
+					...proc,
+					method,
+					path,
+					pattern,
+				},
+			};
+
+			return new Router<Ctx, Merged>(merged);
 		};
 
-	public readonly merge = <Prefix extends string, NewCtx, NewProcs extends ProcsInit<NewCtx>>(
+	public readonly merge = <Prefix extends string, NewCtx, NewProcs extends AnyProcs<NewCtx>>(
 		prefix: Prefix,
 		router: Router<NewCtx, NewProcs>
 	) => {
 		type MergedProcs = Procs & {
-			[Key in `${Prefix}${Extract<keyof NewProcs, string>}`]: Omit<
-				NewProcs[Key extends `${Prefix}${infer Rest}` ? Rest : never],
-				'name'
+			[P in `${Prefix}${Extract<keyof NewProcs, string>}`]: Omit<
+				NewProcs[P extends `${Prefix}${infer Rest}` ? Rest : never],
+				'path'
 			> & {
-				name: Key;
+				path: P;
 			};
 		};
 
 		const newProcs = Object.entries(router.getProcs()).reduce((all, entry) => {
-			const [name, proc] = entry;
+			const [path, proc] = entry;
 
 			return {
 				...all,
-				[`${prefix}${name}`]: {
+				[`${prefix}${path}`]: {
 					...proc,
-					name: `${prefix}${name}`,
+					path: `${prefix}${path}`,
 				},
 			};
 		}, {}) as MergedProcs;
@@ -115,10 +162,10 @@ export function createRouter<Ctx>() {
 export type InferAPIResponseType<
 	R extends AnyRouter<unknown>,
 	M extends Method,
-	Path extends Extract<Values<ReturnType<R['getProcs']>>, {method: M}>['name']
+	Path extends Extract<Values<ReturnType<R['getProcs']>>, {method: M}>['path']
 > = ReturnType<ReturnType<R['getProcs']>[Path]['run']> extends Promise<infer V> ? V : never;
 
-export function createServer<Ctx, R extends Router<Ctx, ProcsInit<Ctx>>>(config: {
+export function createServer<Ctx, R extends Router<Ctx, AnyProcs<Ctx>>>(config: {
 	getContext: GetContext<Ctx>;
 	router: R;
 	onError(error: {error: Error; req: KaitoRequest; res: KaitoResponse}): Promise<{status: number; message: string}>;
@@ -132,16 +179,14 @@ export function createServer<Ctx, R extends Router<Ctx, ProcsInit<Ctx>>>(config:
 		}
 	};
 
-	const tree = config.router.getProcs();
-
-	const server = http.createServer(async (incomingMessage, serverResponse) => {
+	return http.createServer(async (incomingMessage, serverResponse) => {
 		const start = Date.now();
 
 		const req = new KaitoRequest(incomingMessage);
 		const res = new KaitoResponse(serverResponse);
 
 		try {
-			const handler = tree[req.url.pathname];
+			const handler = config.router.find(req.method, req.url.pathname);
 
 			if (!handler) {
 				throw new KaitoError(404, `Cannot ${req.method} this route.`);
@@ -168,7 +213,7 @@ export function createServer<Ctx, R extends Router<Ctx, ProcsInit<Ctx>>>(config:
 				return;
 			}
 
-			const {status, message} = await config.onError({error: WrappedError.from(error), req, res}).catch(() => ({
+			const {status, message} = await config.onError({error: WrappedError.maybe(error), req, res}).catch(() => ({
 				status: 500,
 				message: 'Something went wrong',
 			}));
@@ -183,6 +228,4 @@ export function createServer<Ctx, R extends Router<Ctx, ProcsInit<Ctx>>>(config:
 			log(`${req.method} ${req.fullURL} ${res.raw.statusCode} ${finish - start}ms`);
 		}
 	});
-
-	return server;
 }

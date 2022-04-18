@@ -20,7 +20,8 @@
 		"emitDecoratorMetadata": true,
 		"baseUrl": "packages",
 		"importHelpers": true,
-		"downlevelIteration": true
+		"downlevelIteration": true,
+		"jsx": "react"
 	},
 	"exclude": ["node_modules", "dist", "__tests__"]
 }
