@@ -93,11 +93,9 @@ export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
 		};
 
 	public readonly merge = <Prefix extends string, NewCtx, NewProcs extends AnyProcs<NewCtx>>(
-		_prefix: NormalizePath<Prefix>,
+		prefix: NormalizePath<Prefix>,
 		router: Router<NewCtx, NewProcs>
 	) => {
-		const prefix = normalizePath(_prefix);
-
 		type MergedProcs = Procs & {
 			[P in Extract<keyof NewProcs, string> as `/${Prefix}${P}`]: Omit<NewProcs[P], 'path'> & {
 				path: P;
@@ -106,7 +104,7 @@ export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
 
 		const newProcs = Object.entries(router.getProcs()).reduce((all, entry) => {
 			const [path, proc] = entry;
-			const newPath = `${prefix}${normalizePath(path)}`;
+			const newPath = `${prefix}${path}`;
 
 			return {
 				...all,
