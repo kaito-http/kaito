@@ -16,13 +16,19 @@ const PoweredByVercel = () => (
 );
 
 const config = {
-	repository: 'https://github.com/kaito-http/kaito',
-	docsRepository: 'https://github.com/kaito-http/kaito',
-	branch: 'main',
-	path: '/packages/docs',
+	projectLink: 'https://github.com/kaito-http/kaito',
+	docsRepositoryBase: 'https://github.com/kaito-http/kaito/blob/master/apps/docs/pages',
+	branch: 'master',
+	search: true,
+	unstable_flexsearch: true,
+	floatTOC: true,
 	titleSuffix: ' – Kaito',
 	nextLinks: false,
 	prevLinks: false,
+	feedbackLink() {
+		return 'Feedback';
+	},
+	feedbackLabels: 'docs-feedback',
 	footerText: (
 		<a href="https://vercel.com?utm_source=kaito-http&utm_campaign=oss">
 			<PoweredByVercel />

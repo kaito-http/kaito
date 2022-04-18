@@ -24,6 +24,24 @@ However, the recommended approach is to define, externally, a custom `createRout
 This is so that we do not have to copy and paste the type information into our `createRouter` function each time we would like to
 create another router.
 
+We can do this by exporting another function in our `context.ts` file called `createRouter` or `router` (or something like that).
+
+```ts
+import {createRouter, createGetContext, InferContext} from '@kaito-http/core';
+
+export const getContext = createGetContext(async (req, res) => {
+	// ...
+});
+
+export type AppContext = InferContext<typeof getContext>;
+
+export function router() {
+	return create<AppContext>();
+}
+```
+
+And then you are safe to use the `router` function around your app, which will guarantee context type safety.
+
 ## Router Merging
 
 Kaito supports Router Merging, which is bringing one router's procedures into another, with a prefix. This is incredibly useful for larger apps, for example when you have multiple versions of an API.

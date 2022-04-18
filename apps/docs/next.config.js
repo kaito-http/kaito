@@ -1,2 +1,10 @@
-// eslint-disable-next-line
-module.exports = require('nextra')('nextra-theme-docs', './theme.config.js')();
+/* eslint-disable */
+
+const withNextra = require('nextra')({
+	theme: 'nextra-theme-docs',
+	themeConfig: './theme.config.js',
+	unstable_flexsearch: true,
+	unstable_staticImage: true,
+});
+
+module.exports = withNextra({});
