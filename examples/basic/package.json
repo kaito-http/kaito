@@ -6,12 +6,9 @@
 		"zod": "^3.14.4"
 	},
 	"devDependencies": {
-		"ts-node-dev": "^1.1.8",
-		"tsup": "^5.12.5"
+		"ts-node-dev": "^1.1.8"
 	},
 	"scripts": {
-		"start": "node dist/index.js",
-		"build": "tsup-node src/index.ts",
 		"dev": "tsnd --transpile-only src/index.ts"
 	},
 	"author": "Alistair Smith <hi@alistair.sh>",
