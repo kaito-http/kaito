@@ -24,6 +24,8 @@ const router = createRouter()
 		})
 	);
 
+router.getProcs();
+
 const server = createServer({
 	router,
 	getContext,

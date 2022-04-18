@@ -99,7 +99,7 @@ export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
 		const prefix = normalizePath(_prefix);
 
 		type MergedProcs = Procs & {
-			[P in Extract<keyof NewProcs, 'string'> as `/${Prefix}${P}`]: Omit<NewProcs[P], 'path'> & {
+			[P in Extract<keyof NewProcs, string> as `/${Prefix}${P}`]: Omit<NewProcs[P], 'path'> & {
 				path: P;
 			};
 		};
