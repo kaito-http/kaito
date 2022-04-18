@@ -3,6 +3,8 @@ import {TLSSocket} from 'tls';
 import {getLastEntryInMultiHeaderValue, Method} from './util';
 
 export class KaitoRequest {
+	private _url: URL | null = null;
+
 	constructor(public readonly raw: IncomingMessage) {}
 
 	get fullURL() {
@@ -10,7 +12,13 @@ export class KaitoRequest {
 	}
 
 	get url() {
-		return new URL(this.fullURL);
+		if (this._url) {
+			return this._url;
+		}
+
+		this._url = new URL(this.fullURL);
+
+		return this._url;
 	}
 
 	get method() {

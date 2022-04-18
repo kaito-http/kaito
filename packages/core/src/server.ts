@@ -30,6 +30,7 @@ export type ContextWithInput<Ctx, Params extends Record<string, string>, Input> 
 	params: Params;
 	input: Input;
 };
+
 type Values<T> = T[keyof T];
 
 export type Proc<
@@ -191,7 +192,7 @@ export function createServer<Ctx, R extends Router<Ctx, AnyProcs<Ctx>>>(config: 
 		const res = new KaitoResponse(serverResponse);
 
 		try {
-			const handler = config.router.find(req.method, req.url.pathname);
+			const handler = config.router.find(req.method, req.raw.url!);
 
 			if (!handler) {
 				throw new KaitoError(404, `Cannot ${req.method} this route.`);
