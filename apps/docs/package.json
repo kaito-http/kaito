@@ -9,8 +9,6 @@
 		"next": "^12.1.5",
 		"nextra": "alpha",
 		"nextra-theme-docs": "alpha",
-		"prism-react-renderer": "^1.3.1",
-		"prismjs": "^1.27.0",
 		"react": "^18.0.0",
 		"react-dom": "^18.0.0"
 	},
