@@ -20,10 +20,10 @@ export type InferContext<T> = T extends GetContext<infer Value> ? Value : never;
 export type ContextWithInput<Ctx, Input> = {ctx: Ctx; input: Input};
 type Values<T> = T[keyof T];
 
-export type Proc<Ctx, Result, Input extends z.ZodTypeAny | Never = Never> = Readonly<{
+export type Proc<Ctx, Result, Input extends z.ZodTypeAny | Never = Never> = {
 	input?: Input;
 	run(arg: ContextWithInput<Ctx, Input extends ZodTypeAny ? z.infer<Input> : undefined>): Promise<Result>;
-}>;
+};
 
 export interface RouterProc<Path extends string, M extends Method> {
 	method: M;
@@ -40,6 +40,11 @@ export type AnyRouter<Ctx> = Router<Ctx, AnyProcs<Ctx>>;
 export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
 	private readonly procs;
 	private readonly _procsArray;
+
+	private static patternize(path: string) {
+		const normalized = normalizePath(path);
+		return new RegExp(`^${normalized}/?$`, 'i');
+	}
 
 	constructor(procs: Procs) {
 		this.procs = procs;
@@ -72,8 +77,7 @@ export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
 		) => {
 			type Merged = Procs & Record<NormalizePath<Path>, typeof proc & RouterProc<NormalizePath<Path>, M>>;
 
-			const stripped = normalizePath(path);
-			const pattern = new RegExp(`^${stripped}/?$`, 'i');
+			const pattern = Router.patternize(path);
 
 			const merged = {
 				...this.procs,
@@ -95,8 +99,8 @@ export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
 		const prefix = normalizePath(_prefix);
 
 		type MergedProcs = Procs & {
-			[P in `/${Prefix}${Extract<keyof NewProcs, string>}`]: Omit<
-				NewProcs[P extends `/${Prefix}${infer Rest}` ? Rest : never],
+			[P in NormalizePath<`${Prefix}${Extract<keyof NewProcs, string>}`>]: Omit<
+				NewProcs[P extends NormalizePath<`${Prefix}${infer Rest}`> ? Rest : never],
 				'path'
 			> & {
 				path: P;
@@ -104,14 +108,15 @@ export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
 		};
 
 		const newProcs = Object.entries(router.getProcs()).reduce((all, entry) => {
-			const [_path, proc] = entry;
-			const path = normalizePath(_path);
+			const [path, proc] = entry;
+			const newPath = `${prefix}${normalizePath(path)}`;
 
 			return {
 				...all,
 				[`${prefix}${path}`]: {
 					...proc,
-					path: `${prefix}${path}`,
+					path: newPath,
+					pattern: Router.patternize(newPath),
 				},
 			};
 		}, {}) as MergedProcs;
