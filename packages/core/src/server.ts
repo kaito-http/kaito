@@ -7,6 +7,14 @@ import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';
 import {getInput, Method, NormalizePath, normalizePath} from './util';
 
+type ExtractRouteParams<T extends string> = string extends T
+	? Record<string, string>
+	: T extends `${string}:${infer Param}/${infer Rest}`
+	? {[k in Param | keyof ExtractRouteParams<Rest>]: string}
+	: T extends `${string}:${infer Param}`
+	? {[k in Param]: string}
+	: {};
+
 export type GetContext<T> = (req: KaitoRequest, res: KaitoResponse) => Promise<T>;
 
 type Never = [never];
@@ -17,12 +25,21 @@ export function createGetContext<T>(getContext: GetContext<T>) {
 
 export type InferContext<T> = T extends GetContext<infer Value> ? Value : never;
 
-export type ContextWithInput<Ctx, Input> = {ctx: Ctx; input: Input};
+export type ContextWithInput<Ctx, Params extends Record<string, string>, Input> = {
+	ctx: Ctx;
+	params: Params;
+	input: Input;
+};
 type Values<T> = T[keyof T];
 
-export type Proc<Ctx, Result, Input extends z.ZodTypeAny | Never = Never> = {
+export type Proc<
+	Ctx,
+	Result,
+	Params extends Record<string, string> = Record<never, string>,
+	Input extends z.ZodTypeAny | Never = Never
+> = {
 	input?: Input;
-	run(arg: ContextWithInput<Ctx, Input extends ZodTypeAny ? z.infer<Input> : undefined>): Promise<Result>;
+	run(arg: ContextWithInput<Ctx, Params, Input extends ZodTypeAny ? z.infer<Input> : undefined>): Promise<Result>;
 };
 
 export interface RouterProc<Path extends string, M extends Method> {
@@ -32,7 +49,7 @@ export interface RouterProc<Path extends string, M extends Method> {
 }
 
 export type AnyProcs<Ctx> = {
-	[Path in string]: Proc<Ctx, unknown, z.ZodTypeAny> & RouterProc<Path, Method>;
+	[Path in string]: Proc<Ctx, unknown, Record<string, string>, z.ZodTypeAny> & RouterProc<Path, Method>;
 };
 
 export type AnyRouter<Ctx> = Router<Ctx, AnyProcs<Ctx>>;
@@ -73,7 +90,7 @@ export class Router<Ctx, Procs extends AnyProcs<Ctx>> {
 		<M extends Method>(method: M) =>
 		<Path extends string, Result, Input extends z.ZodTypeAny>(
 			path: NormalizePath<Path>,
-			proc: Proc<Ctx, Result, Input>
+			proc: Proc<Ctx, Result, ExtractRouteParams<Path>, Input>
 		) => {
 			type Merged = Procs & Record<NormalizePath<Path>, typeof proc & RouterProc<NormalizePath<Path>, M>>;
 
@@ -183,7 +200,11 @@ export function createServer<Ctx, R extends Router<Ctx, AnyProcs<Ctx>>>(config: 
 			const input = handler.input?.parse((await getInput(req)) ?? undefined) as unknown;
 
 			const context = await config.getContext(req, res);
-			const data = await handler.run({ctx: context, input});
+			const data = await handler.run({
+				ctx: context,
+				input,
+				params: {},
+			});
 
 			res.json({
 				success: true,
