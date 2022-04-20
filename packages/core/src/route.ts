@@ -8,13 +8,7 @@ export type RouteArgument<Path extends string, Context, Input extends z.ZodSchem
 	params: ExtractRouteParams<Path>;
 };
 
-export interface Route<
-	Result,
-	Path extends string,
-	Method extends HTTPMethod,
-	Context,
-	Input extends z.ZodSchema = never
-> {
+export interface Route<Result, Path extends string, Method extends HTTPMethod, Context, Input extends z.ZodSchema> {
 	input?: Input;
 	method: Method;
 	run(arg: RouteArgument<Path, Context, Input>): Promise<Result>;
