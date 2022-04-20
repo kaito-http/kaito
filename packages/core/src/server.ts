@@ -15,10 +15,16 @@ export interface ServerConfig<Context> {
 	}): Promise<KaitoError | {status: number; message: string}>;
 }
 
-export function createServer<Context>(config: ServerConfig<Context>) {
+export function createFMWServer<Context>(config: ServerConfig<Context>) {
 	const fmw = config.router.toFindMyWay(config);
 
-	return http.createServer((req, res) => {
+	const server = http.createServer((req, res) => {
 		fmw.lookup(req, res);
 	});
+
+	return {server, fmw};
+}
+
+export function createServer<Context>(config: ServerConfig<Context>) {
+	return createFMWServer(config).server;
 }

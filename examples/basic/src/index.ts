@@ -1,13 +1,41 @@
-import {createServer} from '@kaito-http/core';
+import {createServer, KaitoError} from '@kaito-http/core';
+import {z} from 'zod';
 import {createRouter, getContext} from './context';
 
-const router = createRouter().get('/:id', {
+const users = createRouter().get('/:id', {
 	async run({params}) {
 		return params;
 	},
 });
 
-const server = createServer({
+const v1 = createRouter()
+	.get('/time', {
+		async run() {
+			return Date.now();
+		},
+	})
+	.get('/throw', {
+		async run() {
+			throw new KaitoError(400, 'Something was intentionally thrown');
+		},
+	})
+	.get('/echo', {
+		input: z.unknown(),
+		async run({input}) {
+			return input;
+		},
+	})
+	.merge('/users', users);
+
+const router = createRouter()
+	.get('/uptime', {
+		async run({ctx}) {
+			return ctx.uptime;
+		},
+	})
+	.merge('/v1', v1);
+
+const [server, tree] = createServer({
 	router,
 	getContext,
 	async onError({error}) {
@@ -20,4 +48,6 @@ const server = createServer({
 	},
 });
 
-server.listen(8080);
+server.listen(8080, () => {
+	console.log(tree());
+});

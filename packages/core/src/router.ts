@@ -41,7 +41,7 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 			const input = options.route.input?.parse(body) ?? (undefined as never);
 
 			const result = await options.route.run({
-				context,
+				ctx: context,
 				input,
 				params: options.params as ExtractRouteParams<Path>,
 			});
@@ -88,16 +88,33 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		this.routes = routes;
 	}
 
+	merge<Prefix extends string, NewRoutes extends RoutesInit<Context>>(
+		prefix: NormalizePath<Prefix>,
+		router: Router<Context, NewRoutes>
+	) {
+		type Merged = Routes & {
+			[Path in Extract<keyof NewRoutes, string> as NormalizePath<`${Prefix}${Path}`>]: NewRoutes[Path] & {
+				path: Path;
+			};
+		};
+
+		const newRoutes = Object.fromEntries(Object.entries(router.routes).map(([k, v]) => [`${prefix}${k}`, v]));
+
+		return new Router<Context, Merged>({
+			...this.routes,
+			...newRoutes,
+		} as Merged);
+	}
+
 	toFindMyWay(server: ServerConfig<Context>): Instance<fmw.HTTPVersion.V1> {
 		const instance = fmw({
-			onBadUrl(path, incomingMessage, serverResponse) {
-				const req = new KaitoRequest(incomingMessage);
+			defaultRoute(req, serverResponse) {
 				const res = new KaitoResponse(serverResponse);
 
-				res.json({
+				res.status(404).json({
 					success: false,
 					data: null,
-					message: `Cannot ${req.method} ${path}`,
+					message: `Cannot ${req.method as HTTPMethod} ${req.url ?? '/'}`,
 				});
 			},
 		});
@@ -117,25 +134,24 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		return instance;
 	}
 
-	private make<M extends HTTPMethod>(method: M) {
+	private make<Method extends HTTPMethod>(method: Method) {
 		return <Result, Path extends string, Input extends z.ZodSchema = never>(
 			path: NormalizePath<Path>,
-			route: Omit<Route<Result, Path, M, Context, Input>, 'method'>
+			route: Omit<Route<Result, NormalizePath<Path>, Method, Context, Input>, 'method'>
 		) => {
 			const mergedRoute = {
 				...route,
 				method,
 			};
 
-			return new Router<
-				Context,
-				Routes & {
-					[key in Path]: Route<Result, Path, M, Context, Input>;
-				}
-			>({
+			type Merged = Routes & {
+				[P in Path as NormalizePath<P>]: Route<Result, NormalizePath<P>, Method, Context, Input>;
+			};
+
+			return new Router<Context, Merged>({
 				...this.routes,
 				[path]: mergedRoute,
-			});
+			} as Merged);
 		};
 	}
 }

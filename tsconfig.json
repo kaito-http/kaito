@@ -23,5 +23,5 @@
 		"downlevelIteration": true,
 		"jsx": "react"
 	},
-	"exclude": ["node_modules", "dist", "__tests__"]
+	"exclude": ["node_modules", "dist"]
 }

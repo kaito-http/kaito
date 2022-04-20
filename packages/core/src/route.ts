@@ -3,7 +3,7 @@ import {z} from 'zod';
 import {ExtractRouteParams} from './util';
 
 export type RouteArgument<Path extends string, Context, Input extends z.ZodSchema> = {
-	context: Context;
+	ctx: Context;
 	input: z.infer<Input>;
 	params: ExtractRouteParams<Path>;
 };

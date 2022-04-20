@@ -1,25 +1,28 @@
 {
 	"name": "@kaito-http/examples-basic",
-	"packageManager": "yarn@3.1.0",
-	"dependencies": {
-		"@kaito-http/core": "workspace:^",
-		"zod": "^3.14.4"
-	},
-	"devDependencies": {
-		"ts-node-dev": "^1.1.8"
-	},
-	"scripts": {
-		"dev": "tsnd --transpile-only src/index.ts"
-	},
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"description": "Functional HTTP Framework for TypeScript",
 	"homepage": "https://github.com/kaito-http/kaito",
+	"license": "MIT",
+	"repository": "https://github.com/kaito-http/kaito",
+	"version": "2.2.7",
+	"scripts": {
+		"dev": "tsnd --transpile-only src/index.ts",
+		"build": "yarn tsc",
+		"start": "node dist/index.js"
+	},
 	"keywords": [
 		"typescript",
 		"http",
 		"framework"
 	],
-	"license": "MIT",
-	"repository": "https://github.com/kaito-http/kaito",
-	"version": "2.2.7"
+	"dependencies": {
+		"@kaito-http/core": "workspace:^",
+		"zod": "^3.14.4"
+	},
+	"devDependencies": {
+		"ts-node-dev": "^1.1.8",
+		"typescript": "^4.6.3"
+	},
+	"packageManager": "yarn@3.1.0"
 }
