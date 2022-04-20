@@ -19,6 +19,7 @@ module.exports = {
 		'@typescript-eslint/triple-slash-reference': 'off',
 		'@typescript-eslint/naming-convention': 'off',
 		'operator-linebreak': 'off',
+		'no-mixed-spaces-and-tabs': 'off',
 		'@typescript-eslint/ban-types': [
 			'error',
 			{

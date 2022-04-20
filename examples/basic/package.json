@@ -17,6 +17,7 @@
 		"framework"
 	],
 	"dependencies": {
+		"@kaito-http/client": "workspace:^",
 		"@kaito-http/core": "workspace:^",
 		"zod": "^3.14.4"
 	},

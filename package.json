@@ -30,8 +30,8 @@
 		"dev": "preconstruct dev",
 		"docs:dev": "yarn workspace @kaito-http/docs dev",
 		"docs:build": "yarn workspace @kaito-http/docs build",
-		"release": "yarn constraints --fix && yarn build && yarn workspace @kaito-http/core npm publish --access public",
-		"build": "preconstruct build"
+		"build": "preconstruct build",
+		"release": "yarn constraints --fix && yarn build && yarn workspace foreach --include packages/* npm publish --access-publish"
 	},
 	"packageManager": "yarn@3.1.0",
 	"preconstruct": {

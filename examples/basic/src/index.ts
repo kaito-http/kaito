@@ -3,13 +3,22 @@ import {z} from 'zod';
 import {createRouter, getContext} from './context';
 
 const users = createRouter().get('/:id', {
+	input: z.null(),
 	async run({params}) {
-		return params;
+		return {
+			user_id: params.id,
+			prop: true,
+		};
 	},
 });
 
 const v1 = createRouter()
 	.get('/time', {
+		async run() {
+			return Date.now();
+		},
+	})
+	.post('/time', {
 		async run() {
 			return Date.now();
 		},
@@ -49,3 +58,5 @@ const server = createServer({
 });
 
 server.listen(8080);
+
+export type App = typeof router;
