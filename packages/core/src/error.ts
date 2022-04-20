@@ -15,3 +15,9 @@ export class WrappedError<T> extends Error {
 		super('Something was thrown, but it was not an instance of Error, so a WrappedError was created.');
 	}
 }
+
+export class KaitoError extends Error {
+	constructor(public readonly status: number, message: string) {
+		super(message);
+	}
+}

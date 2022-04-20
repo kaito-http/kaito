@@ -43,7 +43,7 @@ Context is a variable that is generated on every single request. It is up to dev
 Firstly, we need to setup our context. You can put this in a `context.ts` file, for example.
 
 ```typescript
-import {createGetContext, InferContext, createRouter} from '@kaito-http/core';
+import {createGetContext, InferContext, Router} from '@kaito-http/core';
 
 // Define the time that we started the server at
 const serverStarted = Date.now();
@@ -60,7 +60,7 @@ export type AppContext = InferContext<typeof getContext>;
 
 // Define a context-typed router
 export function router() {
-	return createRouter<AppContext>();
+	return Router.create<AppContext>();
 }
 ```
 

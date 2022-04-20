@@ -1,6 +1,7 @@
+import {HTTPMethod} from 'find-my-way';
 import {IncomingMessage} from 'http';
 import {TLSSocket} from 'tls';
-import {getLastEntryInMultiHeaderValue, Method} from './util';
+import {getLastEntryInMultiHeaderValue} from './util';
 
 export class KaitoRequest {
 	private _url: URL | null = null;
@@ -26,7 +27,7 @@ export class KaitoRequest {
 			throw new Error('Request method is not defined, somehow...');
 		}
 
-		return this.raw.method as Method;
+		return this.raw.method as HTTPMethod;
 	}
 
 	get protocol(): 'http' | 'https' {

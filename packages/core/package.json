@@ -32,6 +32,7 @@
 		"framework"
 	],
 	"dependencies": {
+		"find-my-way": "^5.5.0",
 		"raw-body": "^2.5.1"
 	}
 }
