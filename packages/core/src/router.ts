@@ -108,6 +108,7 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 
 	toFindMyWay(server: ServerConfig<Context>): Instance<fmw.HTTPVersion.V1> {
 		const instance = fmw({
+			ignoreTrailingSlash: true,
 			defaultRoute(req, serverResponse) {
 				const res = new KaitoResponse(serverResponse);
 
