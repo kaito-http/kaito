@@ -35,7 +35,7 @@ const router = createRouter()
 	})
 	.merge('/v1', v1);
 
-const [server, tree] = createServer({
+const server = createServer({
 	router,
 	getContext,
 	async onError({error}) {
@@ -48,6 +48,4 @@ const [server, tree] = createServer({
 	},
 });
 
-server.listen(8080, () => {
-	console.log(tree());
-});
+server.listen(8080);

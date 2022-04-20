@@ -2,5 +2,6 @@
 	"index": "Overview",
 	"context": "Context",
 	"routers": "Routers",
-	"procedures": "Procedures"
+	"procedures": "Procedures",
+	"server": "Server"
 }

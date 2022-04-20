@@ -1,0 +1,23 @@
+# Server
+
+The `createServer` function is a very minimal part of Kaito, it is almost not worth writing docs for it as it simply wraps `http.createServer`.
+
+As of version `2.3.0`, kaito implemented `find-my-way` which massively improves performance, so we expose the internal fmw instance if you would like to access it for whatever reason.
+
+To use it, simply replace your `createServer` import and call with `createFMWServer`.
+
+Below is an example of using `find-my-way` to pretty print a list of all available routes.
+
+```ts
+import {createFMWServer} from '@kaito-http/core';
+
+const {server, fmw} = createFMWServer({
+	getContext,
+	router,
+	// ...
+});
+
+server.listen(8080, () => {
+	console.log(fmw.prettyPrint());
+});
+```
