@@ -169,7 +169,9 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 			path: Path,
 			route: Omit<Route<Result, Path, Method, Context, Input>, 'method'>
 		) => {
-			const addedRoute: Route<Result, Path, Method, Context, Input> = {
+			type R = Route<Result, Path, Method, Context, Input>;
+
+			const addedRoute: R = {
 				...route,
 				method,
 			};
@@ -177,13 +179,15 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 			const merged = {
 				...this.routes,
 				[path]: addedRoute,
-			} as unknown as Routes &
-				(
-					| NoEmpty<Pick<Routes, Path>>
-					| {
-							[key in Path]: Route<Result, Path, Method, Context, Input>;
-					  }
-				);
+			} as unknown as Path extends keyof Routes
+				?
+						| NoEmpty<Pick<Routes, Path>>
+						| {
+								[key in Path]: R;
+						  }
+				: Routes & {
+						[key in Path]: R;
+				  };
 
 			return this._copy(merged);
 		};
@@ -194,22 +198,3 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
  * @deprecated Please use Router#create instead
  */
 export const createRouter = Router.create;
-
-const g = Router.create()
-	.get('/', {
-		async run() {
-			return true as const;
-		},
-	})
-	.post('/', {
-		async run() {
-			return false as const;
-		},
-	})
-	.delete('/bruh', {
-		async run() {
-			return false as const;
-		},
-	});
-
-g.routes['/'];
