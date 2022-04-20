@@ -23,7 +23,7 @@ Kaito is very simple to use, it revolves around a few basic concepts. Before we 
 A procedure is a function that is available on the API. Simply put, it's something that will exist over HTTP and returns a single value that will be JSON encoded. Below is a basic example
 
 ```ts
-export const getUsers = router().get('users', {
+export const getUsers = router().get('/users', {
 	async run() {
 		return database.getUsers();
 	},
