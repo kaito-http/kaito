@@ -93,9 +93,13 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		router: Router<Context, NewRoutes>
 	) {
 		type Merged = Routes & {
-			[Path in Extract<keyof NewRoutes, string> as NormalizePath<`${Prefix}${Path}`>]: NewRoutes[Path] & {
-				path: Path;
-			};
+			[Path in Extract<keyof NewRoutes, string> as `/${Prefix}${Path}`]: Route<
+				Context,
+				`/${Prefix}${Path}`,
+				HTTPMethod,
+				Context,
+				z.ZodSchema
+			>;
 		};
 
 		const newRoutes = Object.fromEntries(Object.entries(router.routes).map(([k, v]) => [`${prefix}${k}`, v]));
