@@ -16,7 +16,7 @@ export interface ServerConfig<Context> {
 }
 
 export function createServer<Context>(config: ServerConfig<Context>) {
-	const fmw = config.router.toFindMyWay(config.getContext);
+	const fmw = config.router.toFindMyWay(config);
 
 	return http.createServer((req, res) => {
 		fmw.lookup(req, res);
