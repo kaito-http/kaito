@@ -15,11 +15,11 @@ export type RoutesInit<Context, Paths extends string = string> = {
 };
 
 export class Router<Context, Routes extends RoutesInit<Context>> {
-	public static create<Context>() {
+	public static 'create'<Context>() {
 		return new Router<Context, {}>({});
 	}
 
-	private static async handle<
+	private static async 'handle'<
 		Result,
 		Path extends string,
 		Method extends HTTPMethod,
@@ -76,19 +76,47 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		}
 	}
 
-	public readonly routes: Routes;
+	public readonly 'routes': Routes;
 
-	public readonly get = this.make('GET');
-	public readonly post = this.make('POST');
-	public readonly head = this.make('HEAD');
-	public readonly put = this.make('PUT');
-	public readonly patch = this.make('PATCH');
+	public readonly 'acl' = this.make('ACL');
+	public readonly 'bind' = this.make('BIND');
+	public readonly 'checkout' = this.make('CHECKOUT');
+	public readonly 'connect' = this.make('CONNECT');
+	public readonly 'copy' = this.make('COPY');
+	public readonly 'delete' = this.make('DELETE');
+	public readonly 'get' = this.make('GET');
+	public readonly 'head' = this.make('HEAD');
+	public readonly 'link' = this.make('LINK');
+	public readonly 'lock' = this.make('LOCK');
+	public readonly 'm-search' = this.make('M-SEARCH');
+	public readonly 'mkactivity' = this.make('MKACTIVITY');
+	public readonly 'mkcalendar' = this.make('MKCALENDAR');
+	public readonly 'mkcol' = this.make('MKCOL');
+	public readonly 'move' = this.make('MOVE');
+	public readonly 'notify' = this.make('NOTIFY');
+	public readonly 'options' = this.make('OPTIONS');
+	public readonly 'patch' = this.make('PATCH');
+	public readonly 'post' = this.make('POST');
+	public readonly 'propfind' = this.make('PROPFIND');
+	public readonly 'proppatch' = this.make('PROPPATCH');
+	public readonly 'purge' = this.make('PURGE');
+	public readonly 'put' = this.make('PUT');
+	public readonly 'rebind' = this.make('REBIND');
+	public readonly 'report' = this.make('REPORT');
+	public readonly 'search' = this.make('SEARCH');
+	public readonly 'source' = this.make('SOURCE');
+	public readonly 'subscribe' = this.make('SUBSCRIBE');
+	public readonly 'trace' = this.make('TRACE');
+	public readonly 'unbind' = this.make('UNBIND');
+	public readonly 'unlink' = this.make('UNLINK');
+	public readonly 'unlock' = this.make('UNLOCK');
+	public readonly 'unsubscribe' = this.make('UNSUBSCRIBE');
 
-	private constructor(routes: Routes) {
+	private 'constructor'(routes: Routes) {
 		this.routes = routes;
 	}
 
-	merge<Prefix extends string, NewRoutes extends RoutesInit<Context>>(
+	'merge'<Prefix extends string, NewRoutes extends RoutesInit<Context>>(
 		prefix: NormalizePath<Prefix>,
 		router: Router<Context, NewRoutes>
 	) {
@@ -112,7 +140,7 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		} as Merged);
 	}
 
-	toFindMyWay(server: ServerConfig<Context>): Instance<fmw.HTTPVersion.V1> {
+	'toFindMyWay'(server: ServerConfig<Context>): Instance<fmw.HTTPVersion.V1> {
 		const instance = fmw({
 			ignoreTrailingSlash: true,
 			defaultRoute(req, serverResponse) {
@@ -141,7 +169,7 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		return instance;
 	}
 
-	private make<Method extends HTTPMethod>(method: Method) {
+	private 'make'<Method extends HTTPMethod>(method: Method) {
 		return <Result, Path extends string, Input extends z.ZodSchema = never>(
 			path: NormalizePath<Path>,
 			route: Omit<Route<Result, NormalizePath<Path>, Method, Context, Input>, 'method'>
