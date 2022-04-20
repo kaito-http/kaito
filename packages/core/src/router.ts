@@ -10,12 +10,14 @@ import {Route} from './route';
 import {ServerConfig} from './server';
 import {ExtractRouteParams, getInput, NormalizePath} from './util';
 
-export type RoutesInit<Context, Paths extends string = string> = {
-	[Path in Paths]: Route<unknown, Path, HTTPMethod, Context, z.ZodSchema>;
+export type RoutesInit<Context> = {
+	[Path in string]: Route<any, Path, HTTPMethod, Context, z.ZodSchema>;
 };
 
+type NoEmpty<T> = [keyof T] extends [never] ? never : T;
+
 export class Router<Context, Routes extends RoutesInit<Context>> {
-	public static 'create'<Context>() {
+	public static 'create'<Context = null>() {
 		return new Router<Context, {}>({});
 	}
 
@@ -120,24 +122,12 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		prefix: NormalizePath<Prefix>,
 		router: Router<Context, NewRoutes>
 	) {
-		type Merged = Routes & {
-			[Path in Extract<keyof NewRoutes, string> as `/${Prefix}${Path}`]: NewRoutes[Path] extends Route<
-				infer Result,
-				infer Path,
-				infer Method,
-				infer Context,
-				infer Input
-			>
-				? Route<Result, `/${Prefix}${Path}`, Method, Context, Input>
-				: never;
-		};
-
 		const newRoutes = Object.fromEntries(Object.entries(router.routes).map(([k, v]) => [`${prefix}${k}`, v]));
 
-		return new Router<Context, Merged>({
+		return new Router({
 			...this.routes,
 			...newRoutes,
-		} as Merged);
+		} as any);
 	}
 
 	'toFindMyWay'(server: ServerConfig<Context>): Instance<fmw.HTTPVersion.V1> {
@@ -154,8 +144,9 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 			},
 		});
 
-		// eslint-disable-next-line guard-for-in
-		for (const path in this.routes) {
+		const paths = Object.keys(this.routes) as HTTPMethod[];
+
+		for (const path of paths) {
 			const route = this.routes[path];
 
 			instance.on(route.method, path, async (incomingMessage, serverResponse, params) => {
@@ -169,24 +160,32 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		return instance;
 	}
 
+	'_copy'<NewRoutes extends RoutesInit<Context>>(routes: NewRoutes) {
+		return new Router<Context, NewRoutes>(routes);
+	}
+
 	private 'make'<Method extends HTTPMethod>(method: Method) {
-		return <Result, Path extends string, Input extends z.ZodSchema = never>(
-			path: NormalizePath<Path>,
-			route: Omit<Route<Result, NormalizePath<Path>, Method, Context, Input>, 'method'>
+		return <Result, Path extends NormalizePath<string>, Input extends z.ZodSchema = never>(
+			path: Path,
+			route: Omit<Route<Result, Path, Method, Context, Input>, 'method'>
 		) => {
-			const mergedRoute = {
+			const addedRoute: Route<Result, Path, Method, Context, Input> = {
 				...route,
 				method,
 			};
 
-			type Merged = Routes & {
-				[P in NormalizePath<Path>]: Routes[P] | Route<Result, P, Method, Context, Input>;
-			};
-
-			return new Router<Context, Merged>({
+			const merged = {
 				...this.routes,
-				[path]: mergedRoute,
-			} as Merged);
+				[path]: addedRoute,
+			} as unknown as Routes &
+				(
+					| NoEmpty<Pick<Routes, Path>>
+					| {
+							[key in Path]: Route<Result, Path, Method, Context, Input>;
+					  }
+				);
+
+			return this._copy(merged);
 		};
 	}
 }
@@ -195,3 +194,22 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
  * @deprecated Please use Router#create instead
  */
 export const createRouter = Router.create;
+
+const g = Router.create()
+	.get('/', {
+		async run() {
+			return true as const;
+		},
+	})
+	.post('/', {
+		async run() {
+			return false as const;
+		},
+	})
+	.delete('/bruh', {
+		async run() {
+			return false as const;
+		},
+	});
+
+g.routes['/'];

@@ -1,15 +1,15 @@
-import {createClient, ExtractRoute} from '@kaito-http/client';
+import {createClient} from '@kaito-http/client';
 import type {App} from './index';
 
-type G = ExtractRoute<App, 'GET', '/v1/time'>;
-
 const client = createClient<App>('http://localhost:8080');
+
+type g = App['routes'];
 
 const result = client.fetch('GET', '/v1/users/:id', {
 	params: {
 		id: '',
 	},
-	input: '',
+	input: null,
 });
 
 void client.fetch('GET', '/v1/time', {

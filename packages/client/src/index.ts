@@ -7,30 +7,17 @@ import type {
 	Router,
 	RoutesInit,
 	SuccessfulAPIResponse,
+	Values,
 } from '@kaito-http/core';
 import type {z} from 'zod';
 import urlcat from 'urlcat';
 
 export type AnyRouter = Router<unknown, RoutesInit<unknown>>;
 
-export type ExtractRoute<
-	R extends AnyRouter,
-	M extends HTTPMethod,
-	P extends keyof R['routes']
-> = R['routes'][P] extends Route<infer Result, infer Path, infer Method, infer Context, infer Input>
-	? Extract<
-			{
-				result: Result;
-				path: Path;
-				method: Method;
-				context: Context;
-				input: NonNullable<Input>;
-			},
-			{
-				method: M;
-			}
-	  >
-	: never;
+export type ExtractRoute<R extends AnyRouter, M extends HTTPMethod, P extends keyof R['routes']> = Extract<
+	R['routes'][P],
+	{method: M}
+>;
 
 type PickTruthyKeys<T> = {
 	[K in keyof T as [T[K]] extends [never] ? never : K]: T[K];
