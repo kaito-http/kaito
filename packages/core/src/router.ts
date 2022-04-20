@@ -180,7 +180,7 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 			};
 
 			type Merged = Routes & {
-				[P in Path as NormalizePath<P>]: Route<Result, NormalizePath<P>, Method, Context, Input>;
+				[P in NormalizePath<Path>]: Routes[P] | Route<Result, P, Method, Context, Input>;
 			};
 
 			return new Router<Context, Merged>({

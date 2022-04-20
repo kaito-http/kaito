@@ -44,6 +44,16 @@ const router = createRouter()
 	})
 	.merge('/v1', v1);
 
+const t = createRouter()
+	.get('/', {
+		run: async () => Promise.resolve('ok'),
+	})
+	.post('/', {
+		run: async () => Promise.resolve('ok'),
+	});
+
+const g = t.routes['/'];
+
 const server = createServer({
 	router,
 	getContext,

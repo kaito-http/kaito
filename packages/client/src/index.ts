@@ -93,8 +93,8 @@ export function createClient<R extends AnyRouter>(baseUrl: string, init?: Reques
 			);
 
 			const headers = new Headers({
-				...(init?.headers ?? {}),
-				...(localInit?.headers ?? {}),
+				...init?.headers,
+				...localInit?.headers,
 			});
 
 			if (method !== 'GET' && input) {
@@ -106,6 +106,7 @@ export function createClient<R extends AnyRouter>(baseUrl: string, init?: Reques
 				...localInit,
 				method,
 				headers,
+				body: method === 'GET' ? undefined : JSON.stringify(input),
 			});
 
 			const body = (await response.json()) as APIResponse<ExtractRoute<R, M, Path>['result']>;

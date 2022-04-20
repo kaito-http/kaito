@@ -27,22 +27,8 @@ export function getLastEntryInMultiHeaderValue(headerValue: string | string[]) {
 
 type RemoveEndSlashes<T extends string> = T extends `${infer U}/` ? U : T;
 type AddStartSlashes<T extends string> = T extends `/${infer U}` ? `/${U}` : `/${T}`;
-
 export type NormalizePath<T extends string> = AddStartSlashes<RemoveEndSlashes<T>>;
-
-export function normalizePath<T extends string>(path: T): NormalizePath<T> {
-	let result: string = path;
-
-	if (!result.startsWith('/')) {
-		result = `/${result}`;
-	}
-
-	if (result.endsWith('/')) {
-		result = result.slice(-1);
-	}
-
-	return result as NormalizePath<T>;
-}
+export type Values<T> = T[keyof T];
 
 export async function getInput(req: KaitoRequest) {
 	if (req.method === 'GET') {
