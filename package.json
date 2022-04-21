@@ -1,6 +1,6 @@
 {
 	"name": "kaito-http",
-	"version": "2.3.4",
+	"version": "2.3.5",
 	"repository": "https://github.com/kaito-http/kaito",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
@@ -31,9 +31,10 @@
 		"docs:dev": "yarn workspace @kaito-http/docs dev",
 		"docs:build": "yarn workspace @kaito-http/docs build",
 		"build": "preconstruct build",
-		"release": "yarn constraints --fix && yarn build && yarn workspace foreach --include packages/* npm publish --access-publish"
+		"release": "yarn constraints --fix && yarn build && yarn publish-all",
+		"publish-all": "yarn workspaces foreach --from '@kaito-http/*' --no-private npm publish --access public"
 	},
-	"packageManager": "yarn@3.1.0",
+	"packageManager": "yarn@3.2.0",
 	"preconstruct": {
 		"packages": [
 			"packages/*"

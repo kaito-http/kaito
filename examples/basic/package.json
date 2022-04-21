@@ -1,11 +1,12 @@
 {
-	"name": "@kaito-http/examples-basic",
+	"name": "@kaito-http-examples/basic",
+	"private": true,
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"description": "Functional HTTP Framework for TypeScript",
 	"homepage": "https://github.com/kaito-http/kaito",
 	"license": "MIT",
 	"repository": "https://github.com/kaito-http/kaito",
-	"version": "2.3.4",
+	"version": "2.3.5",
 	"scripts": {
 		"dev": "tsnd --transpile-only src/index.ts",
 		"build": "yarn tsc",

@@ -2,7 +2,7 @@
 # Manual changes might be lost - proceed with caution!
 
 __metadata:
-  version: 5
+  version: 6
   cacheKey: 8
 
 "@babel/code-frame@npm:^7.0.0":
@@ -1646,6 +1646,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@kaito-http-examples/basic@workspace:examples/basic":
+  version: 0.0.0-use.local
+  resolution: "@kaito-http-examples/basic@workspace:examples/basic"
+  dependencies:
+    "@kaito-http/client": "workspace:^"
+    "@kaito-http/core": "workspace:^"
+    ts-node-dev: ^1.1.8
+    typescript: ^4.6.3
+    zod: ^3.14.4
+  languageName: unknown
+  linkType: soft
+
 "@kaito-http/client@workspace:^, @kaito-http/client@workspace:packages/client":
   version: 0.0.0-use.local
   resolution: "@kaito-http/client@workspace:packages/client"
@@ -1683,18 +1695,6 @@ __metadata:
     nextra-theme-docs: alpha
     react: ^18.0.0
     react-dom: ^18.0.0
-  languageName: unknown
-  linkType: soft
-
-"@kaito-http/examples-basic@workspace:examples/basic":
-  version: 0.0.0-use.local
-  resolution: "@kaito-http/examples-basic@workspace:examples/basic"
-  dependencies:
-    "@kaito-http/client": "workspace:^"
-    "@kaito-http/core": "workspace:^"
-    ts-node-dev: ^1.1.8
-    typescript: ^4.6.3
-    zod: ^3.14.4
   languageName: unknown
   linkType: soft
 
@@ -1789,28 +1789,28 @@ __metadata:
 "@next/swc-linux-arm64-gnu@npm:12.1.5":
   version: 12.1.5
   resolution: "@next/swc-linux-arm64-gnu@npm:12.1.5"
-  conditions: os=linux & cpu=arm64
+  conditions: os=linux & cpu=arm64 & libc=glibc
   languageName: node
   linkType: hard
 
 "@next/swc-linux-arm64-musl@npm:12.1.5":
   version: 12.1.5
   resolution: "@next/swc-linux-arm64-musl@npm:12.1.5"
-  conditions: os=linux & cpu=arm64
+  conditions: os=linux & cpu=arm64 & libc=musl
   languageName: node
   linkType: hard
 
 "@next/swc-linux-x64-gnu@npm:12.1.5":
   version: 12.1.5
   resolution: "@next/swc-linux-x64-gnu@npm:12.1.5"
-  conditions: os=linux & cpu=x64
+  conditions: os=linux & cpu=x64 & libc=glibc
   languageName: node
   linkType: hard
 
 "@next/swc-linux-x64-musl@npm:12.1.5":
   version: 12.1.5
   resolution: "@next/swc-linux-x64-musl@npm:12.1.5"
-  conditions: os=linux & cpu=x64
+  conditions: os=linux & cpu=x64 & libc=musl
   languageName: node
   linkType: hard
 
@@ -2475,7 +2475,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"acorn@npm:^8.7.0":
+"acorn@npm:^8.5.0, acorn@npm:^8.7.0":
   version: 8.7.0
   resolution: "acorn@npm:8.7.0"
   bin:
@@ -8230,11 +8230,11 @@ __metadata:
 
 "typescript@patch:typescript@4.6#~builtin<compat/typescript>, typescript@patch:typescript@^4.6.3#~builtin<compat/typescript>":
   version: 4.6.3
-  resolution: "typescript@patch:typescript@npm%3A4.6.3#~builtin<compat/typescript>::version=4.6.3&hash=ddd1e8"
+  resolution: "typescript@patch:typescript@npm%3A4.6.3#~builtin<compat/typescript>::version=4.6.3&hash=bda367"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: fe6bdc1afb2f145ddb7b0a3a31f96352209f6a5704d97f038414ea22ff9d8dd42f32cfb6652e30458d7d958d2d4e85de2df11c574899c6f750a6b3c0e90a3a76
+  checksum: 6bf45caf847062420592e711bc9c28bf5f9a9a7fa8245343b81493e4ededae33f1774009d1234d911422d1646a2c839f44e1a23ecb111b40a60ac2ea4c1482a8
   languageName: node
   linkType: hard
 
