@@ -1,8 +1,8 @@
 # Context
 
-In Kaito, context is information shared to every single procedure. It's provided at the root of your application and is generated on every single request.
+In Kaito, context is information shared to every single route. It's provided at the root of your application and is generated on every single request.
 
-For example, if you want to provide the `req` and `res` objects to each procedure, you should add it to your context.
+For example, if you want to provide the `req` and `res` objects to each route, you should add it to your context.
 
 Below is an example of things that you could include, but it's really up to you and what you would find useful to include in your app.
 
@@ -37,7 +37,7 @@ export const getContext = createGetContext(async (req, res) => {
 });
 ```
 
-You can then use this context, when setup correctly with a router, inside every single procedure. E.g.
+You can then use this context, when setup correctly with a router, inside every single route. E.g.
 
 ```ts
 import {z} from 'zod';

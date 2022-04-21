@@ -1,7 +1,7 @@
 {
 	"index": "Overview",
 	"context": "Context",
+	"routes": "Routes",
 	"routers": "Routers",
-	"procedures": "Procedures",
 	"server": "Server"
 }

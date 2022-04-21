@@ -18,9 +18,9 @@ npm install @kaito-http/core zod
 
 Kaito is very simple to use, it revolves around a few basic concepts. Before we dive into a code example, let's go through the three most important principles.
 
-### Procedure
+### Routes
 
-A procedure is a function that is available on the API. Simply put, it's something that will exist over HTTP and returns a single value that will be JSON encoded. Below is a basic example
+A route is a function that is available on the API. Simply put, it's something that will exist over HTTP and returns a single value that will be JSON encoded. Below is a basic example
 
 ```ts
 export const getUsers = router().get('/users', {
@@ -32,11 +32,11 @@ export const getUsers = router().get('/users', {
 
 ### Router
 
-The Kaito router is a class that holds all of our procedures, their type information. Every app will have one router.
+The Kaito router is a class that holds all of our routes, their type information. Every app will have one router.
 
 ### Context
 
-Context is a variable that is generated on every single request. It is up to developers what to place inside their context, but it will be available to access in every single procedure. For example, you could include the `req` and `res` objects, a method to get the current user (replacing middleware), etc.
+Context is a variable that is generated on every single request. It is up to developers what to place inside their context, but it will be available to access in every single route. For example, you could include the `req` and `res` objects, a method to get the current user (replacing middleware), etc.
 
 ## Quickstart
 
@@ -48,7 +48,7 @@ import {createGetContext, InferContext, Router} from '@kaito-http/core';
 // Define the time that we started the server at
 const serverStarted = Date.now();
 
-// Provide context to every procedure — our uptime and `req` & `res` objects
+// Provide context to every route — our uptime and `req` & `res` objects
 export const getContext = createGetContext(async (req, res) => ({
 	req,
 	res,
@@ -64,7 +64,7 @@ export function router() {
 }
 ```
 
-Secondly, we'll need to create a router, a server, and our first procedure.
+Secondly, we'll need to create a router, a server, and our first route.
 
 ```typescript
 import {createServer} from '@kaito-http/core';
@@ -98,4 +98,4 @@ const server = createServer({
 server.listen(8080);
 ```
 
-Awesome! So we now have a server that can be accessed at `http://localhost:8080/` that mounts a GET procedure to `/` which will respond with the server's uptime, and the time now. If you run this file and navigate to `http://localhost:8080/`, you'll see that result.
+Awesome! So we now have a server that can be accessed at `http://localhost:8080/` that mounts a GET route to `/` which will respond with the server's uptime, and the time now. If you run this file and navigate to `http://localhost:8080/`, you'll see that result.
