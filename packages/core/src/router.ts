@@ -8,7 +8,7 @@ import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';
 import {Route} from './route';
 import {ServerConfig} from './server';
-import {ExtractRouteParams, getInput, NormalizePath} from './util';
+import {ExtractRouteParams, getInput, NormalizePath, Values} from './util';
 
 export type RoutesInit<Context> = {
 	[Path in string]: Route<any, Path, HTTPMethod, Context, z.ZodSchema>;
@@ -17,11 +17,11 @@ export type RoutesInit<Context> = {
 type NoEmpty<T> = [keyof T] extends [never] ? never : T;
 
 export class Router<Context, Routes extends RoutesInit<Context>> {
-	public static 'create'<Context = null>() {
+	public static create<Context = null>() {
 		return new Router<Context, {}>({});
 	}
 
-	private static async 'handle'<
+	private static async handle<
 		Result,
 		Path extends string,
 		Method extends HTTPMethod,
@@ -90,7 +90,7 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 	public readonly 'head' = this.make('HEAD');
 	public readonly 'link' = this.make('LINK');
 	public readonly 'lock' = this.make('LOCK');
-	public readonly 'm-search' = this.make('M-SEARCH');
+	public readonly 'm_search' = this.make('M-SEARCH');
 	public readonly 'mkactivity' = this.make('MKACTIVITY');
 	public readonly 'mkcalendar' = this.make('MKCALENDAR');
 	public readonly 'mkcol' = this.make('MKCOL');
@@ -114,23 +114,34 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 	public readonly 'unlock' = this.make('UNLOCK');
 	public readonly 'unsubscribe' = this.make('UNSUBSCRIBE');
 
-	private 'constructor'(routes: Routes) {
+	private constructor(routes: Routes) {
 		this.routes = routes;
 	}
 
-	'merge'<Prefix extends string, NewRoutes extends RoutesInit<Context>>(
+	merge<Prefix extends string, NewRoutes extends RoutesInit<Context>>(
 		prefix: NormalizePath<Prefix>,
 		router: Router<Context, NewRoutes>
 	) {
 		const newRoutes = Object.fromEntries(Object.entries(router.routes).map(([k, v]) => [`${prefix}${k}`, v]));
 
-		return new Router({
+		const merged = {
 			...this.routes,
 			...newRoutes,
-		} as any);
+		};
+
+		return this._copy(
+			merged as Routes & {
+				[Path in Extract<keyof NewRoutes, string> as `/${Prefix}${Path}`]: Values<{
+					[M in NewRoutes[Path]['method']]: Omit<NewRoutes[Path], 'path' | 'method'> & {
+						path: `/${Prefix}${Path}`;
+						method: M;
+					};
+				}>;
+			}
+		);
 	}
 
-	'toFindMyWay'(server: ServerConfig<Context>): Instance<fmw.HTTPVersion.V1> {
+	toFindMyWay(server: ServerConfig<Context>): Instance<fmw.HTTPVersion.V1> {
 		const instance = fmw({
 			ignoreTrailingSlash: true,
 			defaultRoute(req, serverResponse) {
@@ -160,22 +171,23 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		return instance;
 	}
 
-	'_copy'<NewRoutes extends RoutesInit<Context>>(routes: NewRoutes) {
+	_copy<NewRoutes extends RoutesInit<Context>>(routes: NewRoutes) {
 		return new Router<Context, NewRoutes>(routes);
 	}
 
-	private 'make'<Method extends HTTPMethod>(method: Method) {
+	private make<Method extends HTTPMethod>(method: Method) {
 		return <Result, Path extends NormalizePath<string>, Input extends z.ZodSchema = never>(
 			path: Path,
 			route: Omit<Route<Result, Path, Method, Context, Input>, 'method'>
 		) => {
-			type R = Route<Result, Path, Method, Context, Input>;
-
-			const addedRoute: R = {
+			const addedRoute: Route<Result, Path, Method, Context, Input> = {
 				...route,
 				method,
 			};
 
+			// `as unknown` is required because otherwise
+			// this type just gets massive and too slow,
+			// so we have to write it out specifically
 			const merged = {
 				...this.routes,
 				[path]: addedRoute,
@@ -183,10 +195,10 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 				?
 						| NoEmpty<Pick<Routes, Path>>
 						| {
-								[key in Path]: R;
+								[key in Path]: Route<Result, Path, Method, Context, Input>;
 						  }
 				: Routes & {
-						[key in Path]: R;
+						[key in Path]: Route<Result, Path, Method, Context, Input>;
 				  };
 
 			return this._copy(merged);

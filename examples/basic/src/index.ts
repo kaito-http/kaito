@@ -2,47 +2,49 @@ import {createServer, KaitoError} from '@kaito-http/core';
 import {z} from 'zod';
 import {createRouter, getContext} from './context';
 
-const users = createRouter().get('/:id', {
-	input: z.null(),
-	async run({params}) {
-		return {
-			user_id: params.id,
-			prop: true,
-		};
-	},
-});
-
-const v1 = createRouter()
-	.get('/time', {
-		async run() {
-			return Date.now();
-		},
-	})
-	.post('/time', {
-		async run() {
-			return {t: Date.now()};
-		},
-	})
-	.get('/throw', {
-		async run() {
-			throw new KaitoError(400, 'Something was intentionally thrown');
-		},
-	})
-	.get('/echo', {
-		input: z.unknown(),
-		async run({input}) {
-			return input;
-		},
-	})
-	.merge('/users', users);
-
 const router = createRouter()
 	.get('/uptime', {
 		async run({ctx}) {
 			return ctx.uptime;
 		},
 	})
-	.merge('/v1', v1);
+	.merge(
+		'/v1',
+		createRouter()
+			.get('/time', {
+				async run() {
+					return Date.now();
+				},
+			})
+			.post('/time', {
+				async run() {
+					return {t: Date.now()};
+				},
+			})
+			.get('/throw', {
+				async run() {
+					throw new KaitoError(400, 'Something was intentionally thrown');
+				},
+			})
+			.get('/echo', {
+				input: z.unknown(),
+				async run({input}) {
+					return input;
+				},
+			})
+			.merge(
+				'/users',
+				createRouter().get('/:id', {
+					input: z.null(),
+					async run({params}) {
+						return {
+							user_id: params.id,
+							prop: true,
+						};
+					},
+				})
+			)
+	);
 
 const server = createServer({
 	router,
