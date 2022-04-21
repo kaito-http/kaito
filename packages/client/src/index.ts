@@ -3,11 +3,11 @@ import type {
 	ExtractRouteParams,
 	HTTPMethod,
 	KaitoError,
+	NoEmpty,
 	Route,
 	Router,
 	RoutesInit,
 	SuccessfulAPIResponse,
-	Values,
 } from '@kaito-http/core';
 import type {z} from 'zod';
 import urlcat from 'urlcat';
@@ -17,21 +17,25 @@ export type AnyRouter = Router<unknown, RoutesInit<unknown>>;
 export type ExtractRoute<R extends AnyRouter, M extends HTTPMethod, P extends keyof R['routes']> = Extract<
 	R['routes'][P],
 	{method: M}
->;
+> extends Route<infer Result, infer Path, infer Method, infer Context, infer Input>
+	? {
+			result: Result;
+			path: Path;
+			method: Method;
+			context: Context;
+			input: NonNullable<Input>;
+	  }
+	: never;
 
-type PickTruthyKeys<T> = {
+export type PickTruthyKeys<T> = {
 	[K in keyof T as [T[K]] extends [never] ? never : K]: T[K];
 };
 
-type IsEmpty<T> = [keyof T] extends [never] ? true : false;
+export type IsEmpty<T> = [keyof T] extends [never] ? true : false;
 
-export type ExtractInput<R extends AnyRouter, M extends HTTPMethod, P extends keyof R['routes']> = ExtractRoute<
-	R,
-	M,
-	P
->['input'] extends z.ZodSchema<unknown, z.ZodTypeDef, infer Input>
-	? Input
-	: never;
+export type ExtractInput<R extends AnyRouter, M extends HTTPMethod, P extends keyof R['routes']> = z.infer<
+	ExtractRoute<R, M, P>['input']
+>;
 
 export type RequestParamsInput<
 	R extends AnyRouter,
@@ -39,10 +43,10 @@ export type RequestParamsInput<
 	P extends keyof R['routes']
 > = PickTruthyKeys<{
 	input: ExtractInput<R, M, P>;
-	params: ExtractRouteParams<ExtractRoute<R, M, P>['path']>;
+	params: NoEmpty<ExtractRouteParams<ExtractRoute<R, M, P>['path']>>;
 }>;
 
-class KaitoClientError extends Error implements KaitoError {
+export class KaitoClientError extends Error implements KaitoError {
 	constructor(public readonly status: number, message: string) {
 		super(message);
 	}

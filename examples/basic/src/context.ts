@@ -1,14 +1,18 @@
-import {Router, InferContext, createGetContext} from '@kaito-http/core';
+import {Router, createGetContext, KaitoRequest, KaitoResponse} from '@kaito-http/core';
 
 const serverStarted = Date.now();
 
-export const getContext = createGetContext(async (req, res) => ({
+export type AppContext = {
+	req: KaitoRequest;
+	res: KaitoResponse;
+	uptime: number;
+};
+
+export const getContext = createGetContext<AppContext>(async (req, res) => ({
 	req,
 	res,
 	uptime: Date.now() - serverStarted,
 }));
-
-export type AppContext = InferContext<typeof getContext>;
 
 export function createRouter() {
 	return Router.create<AppContext>();

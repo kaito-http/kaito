@@ -3,15 +3,13 @@ import type {App} from './index';
 
 const client = createClient<App>('http://localhost:8080');
 
-type g = App['routes'];
-
-const result = client.fetch('GET', '/v1/users/:id', {
+const result1 = client.fetch('GET', '/v1/users/:id', {
 	params: {
 		id: '',
 	},
 	input: null,
 });
 
-void client.fetch('GET', '/v1/time', {
-	input: null,
-});
+const result2 = client.fetch('POST', '/v1/time');
+
+void Promise.all([result1, result2]).then(console.log);

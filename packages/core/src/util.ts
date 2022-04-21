@@ -29,6 +29,7 @@ type RemoveEndSlashes<T extends string> = T extends `${infer U}/` ? U : T;
 type AddStartSlashes<T extends string> = T extends `/${infer U}` ? `/${U}` : `/${T}`;
 export type NormalizePath<T extends string> = AddStartSlashes<RemoveEndSlashes<T>>;
 export type Values<T> = T[keyof T];
+export type NoEmpty<T> = [keyof T] extends [never] ? never : T;
 
 export async function getInput(req: KaitoRequest) {
 	if (req.method === 'GET') {

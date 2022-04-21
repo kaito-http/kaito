@@ -8,13 +8,11 @@ import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';
 import {Route} from './route';
 import {ServerConfig} from './server';
-import {ExtractRouteParams, getInput, NormalizePath, Values} from './util';
+import {ExtractRouteParams, getInput, NoEmpty, NormalizePath, Values} from './util';
 
 export type RoutesInit<Context> = {
 	[Path in string]: Route<any, Path, HTTPMethod, Context, z.ZodSchema>;
 };
-
-type NoEmpty<T> = [keyof T] extends [never] ? never : T;
 
 export class Router<Context, Routes extends RoutesInit<Context>> {
 	public static create<Context = null>() {
@@ -132,7 +130,8 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		return this._copy(
 			merged as Routes & {
 				[Path in Extract<keyof NewRoutes, string> as `/${Prefix}${Path}`]: Values<{
-					[M in NewRoutes[Path]['method']]: Omit<NewRoutes[Path], 'path' | 'method'> & {
+					// [M in NewRoutes[Path]['method']]: Route<NewRoutes[Path]>
+					[M in NewRoutes[Path]['method']]: Omit<Extract<NewRoutes[Path], {method: M}>, 'path' | 'method'> & {
 						path: `/${Prefix}${Path}`;
 						method: M;
 					};
