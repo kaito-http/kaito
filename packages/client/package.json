@@ -1,6 +1,6 @@
 {
 	"name": "@kaito-http/client",
-	"version": "2.3.6",
+	"version": "2.3.7",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"description": "Functional HTTP Framework for TypeScript",
 	"main": "dist/kaito-http-client.cjs.js",
