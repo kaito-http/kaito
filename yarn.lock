@@ -1674,7 +1674,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@kaito-http/core@workspace:packages/core"
   dependencies:
+    "@types/content-type": ^1.1.5
     "@types/node": ^17.0.25
+    content-type: ^1.0.4
     find-my-way: ^5.5.0
     raw-body: ^2.5.1
     typescript: 4.6
@@ -2066,6 +2068,13 @@ __metadata:
   dependencies:
     "@types/estree": "*"
   checksum: 60e1fd28af18d6cb54a93a7231c7c18774a9a8739c9b179e9e8750dca631e10cbef2d82b02830ea3f557b1d121e6406441e9e1250bd492dc81d4b3456e76e4d4
+  languageName: node
+  linkType: hard
+
+"@types/content-type@npm:^1.1.5":
+  version: 1.1.5
+  resolution: "@types/content-type@npm:1.1.5"
+  checksum: 77d0a88003c18c4d75f8344c678545aa1f1a4c163420c38bf669ba05eb9e0a243ecd022b2c83fbd01def608c275743000c0bf37e9ac95e16f2c3af16ec70534b
   languageName: node
   linkType: hard
 
@@ -3136,6 +3145,13 @@ __metadata:
   version: 1.1.0
   resolution: "console-control-strings@npm:1.1.0"
   checksum: 8755d76787f94e6cf79ce4666f0c5519906d7f5b02d4b884cf41e11dcd759ed69c57da0670afd9236d229a46e0f9cf519db0cd829c6dca820bb5a5c3def584ed
+  languageName: node
+  linkType: hard
+
+"content-type@npm:^1.0.4":
+  version: 1.0.4
+  resolution: "content-type@npm:1.0.4"
+  checksum: 3d93585fda985d1554eca5ebd251994327608d2e200978fdbfba21c0c679914d5faf266d17027de44b34a72c7b0745b18584ecccaa7e1fdfb6a68ac7114f12e0
   languageName: node
   linkType: hard
 

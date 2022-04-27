@@ -1,3 +1,4 @@
+import {parse} from 'content-type';
 import getRawBody from 'raw-body';
 import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';
@@ -44,7 +45,13 @@ export async function getInput(req: KaitoRequest) {
 
 	const buffer = await getRawBody(req.raw);
 
-	switch (req.headers['content-type']) {
+	if (!req.headers['content-type']) {
+		return null;
+	}
+
+	const {type} = parse(req.headers['content-type']);
+
+	switch (type) {
 		case 'application/json': {
 			return JSON.parse(buffer.toString()) as unknown;
 		}
