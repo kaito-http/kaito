@@ -5,9 +5,12 @@ import {KaitoResponse} from './res';
 import {KaitoError} from './error';
 import {GetContext} from './util';
 
+export type Before = (req: http.IncomingMessage, res: http.ServerResponse) => Promise<void>;
+
 export interface ServerConfig<Context> {
 	router: Router<Context, RoutesInit<Context>>;
 	getContext: GetContext<Context>;
+	before?: Before[];
 	onError(arg: {
 		error: Error;
 		req: KaitoRequest;
@@ -18,7 +21,13 @@ export interface ServerConfig<Context> {
 export function createFMWServer<Context>(config: ServerConfig<Context>) {
 	const fmw = config.router.toFindMyWay(config);
 
-	const server = http.createServer((req, res) => {
+	const server = http.createServer(async (req, res) => {
+		for (const fn of config.before ?? []) {
+			// Disabled because we need these to run in order!
+			// eslint-disable-next-line no-await-in-loop
+			await fn(req, res);
+		}
+
 		fmw.lookup(req, res);
 	});
 

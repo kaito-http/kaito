@@ -1,4 +1,4 @@
-import {createServer, KaitoError} from '@kaito-http/core';
+import {Before, createServer, KaitoError} from '@kaito-http/core';
 import {z} from 'zod';
 import {createRouter, getContext} from './context';
 
@@ -46,9 +46,17 @@ const router = createRouter()
 			)
 	);
 
+const cors: Before = async (req, res) => {
+	res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+	res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+	res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	res.setHeader('Access-Control-Max-Age', '86400');
+};
+
 const server = createServer({
 	router,
 	getContext,
+	before: [cors],
 	async onError({error}) {
 		console.log(error);
 
