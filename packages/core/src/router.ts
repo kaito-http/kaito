@@ -17,11 +17,8 @@ export type MergePaths<Routes extends RoutesInit<unknown>, Prefix extends string
 	...infer Rest
 ]
 	? R extends Route<infer Context, infer Result, infer Path, infer Method, infer Input>
-		? [
-				Route<Context, Result, `${Prefix}${Path}`, Method, Input>,
-				...MergePaths<Extract<Rest, RoutesInit<unknown>>, Prefix>
-		  ]
-		: never
+		? [Route<Context, Result, `${Prefix}${Path}`, Method, Input>, ...MergePaths<Extract<Rest, RoutesInit<any>>, Prefix>]
+		: MergePaths<Extract<Rest, RoutesInit<any>>, Prefix>
 	: [];
 
 export class Router<Context, Routes extends RoutesInit<Context>> {
@@ -155,7 +152,7 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		prefix: Prefix,
 		router: Router<Context, NewRoutes>
 	) {
-		return this.copyContext([
+		return this.copyContext<[...Routes, ...MergePaths<NewRoutes, Prefix>]>([
 			...this.routes,
 			...(router.routes.map(route => ({
 				...route,
