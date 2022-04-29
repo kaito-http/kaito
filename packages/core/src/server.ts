@@ -28,6 +28,10 @@ export function createFMWServer<Context>(config: ServerConfig<Context>) {
 			await fn(req, res);
 		}
 
+		if (req.method === 'OPTIONS') {
+			return;
+		}
+
 		fmw.lookup(req, res);
 	});
 

@@ -94,7 +94,6 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 	public readonly 'mkcol' = this.make('MKCOL');
 	public readonly 'move' = this.make('MOVE');
 	public readonly 'notify' = this.make('NOTIFY');
-	public readonly 'options' = this.make('OPTIONS');
 	public readonly 'patch' = this.make('PATCH');
 	public readonly 'post' = this.make('POST');
 	public readonly 'propfind' = this.make('PROPFIND');
