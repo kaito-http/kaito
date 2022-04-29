@@ -3,7 +3,9 @@ import {z} from 'zod';
 import {createRouter, getContext} from './context';
 
 const router = createRouter()
-	.get('/uptime', {
+	.add({
+		path: '/uptime',
+		method: 'GET',
 		async run({ctx}) {
 			return ctx.uptime;
 		},
@@ -11,22 +13,30 @@ const router = createRouter()
 	.merge(
 		'/v1',
 		createRouter()
-			.get('/time', {
+			.add({
+				path: '/time',
+				method: 'GET',
 				async run() {
 					return Date.now();
 				},
 			})
-			.post('/time', {
+			.add({
+				path: '/time',
+				method: 'POST',
 				async run() {
 					return {t: Date.now()};
 				},
 			})
-			.get('/throw', {
+			.add({
+				path: '/throw',
+				method: 'GET',
 				async run() {
 					throw new KaitoError(400, 'Something was intentionally thrown');
 				},
 			})
-			.get('/echo', {
+			.add({
+				method: 'GET',
+				path: '/echo',
 				input: z.unknown(),
 				async run({input}) {
 					return input;
@@ -34,7 +44,9 @@ const router = createRouter()
 			})
 			.merge(
 				'/users',
-				createRouter().get('/:id', {
+				createRouter().add({
+					path: '/:id',
+					method: 'GET',
 					input: z.null(),
 					async run({params}) {
 						return {

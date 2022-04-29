@@ -1,6 +1,5 @@
-import {HTTPMethod} from 'find-my-way';
 import {z} from 'zod';
-import {ExtractRouteParams} from './util';
+import {ExtractRouteParams, KaitoMethod} from './util';
 
 export type RouteArgument<Path extends string, Context, Input extends z.ZodSchema> = {
 	ctx: Context;
@@ -8,8 +7,9 @@ export type RouteArgument<Path extends string, Context, Input extends z.ZodSchem
 	params: ExtractRouteParams<Path>;
 };
 
-export interface Route<Result, Path extends string, Method extends HTTPMethod, Context, Input extends z.ZodSchema> {
+export type Route<Context, Result, Path extends string, Method extends KaitoMethod, Input extends z.ZodSchema> = {
 	input?: Input;
+	path: Path;
 	method: Method;
-	run(arg: RouteArgument<Path, Context, Input>): Promise<Result>;
-}
+	run(args: RouteArgument<Path, Context, Input>): Promise<Result>;
+};

@@ -1,4 +1,4 @@
-import {Router, RoutesInit} from './router';
+import {Router} from './router';
 import * as http from 'http';
 import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';
@@ -8,7 +8,7 @@ import {GetContext} from './util';
 export type Before = (req: http.IncomingMessage, res: http.ServerResponse) => Promise<void>;
 
 export interface ServerConfig<Context> {
-	router: Router<Context, RoutesInit<Context>>;
+	router: Router<Context, any>;
 	getContext: GetContext<Context>;
 	before?: Before[];
 	onError(arg: {

@@ -12,7 +12,7 @@ import type {
 import type {z} from 'zod';
 import urlcat from 'urlcat';
 
-export type AnyRouter = Router<unknown, RoutesInit<unknown>>;
+export type AnyRouter<T = any> = Router<T, RoutesInit<T>>;
 
 export type ExtractRoute<R extends AnyRouter, M extends HTTPMethod, P extends keyof R['routes']> = Extract<
 	R['routes'][P],

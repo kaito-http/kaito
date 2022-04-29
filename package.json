@@ -26,7 +26,7 @@
 		"typescript": "^4.6.3"
 	},
 	"scripts": {
-		"example": "yarn workspace @kaito-http/examples-basic dev",
+		"example": "yarn workspace @kaito-http-examples/basic dev",
 		"dev": "preconstruct dev",
 		"docs:dev": "yarn workspace @kaito-http/docs dev",
 		"docs:build": "yarn workspace @kaito-http/docs build",

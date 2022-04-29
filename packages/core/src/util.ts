@@ -1,4 +1,5 @@
 import {parse} from 'content-type';
+import {HTTPMethod} from 'find-my-way';
 import getRawBody from 'raw-body';
 import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';
@@ -10,6 +11,8 @@ export type ExtractRouteParams<T extends string> = string extends T
 	: T extends `${string}:${infer Param}`
 	? {[k in Param]: string}
 	: {};
+
+export type KaitoMethod = HTTPMethod | '*';
 
 export type GetContext<Result> = (req: KaitoRequest, res: KaitoResponse) => Promise<Result>;
 

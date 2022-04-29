@@ -1,34 +1,44 @@
 // Safe to enable this rule here
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import fmw, {HTTPMethod, Instance} from 'find-my-way';
+import fmw, {Handler, HTTPMethod, Instance} from 'find-my-way';
 import {z} from 'zod';
 import {KaitoError, WrappedError} from './error';
 import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';
 import {Route} from './route';
 import {ServerConfig} from './server';
-import {ExtractRouteParams, getInput, NoEmpty, NormalizePath, Values} from './util';
+import {ExtractRouteParams, getInput, KaitoMethod} from './util';
 
-export type RoutesInit<Context> = {
-	[Path in string]: Route<any, Path, HTTPMethod, Context, z.ZodSchema>;
-};
+export type RoutesInit<Context> = Array<Route<Context, unknown, string, KaitoMethod, z.ZodSchema>>;
+
+export type MergePaths<Routes extends RoutesInit<unknown>, Prefix extends string> = Routes extends [
+	infer R,
+	...infer Rest
+]
+	? R extends Route<infer Context, infer Result, infer Path, infer Method, infer Input>
+		? [
+				Route<Context, Result, `${Prefix}${Path}`, Method, Input>,
+				...MergePaths<Extract<Rest, RoutesInit<unknown>>, Prefix>
+		  ]
+		: never
+	: [];
 
 export class Router<Context, Routes extends RoutesInit<Context>> {
 	public static create<Context = null>() {
-		return new Router<Context, {}>({});
+		return new Router<Context, []>([]);
 	}
 
 	private static async handle<
 		Result,
 		Path extends string,
-		Method extends HTTPMethod,
+		Method extends KaitoMethod,
 		Context,
 		Input extends z.ZodSchema = never
 	>(
 		server: ServerConfig<Context>,
+		route: Route<Context, Result, Path, Method, Input>,
 		options: {
-			route: Route<Result, Path, Method, Context, Input>;
 			params: Record<string, string | undefined>;
 			req: KaitoRequest;
 			res: KaitoResponse;
@@ -38,9 +48,9 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 			const context = await server.getContext(options.req, options.res);
 
 			const body = await getInput(options.req);
-			const input = options.route.input?.parse(body) ?? (undefined as never);
+			const input = route.input?.parse(body) ?? (undefined as never);
 
-			const result = await options.route.run({
+			const result = await route.run({
 				ctx: context,
 				input,
 				params: options.params as ExtractRouteParams<Path>,
@@ -78,65 +88,8 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 
 	public readonly 'routes': Routes;
 
-	public readonly 'acl' = this.make('ACL');
-	public readonly 'bind' = this.make('BIND');
-	public readonly 'checkout' = this.make('CHECKOUT');
-	public readonly 'connect' = this.make('CONNECT');
-	public readonly 'copy' = this.make('COPY');
-	public readonly 'delete' = this.make('DELETE');
-	public readonly 'get' = this.make('GET');
-	public readonly 'head' = this.make('HEAD');
-	public readonly 'link' = this.make('LINK');
-	public readonly 'lock' = this.make('LOCK');
-	public readonly 'm_search' = this.make('M-SEARCH');
-	public readonly 'mkactivity' = this.make('MKACTIVITY');
-	public readonly 'mkcalendar' = this.make('MKCALENDAR');
-	public readonly 'mkcol' = this.make('MKCOL');
-	public readonly 'move' = this.make('MOVE');
-	public readonly 'notify' = this.make('NOTIFY');
-	public readonly 'patch' = this.make('PATCH');
-	public readonly 'post' = this.make('POST');
-	public readonly 'propfind' = this.make('PROPFIND');
-	public readonly 'proppatch' = this.make('PROPPATCH');
-	public readonly 'purge' = this.make('PURGE');
-	public readonly 'put' = this.make('PUT');
-	public readonly 'rebind' = this.make('REBIND');
-	public readonly 'report' = this.make('REPORT');
-	public readonly 'search' = this.make('SEARCH');
-	public readonly 'source' = this.make('SOURCE');
-	public readonly 'subscribe' = this.make('SUBSCRIBE');
-	public readonly 'trace' = this.make('TRACE');
-	public readonly 'unbind' = this.make('UNBIND');
-	public readonly 'unlink' = this.make('UNLINK');
-	public readonly 'unlock' = this.make('UNLOCK');
-	public readonly 'unsubscribe' = this.make('UNSUBSCRIBE');
-
 	private constructor(routes: Routes) {
 		this.routes = routes;
-	}
-
-	merge<Prefix extends string, NewRoutes extends RoutesInit<Context>>(
-		prefix: NormalizePath<Prefix>,
-		router: Router<Context, NewRoutes>
-	) {
-		const newRoutes = Object.fromEntries(Object.entries(router.routes).map(([k, v]) => [`${prefix}${k}`, v]));
-
-		const merged = {
-			...this.routes,
-			...newRoutes,
-		};
-
-		return this._copy(
-			merged as Routes & {
-				[Path in Extract<keyof NewRoutes, string> as `/${Prefix}${Path}`]: Values<{
-					// [M in NewRoutes[Path]['method']]: Route<NewRoutes[Path]>
-					[M in NewRoutes[Path]['method']]: Omit<Extract<NewRoutes[Path], {method: M}>, 'path' | 'method'> & {
-						path: `/${Prefix}${Path}`;
-						method: M;
-					};
-				}>;
-			}
-		);
 	}
 
 	toFindMyWay(server: ServerConfig<Context>): Instance<fmw.HTTPVersion.V1> {
@@ -153,54 +106,66 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 			},
 		});
 
-		const paths = Object.keys(this.routes) as HTTPMethod[];
-
-		for (const path of paths) {
-			const route = this.routes[path];
-
-			instance.on(route.method, path, async (incomingMessage, serverResponse, params) => {
+		for (const route of this.routes) {
+			const handler: Handler<fmw.HTTPVersion.V1> = async (incomingMessage, serverResponse, params) => {
 				const req = new KaitoRequest(incomingMessage);
 				const res = new KaitoResponse(serverResponse);
 
-				await Router.handle(server, {route, params, req, res});
-			});
+				await Router.handle(server, route, {params, req, res});
+			};
+
+			if (route.method === '*') {
+				instance.all(route.path, handler);
+				continue;
+			}
+
+			instance.on(route.method, route.path, handler);
 		}
 
 		return instance;
 	}
 
-	_copy<NewRoutes extends RoutesInit<Context>>(routes: NewRoutes) {
-		return new Router<Context, NewRoutes>(routes);
+	add<Method extends HTTPMethod, Path extends string, Result, Input extends z.ZodSchema>(
+		route: Route<Context, Result, Path, Method, Input>
+	) {
+		return new Router<Context, [...Routes, Route<Context, Result, Path, Method, Input>]>([...this.routes, route]);
 	}
 
-	private make<Method extends HTTPMethod>(method: Method) {
-		return <Result, Path extends NormalizePath<string>, Input extends z.ZodSchema = never>(
-			path: Path,
-			route: Omit<Route<Result, Path, Method, Context, Input>, 'method'>
-		) => {
-			const addedRoute: Route<Result, Path, Method, Context, Input> = {
-				...route,
-				method,
+	map() {
+		// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+		const result = {} as {
+			[Method in Routes[number]['method']]: {
+				[R in Extract<Routes[number], {method: Method}> as R['path']]: R;
 			};
-
-			// `as unknown` is required because otherwise
-			// this type just gets massive and too slow,
-			// so we have to write it out specifically
-			const merged = {
-				...this.routes,
-				[path]: addedRoute,
-			} as unknown as Path extends keyof Routes
-				?
-						| NoEmpty<Pick<Routes, Path>>
-						| {
-								[key in Path]: Route<Result, Path, Method, Context, Input>;
-						  }
-				: Routes & {
-						[key in Path]: Route<Result, Path, Method, Context, Input>;
-				  };
-
-			return this._copy(merged);
 		};
+
+		for (const route of this.routes) {
+			const method = route.method as Routes[number]['method'];
+
+			result[method] = {
+				...(result[method] ?? {}),
+				[route.path]: route,
+			};
+		}
+
+		return result;
+	}
+
+	merge<Prefix extends string, NewRoutes extends RoutesInit<Context>>(
+		prefix: Prefix,
+		router: Router<Context, NewRoutes>
+	) {
+		return this.copyContext([
+			...this.routes,
+			...(router.routes.map(route => ({
+				...route,
+				path: prefix + route.path,
+			})) as MergePaths<NewRoutes, Prefix>),
+		]);
+	}
+
+	private copyContext<NewRoutes extends RoutesInit<Context>>(routes: NewRoutes) {
+		return new Router<Context, NewRoutes>(routes);
 	}
 }
 
