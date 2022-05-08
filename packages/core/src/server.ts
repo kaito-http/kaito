@@ -10,7 +10,9 @@ export type Before<BeforeAfterContext> = (
 	res: http.ServerResponse
 ) => Promise<BeforeAfterContext>;
 
-export type After<BeforeAfterContext> = (ctx: BeforeAfterContext) => Promise<void>;
+export type HandlerResult = {success: true; data: unknown} | {success: false; data: {status: number; message: string}};
+
+export type After<BeforeAfterContext> = (ctx: BeforeAfterContext, result: HandlerResult) => Promise<void>;
 
 export type ServerConfigWithBefore<BeforeAfterContext> =
 	| {before: Before<BeforeAfterContext>; after?: After<BeforeAfterContext>}
@@ -43,10 +45,12 @@ export function createFMWServer<Context, BeforeAfterContext = null>(config: Serv
 			return;
 		}
 
-		fmw.lookup(req, res);
+		// https://github.com/delvedor/find-my-way/issues/274
+		// eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
+		const result = await (fmw.lookup(req, res) as unknown as Promise<HandlerResult>);
 
 		if ('after' in config && config.after) {
-			await config.after(before);
+			await config.after(before, result);
 		}
 	});
 

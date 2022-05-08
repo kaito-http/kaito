@@ -33,7 +33,7 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		Context,
 		Input extends z.ZodSchema = never
 	>(
-		server: ServerConfig<Context>,
+		server: ServerConfig<Context, any>,
 		route: Route<Context, Result, Path, Method, Input>,
 		options: {
 			params: Record<string, string | undefined>;
@@ -54,10 +54,15 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 			});
 
 			options.res.status(200).json({
-				success: true,
+				success: true as const,
 				data: result,
 				message: 'OK',
 			});
+
+			return {
+				success: true as const,
+				data: result,
+			};
 		} catch (e: unknown) {
 			const error = WrappedError.maybe(e);
 
@@ -80,6 +85,11 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 				data: null,
 				message,
 			});
+
+			return {
+				success: false as const,
+				data: {status, message},
+			};
 		}
 	}
 
@@ -89,17 +99,23 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		this.routes = routes;
 	}
 
-	toFindMyWay(server: ServerConfig<Context>): Instance<fmw.HTTPVersion.V1> {
+	toFindMyWay(server: ServerConfig<Context, any>): Instance<fmw.HTTPVersion.V1> {
 		const instance = fmw({
 			ignoreTrailingSlash: true,
-			defaultRoute(req, serverResponse) {
+			async defaultRoute(req, serverResponse) {
 				const res = new KaitoResponse(serverResponse);
+				const message = `Cannot ${req.method as HTTPMethod} ${req.url ?? '/'}`;
 
 				res.status(404).json({
 					success: false,
 					data: null,
-					message: `Cannot ${req.method as HTTPMethod} ${req.url ?? '/'}`,
+					message,
 				});
+
+				return {
+					success: false as const,
+					data: {status: 404, message},
+				};
 			},
 		});
 
@@ -108,7 +124,7 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 				const req = new KaitoRequest(incomingMessage);
 				const res = new KaitoResponse(serverResponse);
 
-				await Router.handle(server, route, {params, req, res});
+				return Router.handle(server, route, {params, req, res});
 			};
 
 			if (route.method === '*') {
