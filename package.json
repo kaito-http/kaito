@@ -13,17 +13,17 @@
 		]
 	},
 	"devDependencies": {
-		"@babel/preset-env": "^7.16.11",
+		"@babel/preset-env": "^7.17.10",
 		"@babel/preset-typescript": "^7.16.7",
 		"@preconstruct/cli": "^2.1.5",
-		"@typescript-eslint/eslint-plugin": "^5.20.0",
-		"@typescript-eslint/parser": "^5.20.0",
-		"eslint": "^8.13.0",
-		"eslint-config-next": "^12.1.5",
+		"@typescript-eslint/eslint-plugin": "^5.22.0",
+		"@typescript-eslint/parser": "^5.22.0",
+		"eslint": "^8.15.0",
+		"eslint-config-next": "^12.1.6",
 		"eslint-config-xo": "^0.40.0",
 		"eslint-config-xo-typescript": "^0.50.0",
 		"prettier": "^2.6.2",
-		"typescript": "^4.6.3"
+		"typescript": "^4.6.4"
 	},
 	"scripts": {
 		"example": "yarn workspace @kaito-http-examples/basic dev",

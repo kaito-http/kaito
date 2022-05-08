@@ -5,39 +5,54 @@ import {KaitoResponse} from './res';
 import {KaitoError} from './error';
 import {GetContext} from './util';
 
-export type Before = (req: http.IncomingMessage, res: http.ServerResponse) => Promise<void>;
+export type Before<BeforeAfterContext> = (
+	req: http.IncomingMessage,
+	res: http.ServerResponse
+) => Promise<BeforeAfterContext>;
 
-export interface ServerConfig<Context> {
+export type After<BeforeAfterContext> = (ctx: BeforeAfterContext) => Promise<void>;
+
+export type ServerConfigWithBefore<BeforeAfterContext> =
+	| {before: Before<BeforeAfterContext>; after?: After<BeforeAfterContext>}
+	| {before?: undefined};
+
+export type ServerConfig<Context, BeforeAfterContext> = ServerConfigWithBefore<BeforeAfterContext> & {
 	router: Router<Context, any>;
 	getContext: GetContext<Context>;
-	before?: Before[];
 	onError(arg: {
 		error: Error;
 		req: KaitoRequest;
 		res: KaitoResponse;
 	}): Promise<KaitoError | {status: number; message: string}>;
-}
+};
 
-export function createFMWServer<Context>(config: ServerConfig<Context>) {
+export function createFMWServer<Context, BeforeAfterContext = null>(config: ServerConfig<Context, BeforeAfterContext>) {
 	const fmw = config.router.toFindMyWay(config);
 
 	const server = http.createServer(async (req, res) => {
-		for (const fn of config.before ?? []) {
-			// Disabled because we need these to run in order!
-			// eslint-disable-next-line no-await-in-loop
-			await fn(req, res);
+		let before: BeforeAfterContext;
+
+		if (config.before) {
+			before = await config.before(req, res);
+		} else {
+			before = null as never;
 		}
 
-		if (req.method === 'OPTIONS') {
+		// If the user has sent a response (e.g. replying to CORS), we don't want to do anything else.
+		if (res.headersSent) {
 			return;
 		}
 
 		fmw.lookup(req, res);
+
+		if ('after' in config && config.after) {
+			await config.after(before);
+		}
 	});
 
-	return {server, fmw};
+	return {server, fmw} as const;
 }
 
-export function createServer<Context>(config: ServerConfig<Context>) {
+export function createServer<Context, BeforeAfterContext = null>(config: ServerConfig<Context, BeforeAfterContext>) {
 	return createFMWServer(config).server;
 }

@@ -123,7 +123,10 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 	}
 
 	add<Method extends HTTPMethod, Path extends string, Result, Input extends z.ZodSchema>(
-		route: Route<Context, Result, Path, Method, Input>
+		// Check that a route with this path and method has not already been added
+		route: [Extract<Routes[number], {method: Method; path: Path}>] extends [never]
+			? Route<Context, Result, Path, Method, Input>
+			: never
 	) {
 		return new Router<Context, [...Routes, Route<Context, Result, Path, Method, Input>]>([...this.routes, route]);
 	}
