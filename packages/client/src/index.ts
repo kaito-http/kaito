@@ -9,8 +9,8 @@ import type {
 	RoutesInit,
 	SuccessfulAPIResponse,
 } from '@kaito-http/core';
-import type {z} from 'zod';
 import urlcat from 'urlcat';
+import type {z} from 'zod';
 
 export type AnyRouter<T = any> = Router<T, RoutesInit<T>>;
 
@@ -107,6 +107,10 @@ export function createClient<R extends AnyRouter>(baseUrl: string, init?: Reques
 			}
 
 			return body.data;
+		},
+	};
+}
+eturn body.data;
 		},
 	};
 }

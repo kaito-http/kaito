@@ -1,4 +1,4 @@
-import {Router, createGetContext, KaitoRequest, KaitoResponse} from '@kaito-http/core';
+import {createGetContext, KaitoRequest, KaitoResponse, Router} from '@kaito-http/core';
 
 const serverStarted = Date.now();
 
