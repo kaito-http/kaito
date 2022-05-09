@@ -13,7 +13,9 @@ Routers can be created as many times as you want in your app with the `createRou
 ```ts
 import {Router} from '@kaito-http/core';
 
-const router = Router.create().get('/', {
+const router = Router.create().add({
+	method: 'GET',
+	path: '/',
 	// ...
 });
 ```

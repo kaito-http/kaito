@@ -70,7 +70,9 @@ Secondly, we'll need to create a router, a server, and our first route.
 import {createServer} from '@kaito-http/core';
 import {router, getContext} from './context';
 
-const app = router().get('/', {
+const app = router().add({
+	method: 'GET',
+	path: '/',
 	async run({ctx}) {
 		return {
 			uptime: ctx.uptime,

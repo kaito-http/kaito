@@ -11,7 +11,9 @@ Creating a route requires us to have a router already established. If you don't,
 Here's an extremely basic example of a ping/pong route.
 
 ```ts
-const router = createRouter().get('/ping', {
+const router = createRouter().add({
+	method: 'GET',
+	path: '/ping',
 	async run() {
 		return 'PONG';
 	},
@@ -20,7 +22,6 @@ const router = createRouter().get('/ping', {
 
 ## Constraints
 
-- Route paths must start with a slash and not end in one. Our TypeScript types can validate this for you at compile time. This constraint exists so router merging can be done in a simple fashion.
 - Route `run` functions must be async.
 - Route return types **must** be JSON serializable.
 
@@ -31,7 +32,9 @@ Routes can also take an input schema provided by Zod. Internally, Kaito validate
 ```ts
 import {z} from 'zod';
 
-const router = createRouter().get('/echo', {
+const router = createRouter().add({
+	method: 'GET',
+	path: '/echo',
 	input: z.string(),
 	async run({input}) {
 		return input;
