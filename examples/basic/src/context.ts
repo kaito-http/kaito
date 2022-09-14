@@ -2,11 +2,11 @@ import {createGetContext, KaitoRequest, KaitoResponse, Router} from '@kaito-http
 
 const serverStarted = Date.now();
 
-export type AppContext = {
+export interface AppContext {
 	req: KaitoRequest;
 	res: KaitoResponse;
 	uptime: number;
-};
+}
 
 export const getContext = createGetContext<AppContext>(async (req, res) => ({
 	req,

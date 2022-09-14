@@ -1,6 +1,6 @@
 {
 	"name": "kaito-http",
-	"version": "2.4.0",
+	"version": "2.5.0",
 	"repository": "https://github.com/kaito-http/kaito",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
@@ -13,17 +13,17 @@
 		]
 	},
 	"devDependencies": {
-		"@babel/preset-env": "^7.17.10",
-		"@babel/preset-typescript": "^7.16.7",
-		"@preconstruct/cli": "^2.1.5",
-		"@typescript-eslint/eslint-plugin": "^5.22.0",
-		"@typescript-eslint/parser": "^5.22.0",
-		"eslint": "^8.15.0",
-		"eslint-config-next": "^12.1.6",
-		"eslint-config-xo": "^0.40.0",
-		"eslint-config-xo-typescript": "^0.50.0",
-		"prettier": "^2.6.2",
-		"typescript": "^4.6.4"
+		"@babel/preset-env": "^7.19.0",
+		"@babel/preset-typescript": "^7.18.6",
+		"@preconstruct/cli": "^2.2.1",
+		"@typescript-eslint/eslint-plugin": "^5.37.0",
+		"@typescript-eslint/parser": "^5.37.0",
+		"eslint": "^8.23.1",
+		"eslint-config-next": "^12.3.0",
+		"eslint-config-xo": "^0.42.0",
+		"eslint-config-xo-typescript": "^0.53.0",
+		"prettier": "^2.7.1",
+		"typescript": "^4.8.3"
 	},
 	"scripts": {
 		"example": "yarn workspace @kaito-http-examples/basic dev",

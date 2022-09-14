@@ -3,7 +3,7 @@ import {KaitoError} from './error';
 import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';
 import {Router} from './router';
-import {GetContext} from './util';
+import {GetContext, KaitoMethod} from './util';
 
 export type Before<BeforeAfterContext> = (
 	req: http.IncomingMessage,
@@ -21,6 +21,20 @@ export type ServerConfigWithBefore<BeforeAfterContext> =
 export type ServerConfig<Context, BeforeAfterContext> = ServerConfigWithBefore<BeforeAfterContext> & {
 	router: Router<Context, any>;
 	getContext: GetContext<Context>;
+
+	// Escape hatch for routes that will be loaded to fmw
+	// but are not in the router.
+	// Useful for things like OAuth callbacks or webhook endpoints.
+	rawRoutes?: Partial<
+		Record<
+			KaitoMethod,
+			{
+				path: string;
+				handler: (request: http.IncomingMessage, response: http.ServerResponse) => unknown;
+			}[]
+		>
+	>;
+
 	onError(arg: {
 		error: Error;
 		req: KaitoRequest;
@@ -30,6 +44,29 @@ export type ServerConfig<Context, BeforeAfterContext> = ServerConfigWithBefore<B
 
 export function createFMWServer<Context, BeforeAfterContext = null>(config: ServerConfig<Context, BeforeAfterContext>) {
 	const fmw = config.router.toFindMyWay(config);
+
+	const rawRoutes = config.rawRoutes ?? {};
+
+	for (const method in rawRoutes) {
+		if (!Object.prototype.hasOwnProperty.call(rawRoutes, method)) {
+			continue;
+		}
+
+		const routes = rawRoutes[method as keyof typeof rawRoutes];
+
+		if (!routes || routes.length === 0) {
+			continue;
+		}
+
+		for (const route of routes) {
+			if (method === '*') {
+				fmw.all(route.path, route.handler);
+				continue;
+			}
+
+			fmw[method.toLowerCase() as Lowercase<Exclude<KaitoMethod, '*'>>](route.path, route.handler);
+		}
+	}
 
 	const server = http.createServer(async (req, res) => {
 		let before: BeforeAfterContext;
@@ -45,9 +82,7 @@ export function createFMWServer<Context, BeforeAfterContext = null>(config: Serv
 			return;
 		}
 
-		// https://github.com/delvedor/find-my-way/issues/274
-		// eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
-		const result = await (fmw.lookup(req, res) as unknown as Promise<HandlerResult>);
+		const result = await fmw.lookup(req, res);
 
 		if ('after' in config && config.after) {
 			await config.after(before, result);

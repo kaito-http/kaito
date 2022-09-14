@@ -1,29 +1,38 @@
-// Safe to enable this rule here
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import fmw, {Handler, HTTPMethod, Instance} from 'find-my-way';
 import {z} from 'zod';
 import {KaitoError, WrappedError} from './error';
 import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';
-import {Route} from './route';
+import {AnyRoute, Route} from './route';
 import {ServerConfig} from './server';
 import {ExtractRouteParams, getInput, KaitoMethod} from './util';
 
-export type RoutesInit<Context> = Array<Route<Context, unknown, string, KaitoMethod, z.ZodSchema>>;
+type Routes = readonly AnyRoute[];
 
-export type MergePaths<Routes extends RoutesInit<unknown>, Prefix extends string> = Routes extends [
-	infer R,
-	...infer Rest
-]
-	? R extends Route<infer Context, infer Result, infer Path, infer Method, infer Input>
-		? [Route<Context, Result, `${Prefix}${Path}`, Method, Input>, ...MergePaths<Extract<Rest, RoutesInit<any>>, Prefix>]
-		: MergePaths<Extract<Rest, RoutesInit<any>>, Prefix>
+type RemapRoutePrefix<R extends AnyRoute, Prefix extends `/${string}`> = R extends Route<
+	infer Context,
+	infer Result,
+	infer Path,
+	infer Method,
+	infer InputOutput,
+	infer InputDef,
+	infer InputInput
+>
+	? Route<Context, Result, `${Prefix}${Path}`, Method, InputOutput, InputDef, InputInput>
+	: never;
+
+type PrefixRoutesPath<Prefix extends `/${string}`, R extends Routes> = R extends [infer First, ...infer Rest]
+	? [
+			RemapRoutePrefix<Extract<First, AnyRoute<any>>, Prefix>,
+			...PrefixRoutesPath<Prefix, Extract<Rest, readonly AnyRoute<any>[]>>
+	  ]
 	: [];
 
-export class Router<Context, Routes extends RoutesInit<Context>> {
-	public static create<Context = null>() {
-		return new Router<Context, []>([]);
+export class Router<Context, R extends Routes> {
+	public readonly routes: R;
+
+	constructor(routes: R) {
+		this.routes = routes;
 	}
 
 	private static async handle<
@@ -42,13 +51,13 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		}
 	) {
 		try {
-			const context = await server.getContext(options.req, options.res);
+			const ctx = await server.getContext(options.req, options.res);
 
 			const body = await getInput(options.req);
 			const input = route.input?.parse(body) ?? (undefined as never);
 
 			const result = await route.run({
-				ctx: context,
+				ctx,
 				input,
 				params: options.params as ExtractRouteParams<Path>,
 			});
@@ -93,13 +102,35 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		}
 	}
 
-	public readonly 'routes': Routes;
+	public static create = <Context>() => new Router<Context, []>([]);
 
-	private constructor(routes: Routes) {
-		this.routes = routes;
-	}
+	public add = <
+		Result,
+		Path extends string,
+		Method extends KaitoMethod,
+		InputOutput = never,
+		InputDef extends z.ZodTypeDef = z.ZodTypeDef,
+		InputInput = InputOutput
+	>(
+		route: Route<Context, Result, Path, Method, InputOutput, InputDef, InputInput>
+	): Router<Context, [...R, Route<Context, Result, Path, Method, InputOutput, InputDef, InputInput>]> =>
+		new Router([...this.routes, route]);
 
-	toFindMyWay(server: ServerConfig<Context, any>): Instance<fmw.HTTPVersion.V1> {
+	public merge = <PathPrefix extends `/${string}`, OtherRoutes extends Routes>(
+		pathPrefix: PathPrefix,
+		other: Router<Context, OtherRoutes>
+	) => {
+		const newRoutes = other.routes.map(route => ({
+			...route,
+			path: `${pathPrefix}${route.path}` as `${PathPrefix}${string}`,
+		}));
+
+		type Result = [...R, ...PrefixRoutesPath<PathPrefix, OtherRoutes>];
+
+		return new Router<Context, Result>([...this.routes, ...newRoutes] as Result);
+	};
+
+	public toFindMyWay = (server: ServerConfig<Context, any>) => {
 		const instance = fmw({
 			ignoreTrailingSlash: true,
 			async defaultRoute(req, serverResponse) {
@@ -136,56 +167,5 @@ export class Router<Context, Routes extends RoutesInit<Context>> {
 		}
 
 		return instance;
-	}
-
-	add<Method extends HTTPMethod, Path extends string, Result, Input extends z.ZodSchema>(
-		// Check that a route with this path and method has not already been added
-		route: [Extract<Routes[number], {method: Method; path: Path}>] extends [never]
-			? Route<Context, Result, Path, Method, Input>
-			: never
-	) {
-		return new Router<Context, [...Routes, Route<Context, Result, Path, Method, Input>]>([...this.routes, route]);
-	}
-
-	map() {
-		// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-		const result = {} as {
-			[Method in Routes[number]['method']]: {
-				[R in Extract<Routes[number], {method: Method}> as R['path']]: R;
-			};
-		};
-
-		for (const route of this.routes) {
-			const method = route.method as Routes[number]['method'];
-
-			result[method] = {
-				...(result[method] ?? {}),
-				[route.path]: route,
-			};
-		}
-
-		return result;
-	}
-
-	merge<Prefix extends string, NewRoutes extends RoutesInit<Context>>(
-		prefix: Prefix,
-		router: Router<Context, NewRoutes>
-	) {
-		return this.copyContext<[...Routes, ...MergePaths<NewRoutes, Prefix>]>([
-			...this.routes,
-			...(router.routes.map(route => ({
-				...route,
-				path: prefix + route.path,
-			})) as MergePaths<NewRoutes, Prefix>),
-		]);
-	}
-
-	private copyContext<NewRoutes extends RoutesInit<Context>>(routes: NewRoutes) {
-		return new Router<Context, NewRoutes>(routes);
-	}
+	};
 }
-
-/**
- * @deprecated Please use Router#create instead
- */
-export const createRouter = Router.create;

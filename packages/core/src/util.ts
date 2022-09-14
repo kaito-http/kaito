@@ -60,6 +60,11 @@ export async function getInput(req: KaitoRequest) {
 		}
 
 		default: {
+			if (process.env.NODE_ENV === 'development') {
+				console.warn('[kaito] Unsupported content type:', type);
+				console.warn('[kaito] This message is only shown in development mode.');
+			}
+
 			return null;
 		}
 	}
