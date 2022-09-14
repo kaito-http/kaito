@@ -1799,6 +1799,7 @@ __metadata:
   resolution: "@kaito-http/docs@workspace:apps/docs"
   dependencies:
     "@types/react": "npm:^18.0.20"
+    es-urlcat: "npm:^1.0.0"
     next: "npm:^12.3.0"
     nextra: "npm:^2.0.0-beta.28"
     nextra-theme-docs: "npm:^2.0.0-beta.28"
@@ -3938,6 +3939,15 @@ __metadata:
     is-date-object: "npm:^1.0.1"
     is-symbol: "npm:^1.0.2"
   checksum: b419a547ffcbd08c23272e283a20018723bd2f39cbee39f66a8fd0fb110b01728ede799bf1365d5981e57a7afb6901916ad147f374e87bb2b11613ebb1d1aaec
+  languageName: node
+  linkType: hard
+
+"es-urlcat@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "es-urlcat@npm:1.0.0"
+  dependencies:
+    qs: "npm:^6.9.4"
+  checksum: 1e545f75392e13140d2c4f03dd68d54d5df9c49c4f49b9794b54eb76efe8ac0ee1369101e6d299fdf7bf2cd34dc2efac5a5a80f04b06f66edd18e8b337cbcb40
   languageName: node
   linkType: hard
 
@@ -7490,6 +7500,15 @@ __metadata:
   version: 2.1.1
   resolution: "punycode@npm:2.1.1"
   checksum: fd728ef9db90e7b4db37d5c4937d6c6302cf4f64748b2dea3abbf1efd21e6193bb670efb7814766c858b2e1ccdb65ce34e44b498d734922e1dcb2a8623a925d8
+  languageName: node
+  linkType: hard
+
+"qs@npm:^6.9.4":
+  version: 6.11.0
+  resolution: "qs@npm:6.11.0"
+  dependencies:
+    side-channel: "npm:^1.0.4"
+  checksum: 337966e2e957a7d2a69821c528f3d18a8b346ddb0f16cc08d11c6206aed3b6624927781ff437aa3909e54ad32ebdee2c5396ad4094b1c722760774f7082f6124
   languageName: node
   linkType: hard
 

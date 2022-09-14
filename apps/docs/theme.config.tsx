@@ -1,5 +1,6 @@
 import React from 'react';
-import {DocsThemeConfig} from 'nextra-theme-docs';
+import {DocsThemeConfig, useConfig} from 'nextra-theme-docs';
+import urlcat from 'es-urlcat';
 
 const PoweredByVercel = () => (
 	<svg width="209" height="40" viewBox="0 0 209 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -48,13 +49,37 @@ const config: DocsThemeConfig = {
 
 	logo: <span>Kaito</span>,
 
-	head: (
-		<>
-			<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-			<meta name="description" content="Kaito: An HTTP Framework for TypeScript" />
-			<meta name="og:title" content="Kaito: An HTTP Framework for TypeScript" />
-		</>
-	),
+	head: function Head() {
+		const config = useConfig();
+
+		const meta = config.frontMatter;
+		const title = config.title ?? meta.title;
+
+		const ogImage =
+			meta.image ||
+			urlcat('https://ogmeta.kaito.cloud', '/', {
+				title,
+				subtitle: meta.description ?? undefined,
+				dark: 'true',
+			});
+
+		return (
+			<>
+				<meta name="msapplication-TileColor" content="#ffffff" />
+				<meta httpEquiv="Content-Language" content="en" />
+				<meta name="description" content={meta.description || 'Kaito: An HTTP framework for TypeScript'} />
+				<meta name="og:description" content={meta.description || 'Kaito: An HTTP framework for TypeScript'} />
+				<meta name="twitter:card" content="summary_large_image" />
+				<meta name="twitter:site" content="@alistaiiiir" />
+				<meta name="twitter:image" content={ogImage} />
+				<meta name="og:title" content={title ? title + ' — Hop' : 'Kaito: An HTTP framework for TypeScript'} />
+				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+				<meta name="description" content="Kaito: An HTTP framework for TypeScript" />
+				<meta name="og:title" content="Kaito: An HTTP framework for TypeScript" />{' '}
+				<meta name="og:image" content={ogImage} />
+			</>
+		);
+	},
 };
 
 export default config;

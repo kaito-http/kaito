@@ -6,6 +6,7 @@
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
 	"dependencies": {
+		"es-urlcat": "^1.0.0",
 		"next": "^12.3.0",
 		"nextra": "^2.0.0-beta.28",
 		"nextra-theme-docs": "^2.0.0-beta.28",
