@@ -22,7 +22,7 @@ const config: DocsThemeConfig = {
 		link: 'https://github.com/kaito-http/kaito',
 	},
 
-	docsRepositoryBase: 'https://github.com/kaito-http/kaito/blob/master/apps/docs/pages',
+	docsRepositoryBase: 'https://github.com/kaito-http/kaito/blob/master/apps/docs',
 
 	toc: {
 		float: true,
