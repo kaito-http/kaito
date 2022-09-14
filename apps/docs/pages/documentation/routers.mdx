@@ -53,7 +53,7 @@ And then you are safe to use the `router` function around your app, which will g
 
 Kaito supports Router Merging, which is bringing one router's route into another, with a prefix. This is incredibly useful for larger apps, for example when you have multiple versions of an API.
 
-```ts
+```ts {4}
 import {v1} from './routers/v1';
 import {v2} from './routers/v1';
 

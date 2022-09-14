@@ -1,0 +1,27 @@
+code {
+	counter-reset: line;
+}
+
+code > .line::before {
+	counter-increment: line;
+	content: counter(line);
+
+	display: inline-block;
+	width: 1rem;
+	margin-right: 1.5rem;
+	text-align: right;
+
+	user-select: none;
+
+	color: gray;
+}
+
+pre {
+	border: 1px solid #eaecef;
+}
+
+@media (prefers-color-scheme: dark) {
+	pre {
+		border-color: #2d2d2d;
+	}
+}

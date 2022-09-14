@@ -1,5 +1,9 @@
 {
 	"index": "Introduction",
+	"--- Documentation": {
+		"type": "separator",
+		"title": "Documentation"
+	},
 	"getting-started": "Getting Started",
 	"documentation": "Documentation",
 	"faq": "FAQ"
