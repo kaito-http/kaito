@@ -1,0 +1,7 @@
+{
+	"name": "@kaito-http/client",
+	"packageManager": "yarn@3.2.0",
+	"main": "dist/kaito-http-client.cjs.js",
+	"types": "dist/kaito-http-client.d.ts",
+	"module": "dist/kaito-http-client.esm.js"
+}

@@ -1,4 +1,4 @@
-import * as http from 'http';
+import * as http from 'node:http';
 import {KaitoError} from './error';
 import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';

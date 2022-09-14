@@ -1,4 +1,4 @@
-import fmw, {Handler, HTTPMethod, Instance} from 'find-my-way';
+import fmw, {Handler, HTTPMethod} from 'find-my-way';
 import {z} from 'zod';
 import {KaitoError, WrappedError} from './error';
 import {KaitoRequest} from './req';
