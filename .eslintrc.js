@@ -20,6 +20,7 @@ module.exports = {
 		'@typescript-eslint/naming-convention': 'off',
 		'operator-linebreak': 'off',
 		'no-mixed-spaces-and-tabs': 'off',
+		'jsx-quotes': 'off',
 		'@typescript-eslint/ban-types': [
 			'error',
 			{

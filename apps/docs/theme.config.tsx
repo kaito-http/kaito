@@ -1,5 +1,6 @@
 import React from 'react';
-import {DocsThemeConfig, useConfig} from 'nextra-theme-docs';
+import type {DocsThemeConfig} from 'nextra-theme-docs';
+import {useConfig} from 'nextra-theme-docs';
 import urlcat from 'es-urlcat';
 
 const PoweredByVercel = () => (
@@ -49,14 +50,15 @@ const config: DocsThemeConfig = {
 
 	logo: <span>Kaito</span>,
 
+	// eslint-disable-next-line func-name-matching, func-names
 	head: function Head() {
 		const config = useConfig();
 
-		const meta = config.frontMatter;
+		const meta = config.frontMatter as {title?: string; description?: string; image?: string};
 		const title = config.title ?? meta.title;
 
 		const ogImage =
-			meta.image ||
+			meta.image ??
 			urlcat('https://ogmeta.kaito.cloud', '/', {
 				title,
 				subtitle: meta.description ?? undefined,
@@ -67,8 +69,8 @@ const config: DocsThemeConfig = {
 			<>
 				<meta name="msapplication-TileColor" content="#ffffff" />
 				<meta httpEquiv="Content-Language" content="en" />
-				<meta name="description" content={meta.description || 'Kaito: An HTTP framework for TypeScript'} />
-				<meta name="og:description" content={meta.description || 'Kaito: An HTTP framework for TypeScript'} />
+				<meta name="description" content={meta.description ?? 'Kaito: An HTTP framework for TypeScript'} />
+				<meta name="og:description" content={meta.description ?? 'Kaito: An HTTP framework for TypeScript'} />
 				<meta name="twitter:card" content="summary_large_image" />
 				<meta name="twitter:site" content="@alistaiiiir" />
 				<meta name="twitter:image" content={ogImage} />
