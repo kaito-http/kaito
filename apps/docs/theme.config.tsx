@@ -1,4 +1,5 @@
 import React from 'react';
+import {DocsThemeConfig} from 'nextra-theme-docs';
 
 const PoweredByVercel = () => (
 	<svg width="209" height="40" viewBox="0 0 209 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -15,27 +16,38 @@ const PoweredByVercel = () => (
 	</svg>
 );
 
-const config = {
-	projectLink: 'https://github.com/kaito-http/kaito',
-	docsRepositoryBase: 'https://github.com/kaito-http/kaito/blob/master/apps/docs/pages',
-	branch: 'master',
-	search: true,
-	unstable_flexsearch: true,
-	floatTOC: true,
-	titleSuffix: ' – Kaito',
-	nextLinks: false,
-	prevLinks: false,
-	feedbackLink() {
-		return 'Feedback';
+const config: DocsThemeConfig = {
+	project: {
+		link: 'https://github.com/kaito-http/kaito',
 	},
-	feedbackLabels: 'docs-feedback',
-	footerText: (
-		<a href="https://vercel.com?utm_source=kaito-http&utm_campaign=oss">
-			<PoweredByVercel />
-		</a>
-	),
-	footerEditOnGitHubLink: true,
+
+	docsRepositoryBase: 'https://github.com/kaito-http/kaito/blob/master/apps/docs/pages',
+
+	toc: {
+		float: true,
+	},
+
+	sidebar: {
+		defaultMenuCollapsed: true,
+	},
+
+	titleSuffix: ' – Kaito',
+
+	feedback: {
+		labels: 'docs-feedback',
+		content: 'Feedback',
+	},
+
+	footer: {
+		text: (
+			<a href="https://vercel.com?utm_source=kaito-http&utm_campaign=oss">
+				<PoweredByVercel />
+			</a>
+		),
+	},
+
 	logo: <span>Kaito</span>,
+
 	head: (
 		<>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0" />
