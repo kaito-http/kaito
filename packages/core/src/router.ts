@@ -110,7 +110,9 @@ export class Router<Context, R extends Routes> {
 		BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
 		BodyInput = BodyOutput
 	>(
-		route: Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>
+		route: Method extends 'GET'
+			? Omit<Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>, 'body'>
+			: Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>
 	): Router<Context, [...R, Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]> =>
 		new Router([...this.routes, route]);
 

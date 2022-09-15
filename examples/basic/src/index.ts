@@ -49,7 +49,6 @@ const v1 = createRouter()
 	.add({
 		method: 'GET',
 		path: '/echo',
-		body: z.string(),
 		async run({body}) {
 			return body;
 		},
@@ -69,6 +68,19 @@ const router = createRouter()
 		method: 'POST',
 		async run({ctx}) {
 			return ctx.uptime;
+		},
+	})
+	.add({
+		path: '/test-query',
+		method: 'GET',
+		query: {
+			age: z
+				.string()
+				.transform(value => parseInt(value, 10))
+				.default('10'),
+		},
+		async run({query}) {
+			return query;
 		},
 	})
 	.merge('/v1', v1);
