@@ -1,5 +1,6 @@
-import {ServerResponse} from 'node:http';
-import {serialize, CookieSerializeOptions} from 'cookie';
+import type {ServerResponse} from 'node:http';
+import type {CookieSerializeOptions} from 'cookie';
+import {serialize} from 'cookie';
 
 export type ErroredAPIResponse = {success: false; data: null; message: string};
 export type SuccessfulAPIResponse<T> = {success: true; data: T; message: 'OK'};
@@ -7,11 +8,7 @@ export type APIResponse<T> = ErroredAPIResponse | SuccessfulAPIResponse<T>;
 export type AnyResponse = APIResponse<unknown>;
 
 export class KaitoResponse<T = unknown> {
-	public readonly raw: ServerResponse;
-
-	constructor(raw: ServerResponse) {
-		this.raw = raw;
-	}
+	constructor(public readonly raw: ServerResponse) {}
 
 	/**
 	 * Send a response

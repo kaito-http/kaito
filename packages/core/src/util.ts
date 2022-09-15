@@ -1,8 +1,10 @@
-import {parse} from 'content-type';
-import {HTTPMethod} from 'find-my-way';
+import {parse as parseContentType} from 'content-type';
+import type {HTTPMethod} from 'find-my-way';
+import {Readable} from 'node:stream';
+import {json} from 'node:stream/consumers';
 import getRawBody from 'raw-body';
-import {KaitoRequest} from './req';
-import {KaitoResponse} from './res';
+import type {KaitoRequest} from './req';
+import type {KaitoResponse} from './res';
 
 export type ExtractRouteParams<T extends string> = string extends T
 	? Record<string, string>
@@ -35,28 +37,18 @@ export type NormalizePath<T extends string> = AddStartSlashes<RemoveEndSlashes<T
 export type Values<T> = T[keyof T];
 export type NoEmpty<T> = [keyof T] extends [never] ? never : T;
 
-export async function getInput(req: KaitoRequest) {
-	if (req.method === 'GET') {
-		const input = req.url.searchParams.get('input');
-
-		if (!input) {
-			return null;
-		}
-
-		return JSON.parse(input) as unknown;
-	}
-
-	const buffer = await getRawBody(req.raw);
-
+export async function getBody(req: KaitoRequest) {
 	if (!req.headers['content-type']) {
 		return null;
 	}
 
-	const {type} = parse(req.headers['content-type']);
+	const buffer = await getRawBody(req.raw);
+
+	const {type} = parseContentType(req.headers['content-type']);
 
 	switch (type) {
 		case 'application/json': {
-			return JSON.parse(buffer.toString()) as unknown;
+			return json(Readable.from(buffer));
 		}
 
 		default: {

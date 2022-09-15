@@ -1,25 +1,34 @@
-import {z} from 'zod';
-import {ExtractRouteParams, KaitoMethod} from './util';
+import type {z} from 'zod';
+import type {ExtractRouteParams, KaitoMethod} from './util';
 
-export type RouteArgument<Path extends string, Context, InputOutput> = {
+export type RouteArgument<Path extends string, Context, QueryOutput, BodyOutput> = {
 	ctx: Context;
-	input: InputOutput;
+	body: BodyOutput;
+	query: QueryOutput;
 	params: ExtractRouteParams<Path>;
 };
 
+export type AnyQueryDefinition = Record<string, z.ZodTypeAny>;
+
 export type Route<
+	// Router context
 	Context,
+	// Route information
 	Result,
 	Path extends string,
 	Method extends KaitoMethod,
-	InputOutput = never,
-	InputDef extends z.ZodTypeDef = z.ZodTypeDef,
-	InputInput = InputOutput
+	// Query params
+	Query extends AnyQueryDefinition,
+	// Body
+	BodyOutput,
+	BodyDef extends z.ZodTypeDef,
+	BodyInput
 > = {
-	input?: z.ZodType<InputOutput, InputDef, InputInput>;
+	body?: z.ZodType<BodyOutput, BodyDef, BodyInput>;
+	query?: Query;
 	path: Path;
 	method: Method;
-	run(args: RouteArgument<Path, Context, InputOutput>): Promise<Result>;
+	run(args: RouteArgument<Path, Context, z.infer<z.ZodObject<Query>>, BodyOutput>): Promise<Result>;
 };
 
-export type AnyRoute<Context = any> = Route<Context, any, any, any, any, z.ZodTypeDef, any>;
+export type AnyRoute<Context = any> = Route<Context, any, any, any, AnyQueryDefinition, any, any, any>;

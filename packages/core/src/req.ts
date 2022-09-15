@@ -1,15 +1,12 @@
-import {HTTPMethod} from 'find-my-way';
-import {IncomingMessage} from 'node:http';
+import type {HTTPMethod} from 'find-my-way';
+import type {IncomingMessage} from 'node:http';
 import {TLSSocket} from 'node:tls';
 import {getLastEntryInMultiHeaderValue} from './util';
 
 export class KaitoRequest {
-	public readonly raw: IncomingMessage;
 	private _url: URL | null = null;
 
-	constructor(raw: IncomingMessage) {
-		this.raw = raw;
-	}
+	constructor(public readonly raw: IncomingMessage) {}
 
 	/**
 	 * The full URL of the request, including the protocol, hostname, and path.

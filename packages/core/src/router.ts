@@ -1,11 +1,13 @@
-import fmw, {Handler, HTTPMethod} from 'find-my-way';
+import type {Handler, HTTPMethod} from 'find-my-way';
+import fmw from 'find-my-way';
 import {z} from 'zod';
 import {KaitoError, WrappedError} from './error';
 import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';
-import {AnyRoute, Route} from './route';
-import {ServerConfig} from './server';
-import {ExtractRouteParams, getInput, KaitoMethod} from './util';
+import type {AnyQueryDefinition, AnyRoute, Route} from './route';
+import type {ServerConfig} from './server';
+import type {ExtractRouteParams, KaitoMethod} from './util';
+import {getBody} from './util';
 
 type Routes = readonly AnyRoute[];
 
@@ -14,36 +16,27 @@ type RemapRoutePrefix<R extends AnyRoute, Prefix extends `/${string}`> = R exten
 	infer Result,
 	infer Path,
 	infer Method,
-	infer InputOutput,
-	infer InputDef,
-	infer InputInput
+	infer Query,
+	infer BodyOutput,
+	infer BodyDef,
+	infer BodyInput
 >
-	? Route<Context, Result, `${Prefix}${Path}`, Method, InputOutput, InputDef, InputInput>
+	? Route<Context, Result, `${Prefix}${Path}`, Method, Query, BodyOutput, BodyDef, BodyInput>
 	: never;
 
 type PrefixRoutesPath<Prefix extends `/${string}`, R extends Routes> = R extends [infer First, ...infer Rest]
 	? [
-			RemapRoutePrefix<Extract<First, AnyRoute<any>>, Prefix>,
-			...PrefixRoutesPath<Prefix, Extract<Rest, readonly AnyRoute<any>[]>>
+			RemapRoutePrefix<Extract<First, AnyRoute>, Prefix>,
+			...PrefixRoutesPath<Prefix, Extract<Rest, readonly AnyRoute[]>>
 	  ]
 	: [];
 
 export class Router<Context, R extends Routes> {
-	public readonly routes: R;
+	public static create = <Context>() => new Router<Context, []>([]);
 
-	constructor(routes: R) {
-		this.routes = routes;
-	}
-
-	private static async handle<
-		Result,
-		Path extends string,
-		Method extends KaitoMethod,
-		Context,
-		Input extends z.ZodSchema = never
-	>(
+	private static async handle<Path extends string, Context>(
 		server: ServerConfig<Context, any>,
-		route: Route<Context, Result, Path, Method, Input>,
+		route: AnyRoute,
 		options: {
 			params: Record<string, string | undefined>;
 			req: KaitoRequest;
@@ -53,14 +46,18 @@ export class Router<Context, R extends Routes> {
 		try {
 			const ctx = await server.getContext(options.req, options.res);
 
-			const body = await getInput(options.req);
-			const input = route.input?.parse(body) ?? (undefined as never);
+			const body = ((await route.body?.parse(await getBody(options.req))) ?? undefined) as unknown;
 
-			const result = await route.run({
+			const query = (
+				route.query ? z.object(route.query).parse(Object.fromEntries(options.req.url.searchParams.entries())) : {}
+			) as z.ZodObject<AnyQueryDefinition>['_type'];
+
+			const result = (await route.run({
 				ctx,
-				input,
+				body,
+				query,
 				params: options.params as ExtractRouteParams<Path>,
-			});
+			})) as unknown;
 
 			options.res.status(200).json({
 				success: true as const,
@@ -102,18 +99,19 @@ export class Router<Context, R extends Routes> {
 		}
 	}
 
-	public static create = <Context>() => new Router<Context, []>([]);
+	constructor(public readonly routes: R) {}
 
 	public add = <
 		Result,
 		Path extends string,
 		Method extends KaitoMethod,
-		InputOutput = never,
-		InputDef extends z.ZodTypeDef = z.ZodTypeDef,
-		InputInput = InputOutput
+		Query extends AnyQueryDefinition = {},
+		BodyOutput = never,
+		BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
+		BodyInput = BodyOutput
 	>(
-		route: Route<Context, Result, Path, Method, InputOutput, InputDef, InputInput>
-	): Router<Context, [...R, Route<Context, Result, Path, Method, InputOutput, InputDef, InputInput>]> =>
+		route: Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>
+	): Router<Context, [...R, Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]> =>
 		new Router([...this.routes, route]);
 
 	public merge = <PathPrefix extends `/${string}`, OtherRoutes extends Routes>(
@@ -122,7 +120,7 @@ export class Router<Context, R extends Routes> {
 	) => {
 		const newRoutes = other.routes.map(route => ({
 			...route,
-			path: `${pathPrefix}${route.path}` as `${PathPrefix}${string}`,
+			path: `${pathPrefix}${route.path as string}`,
 		}));
 
 		type Result = [...R, ...PrefixRoutesPath<PathPrefix, OtherRoutes>];

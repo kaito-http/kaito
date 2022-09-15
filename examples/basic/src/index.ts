@@ -3,12 +3,23 @@ import {z} from 'zod';
 import {createRouter, getContext} from './context';
 
 const users = createRouter().add({
-	method: 'GET',
+	method: 'POST',
 	path: '/:id',
-	input: z.null(),
-	async run({params}) {
+	body: z.object({
+		name: z.string(),
+	}),
+	query: {
+		limit: z
+			.string()
+			.transform(value => parseInt(value, 10))
+			.default('10'),
+	},
+	async run({ctx, body, params, query}) {
 		return {
-			user_id: params.id,
+			uptime: ctx.uptime,
+			body,
+			params,
+			query,
 		};
 	},
 });
@@ -38,9 +49,9 @@ const v1 = createRouter()
 	.add({
 		method: 'GET',
 		path: '/echo',
-		input: z.unknown(),
-		async run({input}) {
-			return input;
+		body: z.string(),
+		async run({body}) {
+			return body;
 		},
 	})
 	.merge('/users', users);

@@ -1,9 +1,9 @@
 import * as http from 'node:http';
-import {KaitoError} from './error';
-import {KaitoRequest} from './req';
-import {KaitoResponse} from './res';
-import {Router} from './router';
-import {GetContext, KaitoMethod} from './util';
+import type {KaitoError} from './error';
+import type {KaitoRequest} from './req';
+import type {KaitoResponse} from './res';
+import type {Router} from './router';
+import type {GetContext, KaitoMethod} from './util';
 
 export type Before<BeforeAfterContext> = (
 	req: http.IncomingMessage,
@@ -28,10 +28,10 @@ export type ServerConfig<Context, BeforeAfterContext> = ServerConfigWithBefore<B
 	rawRoutes?: Partial<
 		Record<
 			KaitoMethod,
-			{
+			Array<{
 				path: string;
 				handler: (request: http.IncomingMessage, response: http.ServerResponse) => unknown;
-			}[]
+			}>
 		>
 	>;
 
@@ -74,7 +74,7 @@ export function createFMWServer<Context, BeforeAfterContext = null>(config: Serv
 		if (config.before) {
 			before = await config.before(req, res);
 		} else {
-			before = null as never;
+			before = undefined as never;
 		}
 
 		// If the user has sent a response (e.g. replying to CORS), we don't want to do anything else.
@@ -82,7 +82,7 @@ export function createFMWServer<Context, BeforeAfterContext = null>(config: Serv
 			return;
 		}
 
-		const result = await fmw.lookup(req, res);
+		const result = (await fmw.lookup(req, res)) as HandlerResult;
 
 		if ('after' in config && config.after) {
 			await config.after(before, result);
