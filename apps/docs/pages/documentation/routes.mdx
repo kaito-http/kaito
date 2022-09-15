@@ -27,17 +27,21 @@ const router = createRouter().add({
 
 ## Input
 
-Routes can also take an input schema provided by Zod. Internally, Kaito validates all request bodies so you can be absolutely certain you are processing the right data.
+Routes can also take a query and body schema provided by Zod. Internally, Kaito wil validate all request bodies and query params so you can be absolutely certain you are processing the right data.
 
 ```ts
 import {z} from 'zod';
 
 const router = createRouter().add({
-	method: 'GET',
+	method: 'POST',
 	path: '/echo',
-	input: z.string(),
-	async run({input}) {
-		return input;
+	query: {
+		content: z.string(),
+	},
+	body: z.number(),
+	async run({body, query}) {
+		// Echo it back
+		return {body, query};
 	},
 });
 ```

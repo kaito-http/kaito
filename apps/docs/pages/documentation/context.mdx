@@ -50,9 +50,11 @@ import {z} from 'zod';
 export const users = createRouter().add({
 	method: 'GET',
 	path: '/users',
-	input: z.string(),
-	async run({ctx, input}) {
-		return ctx.users.search(input);
+	query: {
+		search: z.string(),
+	},
+	async run({ctx, query}) {
+		return ctx.users.search(query.search);
 	},
 });
 ```
