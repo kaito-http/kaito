@@ -6,7 +6,7 @@
 	"homepage": "https://github.com/kaito-http/kaito",
 	"license": "MIT",
 	"repository": "https://github.com/kaito-http/kaito",
-	"version": "2.6.0",
+	"version": "2.7.0",
 	"scripts": {
 		"dev": "tsnd --transpile-only src/index.ts",
 		"build": "yarn tsc",
