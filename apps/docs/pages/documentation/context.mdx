@@ -47,12 +47,11 @@ You can then use this context, when setup correctly with a router, inside every 
 ```ts
 import {z} from 'zod';
 
-export const users = createRouter().add({
-	method: 'GET',
-	path: '/users',
+export const users = createRouter().add('GET', '/users', {
 	query: {
 		search: z.string(),
 	},
+
 	async run({ctx, query}) {
 		return ctx.users.search(query.search);
 	},

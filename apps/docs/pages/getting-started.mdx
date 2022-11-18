@@ -23,9 +23,7 @@ Kaito is very simple to use, it revolves around a few basic concepts. Before we 
 A route is a function that is available on the API. Simply put, it's something that will exist over HTTP and returns a single value that will be JSON encoded. Below is a basic example
 
 ```ts
-export const getUsers = router().add({
-	method: 'GET',
-	path: '/users',
+export const getUsers = router().add('GET', '/users', {
 	async run() {
 		return database.getUsers();
 	},
@@ -72,24 +70,20 @@ Secondly, we'll need to create a router, a server, and our first route.
 import {createServer} from '@kaito-http/core';
 import {router, getContext} from './context';
 
-const app = router().add({
-	method: 'GET',
-	path: '/',
-	async run({ctx}) {
-		return {
-			uptime: ctx.uptime,
-			time_now: Date.now(),
-		};
-	},
+const app = router().add('GET', '/', ({ctx}) => {
+	return {
+		uptime: ctx.uptime,
+		time_now: Date.now(),
+	};
 });
 
 const server = createServer({
 	getContext,
 	router: app,
 
-	// Define an `onError` handler in case something goes wrong inside of the route.
+	// Define an async `onError` handler, in case something goes wrong inside of the route.
 	// More on that that later.
-	async onError({error}) {
+	onError: async ({error}) => {
 		console.log(error);
 
 		return {

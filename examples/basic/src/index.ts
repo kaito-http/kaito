@@ -26,11 +26,11 @@ const users = createRouter().add('POST', '/:id', {
 
 const v1 = createRouter()
 	// Basic inline route
-	.add('GET', '/time', () => Date.now())
+	.add('GET', '/time', async () => Date.now())
 
 	// Basic object route
 	.add('POST', '/time', {
-		run: () => {
+		run: async () => {
 			return {t: Date.now()};
 		},
 	})
@@ -46,7 +46,7 @@ const v1 = createRouter()
 	.add('POST', '/echo', {
 		body: z.record(z.string(), z.unknown()),
 
-		run: ({body}) => {
+		run: async ({body}) => {
 			// Body is typed as `Record<string, unknown>`
 			return body;
 		},
@@ -69,7 +69,7 @@ const router = createRouter()
 				.default('10'),
 		},
 
-		run: ({query}) => query.age,
+		run: async ({query}) => query.age,
 	})
 
 	// Merge this router with another router (v1)

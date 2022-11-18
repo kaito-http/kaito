@@ -17,10 +17,11 @@ const router = createRouter().add('GET', '/ping', async () => 'pong');
 ## Constraints
 
 - Route return types **must** be JSON serializable (until custom serializers are supported).
+- Route execution logic must be async (return a promise). This might change in the future
 
 ## Execution
 
-Routes are executed by the router. The router is responsible for parsing the request, validating the input, and executing the route. Route run methods can be async or sync. Throwing an error will call your onError handler defined in your server.
+Routes are executed by the router. The router is responsible for parsing the request, validating the input, and executing the route. Route run methods must be async. Throwing an error will call your onError handler defined in your server.
 
 ## Input
 

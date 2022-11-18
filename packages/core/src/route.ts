@@ -28,7 +28,7 @@ export type Route<
 	query?: Query;
 	path: Path;
 	method: Method;
-	run(args: RouteArgument<Path, Context, z.infer<z.ZodObject<Query>>, BodyOutput>): Promise<Result> | Result;
+	run(args: RouteArgument<Path, Context, z.infer<z.ZodObject<Query>>, BodyOutput>): Promise<Result>;
 };
 
 export type AnyRoute<Context = any> = Route<Context, any, any, any, AnyQueryDefinition, any, any, any>;
