@@ -3,5 +3,6 @@
 	"routes": "Routes",
 	"routers": "Routers",
 	"server": "Server",
+	"error-handling": "Error Handling",
 	"escape-hatches": "Escape Hatches"
 }

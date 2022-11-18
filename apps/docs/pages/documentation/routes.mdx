@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 # Routes
 
-Routes are the basic building blocks of Kaito. They represent a single HTTP route with an optional input schema and async execution logic.
+Routes are the basic building blocks of Kaito. They represent a single HTTP route with a optional input schemas (body, query) and execution logic.
 
 ## Creating a Route
 
@@ -11,32 +11,30 @@ Creating a route requires us to have a router already established. If you don't,
 Here's an extremely basic example of a ping/pong route.
 
 ```ts
-const router = createRouter().add({
-	method: 'GET',
-	path: '/ping',
-	async run() {
-		return 'PONG';
-	},
-});
+const router = createRouter().add('GET', '/ping', async () => 'pong');
 ```
 
 ## Constraints
 
-- Route `run` functions must be async.
-- Route return types **must** be JSON serializable.
+- Route return types **must** be JSON serializable (until custom serializers are supported).
+
+## Execution
+
+Routes are executed by the router. The router is responsible for parsing the request, validating the input, and executing the route. Route run methods can be async or sync. Throwing an error will call your onError handler defined in your server.
 
 ## Input
 
 Routes can also take a query and body schema provided by Zod. Internally, Kaito wil validate all request bodies and query params so you can be absolutely certain you are processing the right data.
 
+Route query schemas should always take a string, or array of strings as the input. This is because query params are always strings. It is safe to transform them into other types, but you should always be able to handle a string.
+
 ```ts
 import {z} from 'zod';
 
-const router = createRouter().add({
-	method: 'POST',
-	path: '/echo',
+const router = createRouter().add('POST', '/echo', {
 	query: {
-		content: z.string(),
+		skip: z.string().transform(value => parseInt(value)),
+		take: z.string().transform(value => parseInt(value)),
 	},
 	body: z.number(),
 	async run({body, query}) {

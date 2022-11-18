@@ -29,11 +29,7 @@ const config: DocsThemeConfig = {
 		float: true,
 	},
 
-	sidebar: {
-		defaultMenuCollapsed: true,
-	},
-
-	titleSuffix: ' – Kaito',
+	sidebar: {},
 
 	feedback: {
 		labels: 'docs-feedback',

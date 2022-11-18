@@ -18,11 +18,7 @@ Routers can be created as many times as you want in your app with the `createRou
 ```ts
 import {Router} from '@kaito-http/core';
 
-const router = Router.create().add({
-	method: 'GET',
-	path: '/',
-	// ...
-});
+const router = Router.create();
 ```
 
 This will be an instance of `Router`, with a few TypeScript generics to store our route response types.
@@ -33,7 +29,7 @@ create another router.
 
 We can do this by exporting another function in our `context.ts` file called `createRouter` or `router` (or something like that).
 
-```ts
+```ts {7,9-11}
 import {Router, createGetContext, InferContext} from '@kaito-http/core';
 
 export const getContext = createGetContext(async (req, res) => {

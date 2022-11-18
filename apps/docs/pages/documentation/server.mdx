@@ -1,12 +1,10 @@
 # Server
 
-The `createServer` function is a very minimal part of Kaito, it is almost not worth writing docs for it as it simply wraps `http.createServer`.
+The `createServer` function is a very minimal part of Kaito, it simply wraps `http.createServer` as well as provides a few extra features.
 
 As of version `2.3.0`, kaito implemented `find-my-way` which massively improves performance, so we expose the internal fmw instance if you would like to access it for whatever reason.
 
-To use it, simply replace your `createServer` import and call with `createFMWServer`.
-
-Below is an example of using `find-my-way` to pretty print a list of all available routes.
+To use it, simply replace your `createServer` import and call with `createFMWServer`. Below is an example of using `find-my-way` to pretty print a list of all available routes.
 
 ```ts
 import {createFMWServer} from '@kaito-http/core';
@@ -14,10 +12,70 @@ import {createFMWServer} from '@kaito-http/core';
 const {server, fmw} = createFMWServer({
 	getContext,
 	router,
+	onError,
 	// ...
 });
 
 server.listen(8080, () => {
 	console.log(fmw.prettyPrint());
+});
+```
+
+## `onError`
+
+In the example above, you can see I have included a property called `onError`. This is a function that is called whenever an error is thrown in the request lifecycle. This function should reply with an object that contains a `status` and `message`. These will be used to reply to the client.
+
+```ts
+import {createServer} from '@kaito-http/core';
+
+const server = createServer({
+	// Be careful with using `res` here. It will enable you to send a response early (which will break your application).
+	// I may remove it in the future, too.
+	onError: async ({error, req, res}) => {
+		return {
+			status: 500,
+			message: error.message ?? 'Internal Server Error',
+		};
+	},
+	// ...
+});
+```
+
+## Before/After
+
+Kaito has a concept of before and after hooks, which are executed before and after the router. This is useful for things like logging, authentication, etc. Personally, I use it to add CORS headers.
+
+```ts
+const server = createServer({
+	getContext,
+	router,
+	// Before runs code before every request. This is helpful for setting things like CORS.
+	// You can return a value from before, and it will be passed to the after call.
+	// If you end the response in `before`, the router will not be called.
+	before: async (req, res) => {
+		res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+		res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+		res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+		res.setHeader('Access-Control-Max-Age', '86400');
+		res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+		if (req.method === 'OPTIONS') {
+			res.statusCode = 204;
+			// This is safe, because the router will know that the response is ended.
+			res.end();
+		}
+
+		// Return something from `before`, and it will be passed to `after`.
+		return {
+			timestamp: Date.now(),
+		};
+	},
+
+	// Access the return value from `before` in `after`.
+	// If the before function ends the response, this *will* be called!
+	// So be careful about logging request durations etc
+	after: async ({timestamp}) => {
+		console.log(`Request took ${Date.now() - timestamp}ms`);
+	},
 });
 ```

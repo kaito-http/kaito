@@ -34,7 +34,7 @@
 		"release": "yarn constraints --fix && yarn build && yarn publish-all",
 		"publish-all": "yarn workspaces foreach --from '@kaito-http/*' --no-private npm publish --access public"
 	},
-	"packageManager": "yarn@3.2.3",
+	"packageManager": "yarn@3.3.0",
 	"preconstruct": {
 		"packages": [
 			"packages/*"

@@ -1,0 +1,35 @@
+---
+title: Error Handling
+description: Learn how errors are handled
+---
+
+import {Callout} from 'nextra-theme-docs';
+
+# Error Handling
+
+Errors are handled very gracefully in Kaito. You can throw an error in any route, and it will always be caught and handled. This means that you don't have to worry about catching errors in your routes, and you can focus on writing your application.
+
+## Throwing Errors
+
+Kaito has a built in error called `KaitoError`. You can throw this error in your routes, and it will be caught and sent back to the client.
+
+<Callout>
+	Throwing a KaitoError will not call your `.onError` handler defined in your server. All other values thrown will!
+</Callout>
+
+```ts {8}
+export const users = createRouter().add('GET', '/:id', async ({ctx, params}) => {
+	const user = await ctx.db.users.findOne({
+		where: {id: params.id},
+	});
+
+	// Client will receive this status code and error message
+	if (!user) {
+		throw new KaitoError(404, 'User not found');
+	}
+
+	return user;
+});
+```
+
+All other errors will be forwarded to your `.onError` handler, which dictates what status and message should be sent to the client.
