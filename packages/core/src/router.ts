@@ -101,7 +101,13 @@ export class Router<Context, R extends Routes> {
 
 	constructor(public readonly routes: R) {}
 
-	public add = <
+	/**
+	 * Adds a new route to the router
+	 * @param route The route specification to add to this router
+	 * @returns A new router with this route added
+	 * @deprecated Use `Router#add` instead
+	 */
+	public old_add = <
 		Result,
 		Path extends string,
 		Method extends KaitoMethod,
@@ -115,6 +121,42 @@ export class Router<Context, R extends Routes> {
 			: Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>
 	): Router<Context, [...R, Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]> =>
 		new Router([...this.routes, route]);
+
+	/**
+	 * Adds a new route to the router
+	 * @param method The HTTP method to add a route for
+	 * @param path The path to add a route for
+	 * @param route The route specification to add to this router
+	 * @returns A new router with this route added
+	 */
+	public add = <
+		Result,
+		Path extends string,
+		Method extends KaitoMethod,
+		Query extends AnyQueryDefinition = {},
+		BodyOutput = never,
+		BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
+		BodyInput = BodyOutput
+	>(
+		method: Method,
+		path: Path,
+		route:
+			| (Method extends 'GET'
+					? Omit<
+							Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
+							'body' | 'path' | 'method'
+					  >
+					: Omit<Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
+			| Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run']
+	): Router<Context, [...R, Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]> => {
+		const merged: Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput> = {
+			...(typeof route === 'object' ? route : {run: route}),
+			method,
+			path,
+		};
+
+		return new Router([...this.routes, merged]);
+	};
 
 	public merge = <PathPrefix extends `/${string}`, OtherRoutes extends Routes>(
 		pathPrefix: PathPrefix,
@@ -155,7 +197,11 @@ export class Router<Context, R extends Routes> {
 				const req = new KaitoRequest(incomingMessage);
 				const res = new KaitoResponse(serverResponse);
 
-				return Router.handle(server, route, {params, req, res});
+				return Router.handle(server, route, {
+					params,
+					req,
+					res,
+				});
 			};
 
 			if (route.method === '*') {
