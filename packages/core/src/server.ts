@@ -19,6 +19,8 @@ export type ServerConfigWithBefore<BeforeAfterContext> =
 	| {before?: undefined};
 
 export type ServerConfig<Context, BeforeAfterContext> = ServerConfigWithBefore<BeforeAfterContext> & {
+	// We really want to accept any here.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	router: Router<Context, any>;
 	getContext: GetContext<Context>;
 

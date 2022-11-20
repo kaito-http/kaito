@@ -1,3 +1,5 @@
+/* eslint-disable arrow-body-style */
+
 import type {InferContext, KaitoResponse} from '@kaito-http/core';
 import {createGetContext, Router} from '@kaito-http/core';
 
@@ -20,7 +22,7 @@ export const getContext = createGetContext(async (req, res) => {
 
 		// The only time I'd ever need to use res is setting a cookie,
 		// so it wise to move it here and not expose it to the routes.
-		setCookie: (...[name, value, options]: Parameters<KaitoResponse['cookie']>) => {
+		setCookie(...[name, value, options]: Parameters<KaitoResponse['cookie']>) {
 			res.cookie(name, value, options);
 		},
 

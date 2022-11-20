@@ -31,4 +31,6 @@ export type Route<
 	run(args: RouteArgument<Path, Context, z.infer<z.ZodObject<Query>>, BodyOutput>): Promise<Result>;
 };
 
+// This must be any here, because we can't use the generic type in the type definition
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyRoute<Context = any> = Route<Context, any, any, any, AnyQueryDefinition, any, any, any>;

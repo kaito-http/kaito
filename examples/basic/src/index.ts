@@ -30,14 +30,14 @@ const v1 = createRouter()
 
 	// Basic object route
 	.add('POST', '/time', {
-		run: async () => {
+		async run() {
 			return {t: Date.now()};
 		},
 	})
 
 	// How to throw an error
 	.add('GET', '/throw', {
-		run: () => {
+		run() {
 			throw new KaitoError(400, 'Something was intentionally thrown');
 		},
 	})
@@ -46,7 +46,7 @@ const v1 = createRouter()
 	.add('POST', '/echo', {
 		body: z.record(z.string(), z.unknown()),
 
-		run: async ({body}) => {
+		async run({body}) {
 			// Body is typed as `Record<string, unknown>`
 			return body;
 		},
@@ -92,7 +92,7 @@ const server = createServer({
 					// This is not included in Kaito's raw routes because raw routes
 					// are just a wrapper around Node's `http` module.
 
-					response.end("welcome to kaito's raw routes");
+					response.end('welcome to kaito\'s raw routes');
 				},
 			},
 		],

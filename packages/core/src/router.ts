@@ -35,6 +35,8 @@ export class Router<Context, R extends Routes> {
 	public static create = <Context>() => new Router<Context, []>([]);
 
 	private static async handle<Path extends string, Context>(
+		// Allow for any server to be passed
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		server: ServerConfig<Context, any>,
 		route: AnyRoute,
 		options: {
@@ -172,6 +174,8 @@ export class Router<Context, R extends Routes> {
 		return new Router<Context, Result>([...this.routes, ...newRoutes] as Result);
 	};
 
+	// Allow for any server context to be passed
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public toFindMyWay = (server: ServerConfig<Context, any>) => {
 		const instance = fmw({
 			ignoreTrailingSlash: true,
