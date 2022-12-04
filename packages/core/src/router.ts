@@ -5,7 +5,7 @@ import {KaitoError, WrappedError} from './error';
 import {KaitoRequest} from './req';
 import {KaitoResponse} from './res';
 import type {AnyQueryDefinition, AnyRoute, Route} from './route';
-import type {ServerConfig} from './server';
+import {defaultJSONSerializer, type HandlerResult, type ServerConfig} from './server';
 import type {ExtractRouteParams, KaitoMethod} from './util';
 import {getBody} from './util';
 
@@ -31,74 +31,74 @@ type PrefixRoutesPath<Prefix extends `/${string}`, R extends Routes> = R extends
 	  ]
 	: [];
 
+type WithLeadingSlash<T extends string> = T extends `/${string}` ? T : `/${T}`;
+
 export class Router<Context, R extends Routes> {
 	public static create = <Context>() => new Router<Context, []>([]);
 
 	private static async handle<Path extends string, Context>(
-		// Allow for any server to be passed
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		server: ServerConfig<Context, any>,
-		route: AnyRoute,
-		options: {
-			params: Record<string, string | undefined>;
-			req: KaitoRequest;
-			res: KaitoResponse;
+		req: KaitoRequest,
+		res: KaitoResponse,
+		params: ExtractRouteParams<Path>,
+		meta: {
+			server: ServerConfig<Context, unknown>;
+			route: AnyRoute;
 		}
-	) {
+	): Promise<HandlerResult> {
 		try {
-			const ctx = await server.getContext(options.req, options.res);
+			const ctx = await meta.server.getContext(req, res);
 
-			const body = ((await route.body?.parse(await getBody(options.req))) ?? undefined) as unknown;
+			const body = ((await meta.route.body?.parse(await getBody(req))) ?? undefined) as unknown;
 
 			const query = (
-				route.query ? z.object(route.query).parse(Object.fromEntries(options.req.url.searchParams.entries())) : {}
+				meta.route.query ? z.object(meta.route.query).parse(Object.fromEntries(req.url.searchParams.entries())) : {}
 			) as z.ZodObject<AnyQueryDefinition>['_type'];
 
-			const result = (await route.run({
+			const result = (await meta.route.run({
 				ctx,
 				body,
 				query,
-				params: options.params as ExtractRouteParams<Path>,
+				params,
 			})) as unknown;
 
-			options.res.status(200).json({
-				success: true as const,
-				data: result,
-				message: 'OK',
-			});
-
 			return {
-				success: true as const,
+				success: true,
 				data: result,
 			};
 		} catch (e: unknown) {
 			const error = WrappedError.maybe(e);
 
 			if (error instanceof KaitoError) {
-				options.res.status(error.status).json({
-					success: false,
-					data: null,
-					message: error.message,
-				});
-
-				return;
+				return {
+					success: false as const,
+					data: {status: error.status, message: error.message},
+				};
 			}
 
-			const {status, message} = await server
-				.onError({error, req: options.req, res: options.res})
+			const {status, message} = await meta.server
+				.onError({error, req, res})
 				.catch(() => ({status: 500, message: 'Internal Server Error'}));
-
-			options.res.status(status).json({
-				success: false,
-				data: null,
-				message,
-			});
 
 			return {
 				success: false as const,
 				data: {status, message},
 			};
 		}
+	}
+
+	private static async sendResponse<T, BAC>(
+		res: KaitoResponse,
+		server: ServerConfig<T, BAC>,
+		handlerResult: HandlerResult
+	): Promise<HandlerResult> {
+		const serialized = await (server.serializer ?? defaultJSONSerializer)(handlerResult);
+
+		res
+			.status(handlerResult.success ? res.raw.statusCode : handlerResult.data.status)
+			.header('Content-Type', 'application/json')
+			.raw.end(serialized);
+
+		return handlerResult;
 	}
 
 	constructor(public readonly routes: R) {}
@@ -138,23 +138,25 @@ export class Router<Context, R extends Routes> {
 		Query extends AnyQueryDefinition = {},
 		BodyOutput = never,
 		BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
-		BodyInput = BodyOutput
+		BodyInput = BodyOutput,
+		RealPath extends `/${string}` = Extract<Path, `/${string}`>
 	>(
 		method: Method,
-		path: Path,
+		path: WithLeadingSlash<Path>,
 		route:
 			| (Method extends 'GET'
 					? Omit<
-							Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
+							Route<Context, Result, RealPath, Method, Query, BodyOutput, BodyDef, BodyInput>,
 							'body' | 'path' | 'method'
 					  >
-					: Omit<Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
-			| Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run']
-	): Router<Context, [...R, Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]> => {
-		const merged: Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput> = {
+					: Omit<Route<Context, Result, RealPath, Method, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
+			| Route<Context, Result, RealPath, Method, Query, BodyOutput, BodyDef, BodyInput>['run']
+	): Router<Context, [...R, Route<Context, Result, RealPath, Method, Query, BodyOutput, BodyDef, BodyInput>]> => {
+		const merged: Route<Context, Result, RealPath, Method, Query, BodyOutput, BodyDef, BodyInput> = {
 			...(typeof route === 'object' ? route : {run: route}),
 			method,
-			path,
+			// Sry for the cast..
+			path: path as unknown as RealPath,
 		};
 
 		return new Router([...this.routes, merged]);
@@ -180,19 +182,13 @@ export class Router<Context, R extends Routes> {
 		const instance = fmw({
 			ignoreTrailingSlash: true,
 			async defaultRoute(req, serverResponse) {
-				const res = new KaitoResponse(serverResponse);
-				const message = `Cannot ${req.method as HTTPMethod} ${req.url ?? '/'}`;
-
-				res.status(404).json({
+				return Router.sendResponse(new KaitoResponse(serverResponse), server, {
 					success: false,
-					data: null,
-					message,
+					data: {
+						status: 404,
+						message: `Cannot ${req.method as HTTPMethod} ${req.url ?? '/'}`,
+					},
 				});
-
-				return {
-					success: false as const,
-					data: {status: 404, message},
-				};
 			},
 		});
 
@@ -201,11 +197,12 @@ export class Router<Context, R extends Routes> {
 				const req = new KaitoRequest(incomingMessage);
 				const res = new KaitoResponse(serverResponse);
 
-				return Router.handle(server, route, {
-					params,
-					req,
-					res,
+				const result = await Router.handle(req, res, params as Record<string, string>, {
+					server,
+					route,
 				});
+
+				return Router.sendResponse(res, server, result);
 			};
 
 			if (route.method === '*') {

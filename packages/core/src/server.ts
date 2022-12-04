@@ -2,6 +2,7 @@ import * as http from 'node:http';
 import type {KaitoError} from './error';
 import type {KaitoRequest} from './req';
 import type {KaitoResponse} from './res';
+import {type AnyRoute} from './route';
 import type {Router} from './router';
 import type {GetContext, KaitoMethod} from './util';
 
@@ -16,13 +17,29 @@ export type After<BeforeAfterContext> = (ctx: BeforeAfterContext, result: Handle
 
 export type ServerConfigWithBefore<BeforeAfterContext> =
 	| {before: Before<BeforeAfterContext>; after?: After<BeforeAfterContext>}
-	| {before?: undefined};
+	| {before?: undefined; after?: undefined};
+
+export type Serializer = (handlerResult: HandlerResult) => string | Promise<string>;
+
+export type DefaultSerializerJSONErroredAPIResponse = {success: false; data: null; message: string};
+export type DefaultSerializerJSONSuccessfulAPIResponse<T> = {success: true; data: T; message: 'OK'};
+export type DefaultSerializerJSONAPIResponse<T> =
+	| DefaultSerializerJSONErroredAPIResponse
+	| DefaultSerializerJSONSuccessfulAPIResponse<T>;
+export type DefaultSerializerJSONAnyResponse = DefaultSerializerJSONAPIResponse<unknown>;
+
+export const defaultJSONSerializer: Serializer = handlerResult =>
+	JSON.stringify(
+		handlerResult.success
+			? {success: true, data: handlerResult.data, message: 'OK'}
+			: ({success: false, data: null, message: handlerResult.data.message} satisfies DefaultSerializerJSONAnyResponse)
+	);
 
 export type ServerConfig<Context, BeforeAfterContext> = ServerConfigWithBefore<BeforeAfterContext> & {
-	// We really want to accept any here.
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	router: Router<Context, any>;
+	router: Router<Context, readonly AnyRoute[]>;
 	getContext: GetContext<Context>;
+
+	serializer?: Serializer;
 
 	// Escape hatch for routes that will be loaded to fmw
 	// but are not in the router.
@@ -76,7 +93,7 @@ export function createFMWServer<Context, BeforeAfterContext = null>(config: Serv
 		if (config.before) {
 			before = await config.before(req, res);
 		} else {
-			before = undefined as never;
+			before = null as never;
 		}
 
 		// If the user has sent a response (e.g. replying to CORS), we don't want to do anything else.

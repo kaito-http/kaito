@@ -1,13 +1,8 @@
-import type {ServerResponse} from 'node:http';
 import type {CookieSerializeOptions} from 'cookie';
 import {serialize} from 'cookie';
+import type {ServerResponse} from 'node:http';
 
-export type ErroredAPIResponse = {success: false; data: null; message: string};
-export type SuccessfulAPIResponse<T> = {success: true; data: T; message: 'OK'};
-export type APIResponse<T> = ErroredAPIResponse | SuccessfulAPIResponse<T>;
-export type AnyResponse = APIResponse<unknown>;
-
-export class KaitoResponse<T = unknown> {
+export class KaitoResponse {
 	constructor(public readonly raw: ServerResponse) {}
 
 	/**
@@ -40,19 +35,6 @@ export class KaitoResponse<T = unknown> {
 	 */
 	cookie(name: string, value: string, options: CookieSerializeOptions): this {
 		this.raw.setHeader('Set-Cookie', serialize(name, value, options));
-		return this;
-	}
-
-	/**
-	 * Send a JSON APIResponse body
-	 * @param data The data to send
-	 * @returns The response object
-	 */
-	json(data: APIResponse<T>): this {
-		const json = JSON.stringify(data);
-		this.raw.setHeader('Content-Type', 'application/json');
-		this.raw.setHeader('Content-Length', Buffer.byteLength(json));
-		this.raw.end(json);
 		return this;
 	}
 }

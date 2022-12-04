@@ -31,15 +31,13 @@ const v1 = createRouter()
 	// Basic object route
 	.add('POST', '/time', {
 		async run() {
-			return {t: Date.now()};
+			return Date.now();
 		},
 	})
 
 	// How to throw an error
-	.add('GET', '/throw', {
-		run() {
-			throw new KaitoError(400, 'Something was intentionally thrown');
-		},
+	.add('GET', '/throw', async () => {
+		throw new KaitoError(400, 'Something was intentionally thrown');
 	})
 
 	// Example parsing request body
@@ -65,8 +63,8 @@ const router = createRouter()
 		query: {
 			age: z
 				.string()
-				.transform(value => parseInt(value, 10))
-				.default('10'),
+				.default('10')
+				.transform(value => parseInt(value, 10)),
 		},
 
 		run: async ({query}) => query.age,
@@ -92,7 +90,7 @@ const server = createServer({
 					// This is not included in Kaito's raw routes because raw routes
 					// are just a wrapper around Node's `http` module.
 
-					response.end('welcome to kaito\'s raw routes');
+					response.end("welcome to kaito's raw routes");
 				},
 			},
 		],
@@ -121,7 +119,7 @@ const server = createServer({
 	},
 
 	// Access the return value from `before` in `after`.
-	// If the before function ends the response, this *will* be called!
+	// If the `before` function above ends the response, after will *still* be called!
 	// So be careful about logging request durations etc
 	async after({timestamp}) {
 		console.log(`Request took ${Date.now() - timestamp}ms`);

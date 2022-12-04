@@ -11,7 +11,7 @@
 	"devDependencies": {
 		"@types/content-type": "^1.1.5",
 		"@types/cookie": "^0.5.1",
-		"@types/node": "^18.11.9",
+		"@types/node": "^18.11.10",
 		"typescript": "4.9",
 		"zod": "^3.19.1"
 	},
