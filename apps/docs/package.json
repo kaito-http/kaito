@@ -7,7 +7,7 @@
 	"license": "MIT",
 	"dependencies": {
 		"es-urlcat": "^1.0.0",
-		"next": "13.0.6",
+		"next": "13.0.7",
 		"nextra": "beta",
 		"nextra-theme-docs": "beta",
 		"react": "^18.2.0",
