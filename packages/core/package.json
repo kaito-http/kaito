@@ -1,41 +1,10 @@
 {
-	"name": "@kaito-http/core",
-	"version": "2.7.1",
-	"description": "Functional HTTP Framework for TypeScript",
-	"repository": "https://github.com/kaito-http/kaito",
-	"author": "Alistair Smith <hi@alistair.sh>",
-	"license": "MIT",
-	"main": "dist/kaito-http-core.cjs.js",
-	"module": "dist/kaito-http-core.esm.js",
-	"types": "dist/kaito-http-core.cjs.d.ts",
+	"name": "@kaito/core",
+	"packageManager": "yarn@3.3.0",
+	"main": "./dist/kaito-http-client.cjs.js",
+	"types": "./dist/kaito-http-client.d.ts",
+	"module": "./dist/kaito-http-client.esm.js",
 	"devDependencies": {
-		"@types/content-type": "^1.1.5",
-		"@types/cookie": "^0.5.1",
-		"@types/node": "^18.11.16",
-		"typescript": "4.9",
-		"zod": "^3.20.2"
-	},
-	"files": [
-		"package.json",
-		"readme.md",
-		"dist"
-	],
-	"bugs": {
-		"url": "https://github.com/kaito-http/kaito/issues"
-	},
-	"homepage": "https://github.com/kaito-http/kaito",
-	"peerDependencies": {
-		"zod": "*"
-	},
-	"keywords": [
-		"typescript",
-		"http",
-		"framework"
-	],
-	"dependencies": {
-		"content-type": "^1.0.4",
-		"cookie": "^0.5.0",
-		"find-my-way": "^7.3.1",
-		"raw-body": "^2.5.1"
+		"typescript": "^4.9.5"
 	}
 }
