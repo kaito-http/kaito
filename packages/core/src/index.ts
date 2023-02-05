@@ -1,9 +1,15 @@
 import {z} from 'zod';
+import {KaitoHeaders} from './headers';
 
-export interface KaitoServer {
+export type KaitoSendablePayload = {
+	status: number;
+	body: unknown;
+	headers: KaitoHeaders;
+};
+
+export type KaitoServer = (resolve: (request: KaitoRequest) => Promise<KaitoSendablePayload>) => Promise<{
 	listen: (port: number) => Promise<void>;
-	attachHandler: (handler: KaitoHandler) => void;
-}
+}>;
 
 export type ExtractRouteParams<T extends string> = string extends T
 	? string
@@ -13,23 +19,48 @@ export type ExtractRouteParams<T extends string> = string extends T
 	? Param
 	: never;
 
+export type KaitoResponseSerializer = (
+	status: number,
+	body: unknown
+) => {
+	body: string | Buffer | null;
+	headers: KaitoHeaders;
+};
+
 export type KaitoMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS' | 'CONNECT' | 'TRACE';
 
 export interface KaitoRequest {
-	//
+	method: KaitoMethod;
+	path: string;
+	body: unknown;
+	headers: KaitoHeaders;
 }
 
-export interface KaitoResponse {
-	//
-}
-
-export type KaitoHandler = (request: KaitoRequest) => Promise<KaitoResponse>;
+export type KaitoHandler = (request: KaitoRequest) => Promise<{
+	status: number;
+	body: unknown;
+}>;
 
 export const servers = {
-	node: async (): Promise<KaitoServer> => {
+	node: async resolve => {
 		const http = await import('node:http');
 
-		const server = http.createServer();
+		const server = http.createServer(async (req, res) => {
+			const {status, body, headers} = await resolve({
+				path: req.url ?? '/',
+				method: req.method as KaitoMethod,
+				headers: new KaitoHeaders(Object.entries(req.headers) as Array<[string, string | string[]]>),
+				body: req,
+			});
+
+			res.statusCode = status;
+
+			for (const [key, value] of headers) {
+				res.setHeader(key, value);
+			}
+
+			res.end(body);
+		});
 
 		return {
 			listen: async port => {
@@ -37,18 +68,14 @@ export const servers = {
 					server.listen(port, resolve);
 				});
 			},
-
-			attachHandler: handler => {
-				//
-			},
 		};
 	},
-};
+} satisfies Record<string, KaitoServer>;
 
 export interface KaitoOptions<Context> {
 	getContext: KaitoGetContext<Context>;
 	router: KaitoRouter<Context, AnyKaitoRouteDefinition<Context>[]>;
-	server?: KaitoServer | (() => Promise<KaitoServer> | KaitoServer);
+	server?: keyof typeof servers | KaitoServer;
 }
 
 // export type ResponseCodeIsh<Start extends number> = `${Start}${number}` extends `${infer Code extends number}`
@@ -174,12 +201,6 @@ export function init<T = null>(getContext: KaitoGetContext<T> = () => Promise.re
 	return {
 		getContext,
 
-		k: {
-			error: <S extends number, Body>(status: S, body: Body) => {
-				return {type: 'error' as const, status, body};
-			},
-		},
-
 		router: (): KaitoRouter<T, []> => {
 			return {
 				routes: [],
@@ -200,17 +221,22 @@ export function init<T = null>(getContext: KaitoGetContext<T> = () => Promise.re
 export function server<Context>(options: KaitoOptions<Context>) {
 	return {
 		listen: async (port: number) => {
-			const server = await Promise.resolve(
-				options?.server === undefined
-					? servers.node()
-					: options.server instanceof Function
-					? options.server()
-					: options.server
-			);
+			const serverOrName = options.server ?? servers.node;
+			const resolvedServer = typeof serverOrName === 'function' ? serverOrName : servers[serverOrName];
 
-			await server.listen(port);
+			const instance = await resolvedServer(async request => {
+				// TODO: Implement find-my-way
 
-			return server;
+				return {
+					body: 'alistair',
+					status: 200,
+					headers: new KaitoHeaders([['content-type', 'application/json']]),
+				};
+			});
+
+			await instance.listen(port);
+
+			return instance;
 		},
 	};
 }
