@@ -1,26 +1,20 @@
-import {kaito, createContext} from '@kaito-http/core';
+import {server, init} from '@kaito-http/core';
 import {z} from 'zod';
 
-const {getContext, router} = createContext(async () => {
-	return {
-		foo: 'bar',
-	};
-});
+const {getContext, router} = init();
 
-const app = router().get(
+const index = router().post(
 	'/users/:discord_id/kv/:key',
 	{
-		// body: z.object({
-		// 	name: z.string(),
-		// }),
+		body: z.object({
+			name: z.string(),
+		}),
 		response: {
 			200: z.string(),
 			401: z.literal('You are not authorized'),
 		},
 	},
 	d => {
-		d.body;
-
 		if (Math.random() > 0.8) {
 			return null;
 		}
@@ -29,8 +23,9 @@ const app = router().get(
 	}
 );
 
-const server = kaito(app, {
+const app = server({
+	router: index,
 	getContext,
 });
 
-void server.listen(8080);
+void app.listen(8080);

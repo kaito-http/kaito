@@ -8,7 +8,7 @@ export interface KaitoServer {
 export type ExtractRouteParams<T extends string> = string extends T
 	? string
 	: T extends `${string}:${infer Param}/${infer Rest}`
-	? Param | keyof ExtractRouteParams<Rest>
+	? Param | ExtractRouteParams<Rest>
 	: T extends `${string}:${infer Param}`
 	? Param
 	: never;
@@ -46,8 +46,8 @@ export const servers = {
 };
 
 export interface KaitoOptions<Context> {
-	// TODO: This is not final
-	getContext: () => Promise<Context>;
+	getContext: KaitoGetContext<Context>;
+	router: KaitoRouter<Context, AnyKaitoRouteDefinition<Context>[]>;
 	server?: KaitoServer | (() => Promise<KaitoServer> | KaitoServer);
 }
 
@@ -138,7 +138,9 @@ export interface KaitoRouter<Context, Routes extends AnyKaitoRouteDefinition<Con
 	trace: KaitoRouteCreator<Context, Routes, 'TRACE'>;
 }
 
-export function createContext<T>(getContext: () => Promise<T>) {
+export type KaitoGetContext<Context> = (request: KaitoRequest) => Promise<Context>;
+
+export function init<T = null>(getContext: KaitoGetContext<T> = () => Promise.resolve(null as never)) {
 	return {
 		getContext,
 
@@ -159,10 +161,7 @@ export function createContext<T>(getContext: () => Promise<T>) {
 	};
 }
 
-export function kaito<Context>(
-	router: KaitoRouter<Context, AnyKaitoRouteDefinition<Context>[]>,
-	options: KaitoOptions<Context>
-) {
+export function server<Context>(options: KaitoOptions<Context>) {
 	return {
 		listen: async (port: number) => {
 			const server = await Promise.resolve(
