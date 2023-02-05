@@ -88,7 +88,7 @@ export type KaitoRouteDefinition<
 	method: M;
 	path: Path;
 	schema: KaitoRouteSchema<M, BodyOut, BodyDef, BodyIn, Output>;
-	handler: KaitoRouteHandler<Context, M, Path, Body, Output>;
+	handler: KaitoRouteHandler<Context, Path, Body, Output>;
 };
 
 export type AnyKaitoRouteDefinition<Context> = KaitoRouteDefinition<Context, any, any, any, any, any, any>;
@@ -122,8 +122,16 @@ export type KaitoRouteCreator<
 	BodyOut = undefined
 >(
 	path: Path,
-	spec: KaitoRouteSchema<M, BodyOut, BodyDef, BodyIn, Output>,
-	handler: KaitoRouteHandler<Context, M, Path, BodyOut, Output>
+	...args:
+		| [
+				spec: KaitoRouteSchema<M, BodyOut, BodyDef, BodyIn, Output>,
+				handler: KaitoRouteHandler<Context, Path, BodyOut, Output>
+		  ]
+		| [
+				handler: KaitoRouteSchema<M, BodyOut, BodyDef, BodyIn, Output> & {
+					handler: KaitoRouteHandler<Context, Path, BodyOut, Output>;
+				}
+		  ]
 ) => KaitoRouter<
 	Context,
 	[...ExistingRoutes, KaitoRouteDefinition<Context, M, Path, BodyOut, BodyDef, BodyIn, Output>]
@@ -143,13 +151,9 @@ export type KaitoHandlerArgument<Context, Path extends string, Body, Output exte
 	reply: KaitoReply<Output>;
 };
 
-export type KaitoRouteHandler<
-	Context,
-	Method extends KaitoMethod,
-	Path extends string,
-	BodyOut,
-	Output extends Record<string, z.ZodTypeAny>
-> = (arg: KaitoHandlerArgument<Context, Path, BodyOut, Output>) => OutputToUnion<Output>;
+export type KaitoRouteHandler<Context, Path extends string, BodyOut, Output extends Record<string, z.ZodTypeAny>> = (
+	arg: KaitoHandlerArgument<Context, Path, BodyOut, Output>
+) => Promise<OutputToUnion<Output>>;
 
 export interface KaitoRouter<Context, Routes extends AnyKaitoRouteDefinition<Context>[]> {
 	routes: Routes;
@@ -179,15 +183,15 @@ export function init<T = null>(getContext: KaitoGetContext<T> = () => Promise.re
 		router: (): KaitoRouter<T, []> => {
 			return {
 				routes: [],
-				get: (path, spec, handler) => null as any,
-				post: (path, spec, handler) => null as any,
-				put: (path, spec, handler) => null as any,
-				patch: (path, spec, handler) => null as any,
-				delete: (path, spec, handler) => null as any,
-				head: (path, spec, handler) => null as any,
-				options: (path, spec, handler) => null as any,
-				connect: (path, spec, handler) => null as any,
-				trace: (path, spec, handler) => null as any,
+				get: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
+				post: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
+				put: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
+				patch: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
+				delete: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
+				head: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
+				options: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
+				connect: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
+				trace: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
 			};
 		},
 	};
