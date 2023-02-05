@@ -1,18 +1,17 @@
 {
-	"name": "@kaito-http/core",
+	"name": "@kaito-http/archived-core",
 	"version": "2.7.1",
 	"description": "Functional HTTP Framework for TypeScript",
 	"repository": "https://github.com/kaito-http/kaito",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
-	"main": "dist/kaito-http-core.cjs.js",
-	"module": "dist/kaito-http-core.esm.js",
+	"main": "dist/kaito-http-archived-core.cjs.js",
+	"module": "dist/kaito-http-archived-core.esm.js",
 	"types": "dist/kaito-http-core.cjs.d.ts",
 	"devDependencies": {
 		"@types/content-type": "^1.1.5",
 		"@types/cookie": "^0.5.1",
 		"@types/node": "^18.11.16",
-		"typescript": "4.9",
 		"zod": "^3.20.2"
 	},
 	"files": [

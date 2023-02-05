@@ -1,10 +1,13 @@
 {
-	"name": "@kaito/core",
+	"name": "@kaito-http/core",
 	"packageManager": "yarn@3.3.0",
-	"main": "./dist/kaito-http-client.cjs.js",
-	"types": "./dist/kaito-http-client.d.ts",
-	"module": "./dist/kaito-http-client.esm.js",
+	"main": "dist/kaito-http-core.cjs.js",
+	"types": "dist/kaito-http-core.cjs.d.ts",
+	"module": "dist/kaito-http-core.esm.js",
 	"devDependencies": {
-		"typescript": "^4.9.5"
+		"zod": "^3.20.2"
+	},
+	"peerDependencies": {
+		"zod": "*"
 	}
 }
