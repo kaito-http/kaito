@@ -51,12 +51,24 @@ export interface KaitoOptions<Context> {
 	server?: KaitoServer | (() => Promise<KaitoServer> | KaitoServer);
 }
 
+// export type ResponseCodeIsh<Start extends number> = `${Start}${number}` extends `${infer Code extends number}`
+// 	? Code | `${Code}`
+// 	: never;
+
+// export type ResponseCodeIsh<Start extends number> = `${Start}${number}`;
+
+// export type KaitoResponseSchemaTodoNameThis = {
+// 	[Success in ResponseCodeIsh<2>]?: z.ZodTypeAny;
+// } & {
+// 	[Error in ResponseCodeIsh<4> | ResponseCodeIsh<5>]?: string;
+// };
+
 export type KaitoRouteSchema<
 	M extends KaitoMethod,
 	BodyOut,
 	BodyDef extends z.ZodTypeDef,
 	BodyIn,
-	Output extends Record<number, z.ZodTypeAny>
+	Output extends Record<string, z.ZodTypeAny>
 > = {
 	description?: string;
 	tags?: string[];
@@ -71,7 +83,7 @@ export type KaitoRouteDefinition<
 	BodyOut,
 	BodyDef extends z.ZodTypeDef,
 	BodyIn,
-	Output extends Record<number, z.ZodTypeAny>
+	Output extends Record<string, z.ZodTypeAny>
 > = {
 	method: M;
 	path: Path;
@@ -84,10 +96,27 @@ export type AnyKaitoRouteDefinition<Context> = KaitoRouteDefinition<
 	any,
 	any,
 	any,
-	z.ZodTypeDef,
+	any,
 	any,
 	Record<number, z.ZodTypeAny>
 >;
+
+export class KaitoError extends Error {
+	constructor(public readonly status: number, message: string) {
+		super(message);
+	}
+}
+
+export function isKaitoError(error: unknown): error is KaitoError {
+	return error instanceof KaitoError;
+}
+
+export type KaitoReply<Output extends Record<string, z.ZodTypeAny>> = {
+	<Code extends keyof Output>(code: Code, body: Output[Code]['_input']): {
+		status: Code;
+		body: Output[Code]['_input'];
+	};
+};
 
 export type KaitoRouteCreator<
 	Context,
@@ -95,7 +124,7 @@ export type KaitoRouteCreator<
 	M extends KaitoMethod
 > = <
 	Path extends string,
-	Output extends Record<number, z.ZodTypeAny>,
+	Output extends Record<string, z.ZodTypeAny>,
 	BodyDef extends z.ZodTypeDef,
 	BodyIn,
 	BodyOut = undefined
@@ -111,10 +140,18 @@ export type KaitoRouteCreator<
 	]
 >;
 
-export type KaitoHandlerArgument<Context, Path extends string, Body> = {
+export type OutputToUnion<Output extends Record<string, z.ZodTypeAny>> = {
+	[Code in keyof Output]: {
+		status: Code;
+		body: Output[Code]['_input'];
+	};
+}[keyof Output];
+
+export type KaitoHandlerArgument<Context, Path extends string, Body, Output extends Record<string, z.ZodTypeAny>> = {
 	ctx: Context;
 	params: Record<ExtractRouteParams<Path>, string>;
 	body: Body;
+	reply: KaitoReply<Output>;
 };
 
 export type KaitoRouteHandler<
@@ -122,8 +159,8 @@ export type KaitoRouteHandler<
 	Method extends KaitoMethod,
 	Path extends string,
 	BodyOut,
-	Output extends Record<number, z.ZodTypeAny>
-> = (arg: KaitoHandlerArgument<Context, Path, BodyOut>) => null;
+	Output extends Record<string, z.ZodTypeAny>
+> = (arg: KaitoHandlerArgument<Context, Path, BodyOut, Output>) => OutputToUnion<Output>;
 
 export interface KaitoRouter<Context, Routes extends AnyKaitoRouteDefinition<Context>[]> {
 	routes: Routes;
@@ -143,6 +180,12 @@ export type KaitoGetContext<Context> = (request: KaitoRequest) => Promise<Contex
 export function init<T = null>(getContext: KaitoGetContext<T> = () => Promise.resolve(null as never)) {
 	return {
 		getContext,
+
+		k: {
+			error: <S extends number, Body>(status: S, body: Body) => {
+				return {type: 'error' as const, status, body};
+			},
+		},
 
 		router: (): KaitoRouter<T, []> => {
 			return {
