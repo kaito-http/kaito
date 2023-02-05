@@ -91,15 +91,7 @@ export type KaitoRouteDefinition<
 	handler: KaitoRouteHandler<Context, M, Path, Body, Output>;
 };
 
-export type AnyKaitoRouteDefinition<Context> = KaitoRouteDefinition<
-	Context,
-	any,
-	any,
-	any,
-	any,
-	any,
-	Record<number, z.ZodTypeAny>
->;
+export type AnyKaitoRouteDefinition<Context> = KaitoRouteDefinition<Context, any, any, any, any, any, any>;
 
 export class KaitoError extends Error {
 	constructor(public readonly status: number, message: string) {
@@ -134,10 +126,7 @@ export type KaitoRouteCreator<
 	handler: KaitoRouteHandler<Context, M, Path, BodyOut, Output>
 ) => KaitoRouter<
 	Context,
-	[
-		...ExistingRoutes,
-		Extract<KaitoRouteDefinition<Context, M, Path, BodyOut, BodyDef, BodyIn, Output>, AnyKaitoRouteDefinition<Context>>
-	]
+	[...ExistingRoutes, KaitoRouteDefinition<Context, M, Path, BodyOut, BodyDef, BodyIn, Output>]
 >;
 
 export type OutputToUnion<Output extends Record<string, z.ZodTypeAny>> = {
