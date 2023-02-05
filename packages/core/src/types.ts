@@ -72,6 +72,27 @@ export type KaitoRouteDefinition<
 
 export type AnyKaitoRouteDefinition<Context> = KaitoRouteDefinition<Context, any, any, any, any, any, any>;
 
+export type KaitoRouteCreatorArgs<
+	Context,
+	M extends KaitoMethod,
+	Path extends string,
+	Output extends Record<string, z.ZodTypeAny>,
+	BodyDef extends z.ZodTypeDef,
+	BodyIn,
+	BodyOut = undefined
+> =
+	| [
+			path: Path,
+			schema: KaitoRouteSchema<M, BodyOut, BodyDef, BodyIn, Output>,
+			handler: KaitoRouteHandler<Context, Path, BodyOut, Output>
+	  ]
+	| [
+			path: Path,
+			handlerAndSchema: KaitoRouteSchema<M, BodyOut, BodyDef, BodyIn, Output> & {
+				handler: KaitoRouteHandler<Context, Path, BodyOut, Output>;
+			}
+	  ];
+
 export type KaitoRouteCreator<
 	Context,
 	ExistingRoutes extends AnyKaitoRouteDefinition<Context>[],
@@ -83,17 +104,7 @@ export type KaitoRouteCreator<
 	BodyIn,
 	BodyOut = undefined
 >(
-	path: Path,
-	...args:
-		| [
-				spec: KaitoRouteSchema<M, BodyOut, BodyDef, BodyIn, Output>,
-				handler: KaitoRouteHandler<Context, Path, BodyOut, Output>
-		  ]
-		| [
-				handler: KaitoRouteSchema<M, BodyOut, BodyDef, BodyIn, Output> & {
-					handler: KaitoRouteHandler<Context, Path, BodyOut, Output>;
-				}
-		  ]
+	...args: KaitoRouteCreatorArgs<Context, M, Path, Output, BodyDef, BodyIn, BodyOut>
 ) => KaitoRouter<
 	Context,
 	[...ExistingRoutes, KaitoRouteDefinition<Context, M, Path, BodyOut, BodyDef, BodyIn, Output>]
