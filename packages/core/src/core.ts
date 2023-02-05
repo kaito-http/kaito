@@ -1,6 +1,6 @@
 import {KaitoHeaders} from './headers';
 import {servers} from './servers';
-import type {KaitoGetContext, KaitoOptions, KaitoRouter} from './types';
+import type {KaitoGetContext, KaitoMethod, KaitoOptions, KaitoRouteCreator, KaitoRouter} from './types';
 
 export class KaitoError extends Error {
 	constructor(public readonly status: number, message: string) {
@@ -17,17 +17,23 @@ export function init<T = null>(getContext: KaitoGetContext<T> = () => Promise.re
 		getContext,
 
 		router: (): KaitoRouter<T, []> => {
+			const makeRouteCreator = <Method extends KaitoMethod>(method: Method): KaitoRouteCreator<T, [], Method> => {
+				return (path, ...[specAndMaybeHandler, maybeHandler]) => {
+					return null as any;
+				};
+			};
+
 			return {
 				routes: [],
-				get: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
-				post: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
-				put: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
-				patch: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
-				delete: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
-				head: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
-				options: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
-				connect: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
-				trace: (path, ...[specAndMaybeHandler, maybeHandler]) => null as any,
+				get: makeRouteCreator('GET'),
+				post: makeRouteCreator('POST'),
+				put: makeRouteCreator('PUT'),
+				patch: makeRouteCreator('PATCH'),
+				delete: makeRouteCreator('DELETE'),
+				head: makeRouteCreator('HEAD'),
+				options: makeRouteCreator('OPTIONS'),
+				connect: makeRouteCreator('CONNECT'),
+				trace: makeRouteCreator('TRACE'),
 			};
 		},
 	};
