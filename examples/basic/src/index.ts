@@ -1,7 +1,6 @@
-import {server, init} from '@kaito-http/core';
+import {server} from '@kaito-http/core';
 import {z} from 'zod';
-
-const {getContext, router} = init();
+import {router, getContext} from './router';
 
 const index = router().put('/users/:discord_id/kv/:key', {
 	description: 'Sets a key-value pair for a user',
@@ -19,6 +18,8 @@ const index = router().put('/users/:discord_id/kv/:key', {
 				value: z.string(),
 			}),
 		}),
+
+		204: undefined,
 
 		403: z.literal('You are not allowed to do this'),
 	},

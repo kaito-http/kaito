@@ -11,8 +11,8 @@
 	"devDependencies": {
 		"@types/content-type": "^1.1.5",
 		"@types/cookie": "^0.5.1",
-		"@types/node": "^18.11.16",
-		"zod": "^3.20.2"
+		"@types/node": "^18.14.4",
+		"zod": "^3.20.6"
 	},
 	"files": [
 		"package.json",
@@ -32,9 +32,9 @@
 		"framework"
 	],
 	"dependencies": {
-		"content-type": "^1.0.4",
+		"content-type": "^1.0.5",
 		"cookie": "^0.5.0",
-		"find-my-way": "^7.3.1",
-		"raw-body": "^2.5.1"
+		"find-my-way": "^7.5.0",
+		"raw-body": "^2.5.2"
 	}
 }

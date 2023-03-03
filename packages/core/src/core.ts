@@ -1,16 +1,17 @@
 import {z} from 'zod';
-import {KaitoHeaders} from './headers';
-import {servers} from './servers';
+import {KaitoHeaders} from './headers.ts';
+import {servers} from './servers.ts';
 import type {
 	AnyKaitoRouteDefinition,
 	KaitoGetContext,
 	KaitoMethod,
 	KaitoOptions,
+	KaitoOutputSchemaDefinition,
 	KaitoRouteCreator,
 	KaitoRouteCreatorArgs,
 	KaitoRouteDefinition,
 	KaitoRouter,
-} from './types';
+} from './types.ts';
 
 export class KaitoError extends Error {
 	constructor(public readonly status: number, message: string) {
@@ -22,22 +23,42 @@ export function isKaitoError(error: unknown): error is KaitoError {
 	return error instanceof KaitoError;
 }
 
-export function init<T = null>(getContext: KaitoGetContext<T> = () => Promise.resolve(null as never)) {
-	const getRouter = <Routes extends AnyKaitoRouteDefinition<T>[]>(routes: Routes): KaitoRouter<T, Routes> => {
+export type InitArguments<Context, Tags extends string> =
+	| [getContext?: KaitoGetContext<Context>]
+	| [
+			options: {
+				getContext?: KaitoGetContext<Context>;
+				tags?: [Tags, ...Tags[]];
+			}
+	  ];
+
+export function init<T = null, Tags extends string = string>(...[getContextOrOptions]: InitArguments<T, Tags>) {
+	const getContext =
+		typeof getContextOrOptions === 'function'
+			? getContextOrOptions
+			: getContextOrOptions?.getContext ?? (() => Promise.resolve<T>(null as T));
+
+	const getRouter = <Routes extends AnyKaitoRouteDefinition<T>[]>(routes: Routes): KaitoRouter<T, Tags, Routes> => {
 		const makeRouteCreator =
-			<Method extends KaitoMethod>(method: Method): KaitoRouteCreator<T, Routes, Method> =>
-			<Path extends string, Output extends Record<string, z.ZodTypeAny>, BodyDef extends z.ZodTypeDef, BodyIn, BodyOut>(
-				...[path, ...rest]: KaitoRouteCreatorArgs<T, Method, Path, Output, BodyDef, BodyIn, BodyOut>
+			<Method extends KaitoMethod>(method: Method): KaitoRouteCreator<T, Tags, Routes, Method> =>
+			<
+				Path extends string,
+				Output extends Record<string, KaitoOutputSchemaDefinition>,
+				BodyDef extends z.ZodTypeDef,
+				BodyIn,
+				BodyOut
+			>(
+				...[path, ...rest]: KaitoRouteCreatorArgs<T, Tags, Method, Path, Output, BodyDef, BodyIn, BodyOut>
 			) => {
 				const [schema] = rest;
 
 				const handler = rest.length === 2 ? rest[1] : rest[0].handler;
 
-				const definition: KaitoRouteDefinition<T, Method, Path, BodyOut, BodyDef, BodyIn, Output> = {
+				const definition: KaitoRouteDefinition<T, Tags, Method, Path, BodyOut, BodyDef, BodyIn, Output> = {
 					method,
 					path,
 					schema,
-					handler: handler as KaitoRouteDefinition<T, Method, Path, BodyOut, BodyDef, BodyIn, Output>['handler'],
+					handler: handler as KaitoRouteDefinition<T, Tags, Method, Path, BodyOut, BodyDef, BodyIn, Output>['handler'],
 				};
 
 				return getRouter([...routes, definition]);
@@ -59,11 +80,11 @@ export function init<T = null>(getContext: KaitoGetContext<T> = () => Promise.re
 
 	return {
 		getContext,
-		router: () => getRouter([]),
+		router: () => getRouter<[]>([]),
 	};
 }
 
-export function server<Context>(options: KaitoOptions<Context>) {
+export function server<Context, Tags extends string>(options: KaitoOptions<Context, Tags>) {
 	return {
 		listen: async (port: number) => {
 			const serverOrName = options.server ?? servers.node;
@@ -75,7 +96,7 @@ export function server<Context>(options: KaitoOptions<Context>) {
 				return {
 					body: 'alistair',
 					status: 200,
-					headers: new KaitoHeaders([['content-type', 'application/json']]),
+					headers: new KaitoHeaders([['Content-Type', 'application/json']]),
 				};
 			});
 

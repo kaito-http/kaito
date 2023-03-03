@@ -12,6 +12,8 @@ export type KaitoServer = (resolve: (request: KaitoRequest) => Promise<KaitoSend
 	listen: (port: number) => Promise<void>;
 }>;
 
+export type KaitoOutputSchemaDefinition = z.ZodTypeAny | undefined;
+
 export type ExtractRouteParams<T extends string> = string extends T
 	? string
 	: T extends `${string}:${infer Param}/${infer Rest}`
@@ -43,115 +45,130 @@ export type KaitoHandler = (request: KaitoRequest) => Promise<{
 }>;
 
 export type KaitoRouteSchema<
+	Tags extends string,
 	M extends KaitoMethod,
 	BodyOut,
 	BodyDef extends z.ZodTypeDef,
 	BodyIn,
-	Output extends Record<string, z.ZodTypeAny>
+	Output extends Record<string, KaitoOutputSchemaDefinition>
 > = {
 	description?: string;
-	tags?: string[];
+	tags?: Tags[];
 	response: Output;
 	body?: M extends 'GET' ? never : z.Schema<BodyOut, BodyDef, BodyIn>;
 };
 
 export type KaitoRouteDefinition<
 	Context,
+	Tags extends string,
 	M extends KaitoMethod,
 	Path extends string,
 	BodyOut,
 	BodyDef extends z.ZodTypeDef,
 	BodyIn,
-	Output extends Record<string, z.ZodTypeAny>
+	Output extends Record<string, KaitoOutputSchemaDefinition>
 > = {
 	method: M;
 	path: Path;
-	schema: KaitoRouteSchema<M, BodyOut, BodyDef, BodyIn, Output>;
+	schema: KaitoRouteSchema<Tags, M, BodyOut, BodyDef, BodyIn, Output>;
 	handler: KaitoRouteHandler<Context, Path, Body, Output>;
 };
 
-export type AnyKaitoRouteDefinition<Context> = KaitoRouteDefinition<Context, any, any, any, any, any, any>;
+export type AnyKaitoRouteDefinition<Context> = KaitoRouteDefinition<Context, string, any, any, any, any, any, any>;
 
 export type KaitoRouteCreatorArgs<
 	Context,
+	Tags extends string,
 	M extends KaitoMethod,
 	Path extends string,
-	Output extends Record<string, z.ZodTypeAny>,
+	Output extends Record<string, KaitoOutputSchemaDefinition>,
 	BodyDef extends z.ZodTypeDef,
 	BodyIn,
 	BodyOut = undefined
 > =
 	| [
 			path: Path,
-			schema: KaitoRouteSchema<M, BodyOut, BodyDef, BodyIn, Output>,
+			schema: KaitoRouteSchema<Tags, M, BodyOut, BodyDef, BodyIn, Output>,
 			handler: KaitoRouteHandler<Context, Path, BodyOut, Output>
 	  ]
 	| [
 			path: Path,
-			handlerAndSchema: KaitoRouteSchema<M, BodyOut, BodyDef, BodyIn, Output> & {
+			handlerAndSchema: KaitoRouteSchema<Tags, M, BodyOut, BodyDef, BodyIn, Output> & {
 				handler: KaitoRouteHandler<Context, Path, BodyOut, Output>;
 			}
 	  ];
 
 export type KaitoRouteCreator<
 	Context,
+	Tags extends string,
 	ExistingRoutes extends AnyKaitoRouteDefinition<Context>[],
 	M extends KaitoMethod
 > = <
 	Path extends string,
-	Output extends Record<string, z.ZodTypeAny>,
+	Output extends Record<string, KaitoOutputSchemaDefinition>,
 	BodyDef extends z.ZodTypeDef,
 	BodyIn,
 	BodyOut = undefined
 >(
-	...args: KaitoRouteCreatorArgs<Context, M, Path, Output, BodyDef, BodyIn, BodyOut>
+	...args: KaitoRouteCreatorArgs<Context, Tags, M, Path, Output, BodyDef, BodyIn, BodyOut>
 ) => KaitoRouter<
 	Context,
-	[...ExistingRoutes, KaitoRouteDefinition<Context, M, Path, BodyOut, BodyDef, BodyIn, Output>]
+	Tags,
+	[...ExistingRoutes, KaitoRouteDefinition<Context, Tags, M, Path, BodyOut, BodyDef, BodyIn, Output>]
 >;
 
-export interface KaitoOptions<Context> {
+export interface KaitoOptions<Context, Tags extends string> {
 	getContext: KaitoGetContext<Context>;
-	router: KaitoRouter<Context, AnyKaitoRouteDefinition<Context>[]>;
+	router: KaitoRouter<Context, Tags, AnyKaitoRouteDefinition<Context>[]>;
 	server?: keyof typeof servers | KaitoServer;
 }
 
-export type OutputToUnion<Output extends Record<string, z.ZodTypeAny>> = {
+export type OutputToUnion<Output extends Record<string, KaitoOutputSchemaDefinition>> = {
 	[Code in keyof Output]: {
 		status: Code;
-		body: Output[Code]['_input'];
+		body: NonNullable<Output[Code]>['_input'];
 	};
 }[keyof Output];
 
-export type KaitoReply<Output extends Record<string, z.ZodTypeAny>> = {
-	<Code extends keyof Output>(code: Code, body: Output[Code]['_input']): {
+export type IfNever<T, A> = [T] extends [never] ? A : T;
+
+export type KaitoReply<Output extends Record<string, KaitoOutputSchemaDefinition>> = {
+	<Code extends keyof Output>(code: Code, body: IfNever<NonNullable<Output[Code]>['_input'], undefined>): {
 		status: Code;
-		body: Output[Code]['_input'];
+		body: NonNullable<Output[Code]>['_input'];
 	};
 };
 
-export type KaitoHandlerArgument<Context, Path extends string, Body, Output extends Record<string, z.ZodTypeAny>> = {
+export type KaitoHandlerArgument<
+	Context,
+	Path extends string,
+	Body,
+	Output extends Record<string, KaitoOutputSchemaDefinition>
+> = {
 	ctx: Context;
 	params: Record<ExtractRouteParams<Path>, string>;
 	body: Body;
 	reply: KaitoReply<Output>;
 };
 
-export type KaitoRouteHandler<Context, Path extends string, BodyOut, Output extends Record<string, z.ZodTypeAny>> = (
-	arg: KaitoHandlerArgument<Context, Path, BodyOut, Output>
-) => Promise<OutputToUnion<Output>>;
+export type KaitoRouteHandler<
+	Context,
+	Path extends string,
+	BodyOut,
+	Output extends Record<string, KaitoOutputSchemaDefinition>
+> = (arg: KaitoHandlerArgument<Context, Path, BodyOut, Output>) => Promise<OutputToUnion<Output>>;
 
-export interface KaitoRouter<Context, Routes extends AnyKaitoRouteDefinition<Context>[]> {
+export interface KaitoRouter<Context, Tags extends string, Routes extends AnyKaitoRouteDefinition<Context>[]> {
 	routes: Routes;
-	get: KaitoRouteCreator<Context, Routes, 'GET'>;
-	post: KaitoRouteCreator<Context, Routes, 'POST'>;
-	put: KaitoRouteCreator<Context, Routes, 'PUT'>;
-	patch: KaitoRouteCreator<Context, Routes, 'PATCH'>;
-	delete: KaitoRouteCreator<Context, Routes, 'DELETE'>;
-	head: KaitoRouteCreator<Context, Routes, 'HEAD'>;
-	options: KaitoRouteCreator<Context, Routes, 'OPTIONS'>;
-	connect: KaitoRouteCreator<Context, Routes, 'CONNECT'>;
-	trace: KaitoRouteCreator<Context, Routes, 'TRACE'>;
+	get: KaitoRouteCreator<Context, Tags, Routes, 'GET'>;
+	post: KaitoRouteCreator<Context, Tags, Routes, 'POST'>;
+	put: KaitoRouteCreator<Context, Tags, Routes, 'PUT'>;
+	patch: KaitoRouteCreator<Context, Tags, Routes, 'PATCH'>;
+	delete: KaitoRouteCreator<Context, Tags, Routes, 'DELETE'>;
+	head: KaitoRouteCreator<Context, Tags, Routes, 'HEAD'>;
+	options: KaitoRouteCreator<Context, Tags, Routes, 'OPTIONS'>;
+	connect: KaitoRouteCreator<Context, Tags, Routes, 'CONNECT'>;
+	trace: KaitoRouteCreator<Context, Tags, Routes, 'TRACE'>;
 }
 
 export type KaitoGetContext<Context> = (request: KaitoRequest) => Promise<Context>;

@@ -1,5 +1,5 @@
-import {KaitoHeaders} from './headers';
-import type {KaitoMethod, KaitoServer} from './types';
+import {KaitoHeaders} from './headers.ts';
+import type {KaitoMethod, KaitoServer} from './types.ts';
 
 export const servers = {
 	node: async resolve => {
