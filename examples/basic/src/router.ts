@@ -3,13 +3,20 @@ import {z} from 'zod';
 
 export const {getContext, router} = init({
 	openapi: {
-		tags: ['users', 'kv'],
+		tags: [
+			{
+				name: 'users',
+				description: 'User management',
+			},
+			'kv',
+		],
 	},
 });
 
 router().get(
 	'/',
 	{
+		tags: ['users'],
 		response: {
 			200: z.number(),
 		},

@@ -23,13 +23,27 @@ export function isKaitoError(error: unknown): error is KaitoError {
 	return error instanceof KaitoError;
 }
 
+export type OpenAPITag<Tags extends string> =
+	| {
+			readonly name: Tags;
+			description?: string;
+	  }
+	| Tags;
+
 export type InitArguments<Context, Tags extends string> =
 	| [getContext?: KaitoGetContext<Context>]
 	| [
 			options: {
 				getContext?: KaitoGetContext<Context>;
 				openapi?: {
-					tags?: [Tags, ...Tags[]];
+					tags?: [OpenAPITag<Tags>, ...OpenAPITag<Tags>[]];
+					swagger?: {
+						info: {
+							title: string;
+							description: string;
+							version: string;
+						};
+					};
 				};
 			}
 	  ];
