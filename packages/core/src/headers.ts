@@ -48,7 +48,7 @@ export class KaitoHeaders implements Map<string, string | string[]> {
 		this.map.forEach(callbackfn, thisArg);
 	}
 
-	get(key: CommonHeaders): string | string[] | undefined;
+	get(key: CommonHeaders | Lowercase<CommonHeaders>): string | string[] | undefined;
 	get(key: string): string | string[] | undefined {
 		return this.map.get(key.toLowerCase());
 	}

@@ -11,7 +11,7 @@
 	"devDependencies": {
 		"@types/content-type": "^1.1.5",
 		"@types/cookie": "^0.5.1",
-		"@types/node": "^18.14.4",
+		"@types/node": "^18.14.5",
 		"zod": "^3.20.6"
 	},
 	"files": [

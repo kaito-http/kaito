@@ -28,7 +28,9 @@ export type InitArguments<Context, Tags extends string> =
 	| [
 			options: {
 				getContext?: KaitoGetContext<Context>;
-				tags?: [Tags, ...Tags[]];
+				openapi?: {
+					tags?: [Tags, ...Tags[]];
+				};
 			}
 	  ];
 

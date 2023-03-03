@@ -1,6 +1,6 @@
 import {z} from 'zod';
-import {KaitoHeaders} from '.';
-import {servers} from './servers';
+import {KaitoHeaders} from './headers.ts';
+import {servers} from './servers.ts';
 
 export type KaitoSendablePayload = {
 	status: number;
@@ -50,7 +50,7 @@ export type KaitoRouteSchema<
 	BodyOut,
 	BodyDef extends z.ZodTypeDef,
 	BodyIn,
-	Output extends Record<string, KaitoOutputSchemaDefinition>
+	Output extends Record<number, KaitoOutputSchemaDefinition>
 > = {
 	description?: string;
 	tags?: Tags[];
