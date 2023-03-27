@@ -4,7 +4,7 @@
 	"packageManager": "yarn@3.3.0",
 	"main": "./dist/index.cjs",
 	"types": "./dist/index.d.cts",
-	"module": "./dist/index.js",
+	"module": "./dist/index.mjs",
 	"type": "module",
 	"exports": {
 		".": {
@@ -19,6 +19,12 @@
 		},
 		"./package.json": "./package.json"
 	},
+	"files": [
+		"README.md",
+		"./dist",
+		"./package.json",
+		"./LICENSE.md"
+	],
 	"scripts": {
 		"build": "pkgroll"
 	},
