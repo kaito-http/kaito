@@ -3,7 +3,7 @@ import fmw from 'find-my-way';
 import {z} from 'zod';
 import {KaitoError, WrappedError} from './error';
 import {KaitoRequest} from './req';
-import {KaitoResponse} from './res';
+import {type APIResponse, KaitoResponse} from './res';
 import type {AnyQueryDefinition, AnyRoute, Route} from './route';
 import type {ServerConfig} from './server';
 import type {ExtractRouteParams, KaitoMethod} from './util';
@@ -31,6 +31,14 @@ type PrefixRoutesPath<Prefix extends `/${string}`, R extends Routes> = R extends
 	  ]
 	: [];
 
+const getSend = (res: KaitoResponse) => (status: number, response: APIResponse<unknown>) => {
+	if (res.raw.headersSent) {
+		return;
+	}
+
+	res.status(status).json(response);
+};
+
 export class Router<Context, R extends Routes> {
 	public static create = <Context>() => new Router<Context, []>([]);
 
@@ -45,6 +53,8 @@ export class Router<Context, R extends Routes> {
 			res: KaitoResponse;
 		}
 	) {
+		const send = getSend(options.res);
+
 		try {
 			const ctx = await server.getContext(options.req, options.res);
 
@@ -61,8 +71,15 @@ export class Router<Context, R extends Routes> {
 				params: options.params as ExtractRouteParams<Path>,
 			})) as unknown;
 
-			options.res.status(200).json({
-				success: true as const,
+			if (options.res.raw.headersSent) {
+				return {
+					success: true as const,
+					data: result,
+				};
+			}
+
+			send(200, {
+				success: true,
 				data: result,
 				message: 'OK',
 			});
@@ -75,7 +92,7 @@ export class Router<Context, R extends Routes> {
 			const error = WrappedError.maybe(e);
 
 			if (error instanceof KaitoError) {
-				options.res.status(error.status).json({
+				send(error.status, {
 					success: false,
 					data: null,
 					message: error.message,
@@ -88,7 +105,7 @@ export class Router<Context, R extends Routes> {
 				.onError({error, req: options.req, res: options.res})
 				.catch(() => ({status: 500, message: 'Internal Server Error'}));
 
-			options.res.status(status).json({
+			send(status, {
 				success: false,
 				data: null,
 				message,
@@ -183,7 +200,7 @@ export class Router<Context, R extends Routes> {
 				const res = new KaitoResponse(serverResponse);
 				const message = `Cannot ${req.method as HTTPMethod} ${req.url ?? '/'}`;
 
-				res.status(404).json({
+				getSend(res)(404, {
 					success: false,
 					data: null,
 					message,
