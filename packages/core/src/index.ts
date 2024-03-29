@@ -106,7 +106,6 @@ export class KaitoResponse {
 }
 
 export type ServerOptions<Context> = {
-	xPoweredBy?: string | null;
 	router: Router<Context, readonly AnyRoute[]>;
 	onError: (error: Error) => Promise<{
 		message: string;
@@ -162,9 +161,15 @@ export type Router<Context, Routes extends readonly AnyRoute[]> = {
 	) => Router<Context, readonly [...Routes, ...AppendPrefixToRoutes<Prefix, NextRoutes>]>;
 };
 
-export class KaitoNotFoundError extends Error {
-	public constructor() {
-		super('Not found');
+export class KaitoError extends Error {
+	public readonly status: number;
+	public readonly message: string;
+
+	public constructor(status: number, message: string) {
+		super(message);
+
+		this.status = status;
+		this.message = message;
 	}
 }
 
@@ -202,7 +207,7 @@ export function getCreateRouter<Context>(getContext: (req: KaitoRequest, res: Ka
 				const fmw = findMyWay({
 					ignoreTrailingSlash: true,
 					defaultRoute() {
-						throw new KaitoNotFoundError();
+						throw new KaitoError(404, 'Not found');
 					},
 				});
 
@@ -233,11 +238,11 @@ export function getCreateRouter<Context>(getContext: (req: KaitoRequest, res: Ka
 							data: result,
 						};
 					} catch (e) {
-						if (e instanceof KaitoNotFoundError) {
+						if (e instanceof KaitoError) {
 							return {
 								success: false,
-								status: 404,
-								message: 'Not found',
+								status: e.status,
+								message: e.message,
 							};
 						}
 
