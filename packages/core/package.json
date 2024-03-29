@@ -9,11 +9,10 @@
 	"module": "dist/kaito-http-core.esm.js",
 	"types": "dist/kaito-http-core.cjs.d.ts",
 	"devDependencies": {
-		"@types/content-type": "^1.1.5",
-		"@types/cookie": "^0.5.1",
-		"@types/node": "^18.11.9",
-		"typescript": "4.9",
-		"zod": "^3.19.1"
+		"@types/cookie": "^0.6.0",
+		"@types/node": "^20.11.30",
+		"typescript": "5.4",
+		"zod": "^3.22.4"
 	},
 	"files": [
 		"package.json",
@@ -33,9 +32,8 @@
 		"framework"
 	],
 	"dependencies": {
-		"content-type": "^1.0.4",
-		"cookie": "^0.5.0",
-		"find-my-way": "^7.3.1",
-		"raw-body": "^2.5.1"
+		"cookie": "^0.6.0",
+		"find-my-way": "^8.1.0",
+		"raw-body": "^2.5.2"
 	}
 }
