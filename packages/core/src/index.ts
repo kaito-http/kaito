@@ -23,19 +23,6 @@ export type Parsable<out Out> = {
 	parse: (value: unknown) => Out;
 };
 
-export type RunFn<Result, Context, Path extends string, Body> = (arg: {
-	ctx: Context;
-	params: {
-		[Key in ExtractRouteParams<Path>]: string;
-	};
-	body: [Body] extends [never] ? undefined : Body;
-}) => Promise<Result>;
-
-export type RunObject<Result, Context, Path extends string, Body> = {
-	run: RunFn<Result, Context, Path, Body>;
-	body?: Parsable<Body>;
-};
-
 export type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
 export class KaitoRequest {
@@ -116,7 +103,14 @@ export type ServerOptions<Context> = {
 export type Route<Result, Context, M extends HTTPMethod, Path extends string, Body> = {
 	path: Path;
 	method: M;
-	run: RunObject<Result, Context, Path, Body>;
+	body?: Parsable<Body>;
+	run(arg: {
+		ctx: Context;
+		params: {
+			[Key in ExtractRouteParams<Path>]: string;
+		};
+		body: [Body] extends [never] ? undefined : Body;
+	}): Promise<Result>;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -128,7 +122,7 @@ export type RouterMethodFunction<Context, Routes extends readonly AnyRoute[], M 
 	Body = undefined,
 >(
 	path: Path,
-	run: RunFn<Result, Context, Path, Body> | RunObject<Result, Context, Path, Body>,
+	run: Omit<Route<Result, Context, M, Path, Body>, 'method' | 'path'> | Route<Result, Context, M, Path, Body>['run'],
 ) => Router<Context, readonly [...Routes, Route<Result, Context, M, Path, Body>]>;
 
 export type AppendPrefixToRoutes<Prefix extends `/${string}`, Routes extends readonly AnyRoute[]> = {
@@ -182,7 +176,14 @@ export function getCreateRouter<Context>(getContext: (req: KaitoRequest, res: Ka
 		const method =
 			<M extends HTTPMethod>(method: M): RouterMethodFunction<Context, Routes, M> =>
 			(path, run) =>
-				createRouter([...routes, {path, method, run: run instanceof Function ? {run} : run}]);
+				createRouter([
+					...routes,
+					{
+						...(run instanceof Function ? {run} : run),
+						path,
+						method,
+					},
+				]);
 
 		return {
 			routes,
@@ -216,10 +217,10 @@ export function getCreateRouter<Context>(getContext: (req: KaitoRequest, res: Ka
 						const ctx = await getContext(new KaitoRequest(req), new KaitoResponse(res));
 						const body = await KaitoRequest.getBody(req);
 
-						return (await route.run.run({
+						return (await route.run({
 							ctx,
 							params,
-							body: (route.run.body?.parse(body) ?? undefined) as unknown,
+							body: (route.body?.parse(body) ?? undefined) as unknown,
 						})) as unknown;
 					});
 				}
