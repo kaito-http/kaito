@@ -217,11 +217,11 @@ export function getCreateRouter<Context>(getContext: (req: KaitoRequest, res: Ka
 						const ctx = await getContext(new KaitoRequest(req), new KaitoResponse(res));
 						const body = await KaitoRequest.getBody(req);
 
-						return (await route.run({
+						return route.run({
 							ctx,
 							params,
 							body: (route.body?.parse(body) ?? undefined) as unknown,
-						})) as unknown;
+						});
 					});
 				}
 
