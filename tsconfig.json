@@ -4,10 +4,7 @@
 		"lib": ["dom", "dom.iterable", "esnext"],
 		"allowJs": true,
 		"skipLibCheck": true,
-		"esModuleInterop": true,
-		"allowSyntheticDefaultImports": true,
 		"strict": true,
-		"forceConsistentCasingInFileNames": true,
 		"noFallthroughCasesInSwitch": true,
 		"module": "Preserve",
 		"moduleResolution": "Bundler",
@@ -15,14 +12,12 @@
 		"isolatedModules": true,
 		"noEmit": true,
 		"sourceMap": true,
-		"experimentalDecorators": true,
 		"declaration": true,
-		"emitDecoratorMetadata": true,
-		"baseUrl": "packages",
 		"importHelpers": true,
 		"downlevelIteration": true,
 		"jsx": "react",
-		"verbatimModuleSyntax": true
+		"verbatimModuleSyntax": true,
+		"exactOptionalPropertyTypes": true
 	},
 	"exclude": ["node_modules", "dist"]
 }

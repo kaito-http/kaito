@@ -4,6 +4,7 @@ import type {IncomingMessage, ServerResponse} from 'node:http';
 import * as http from 'node:http';
 import {Readable} from 'node:stream';
 import {json} from 'node:stream/consumers';
+import getBody from 'raw-body';
 
 export type ExtractRouteParams<T extends string> = string extends T
 	? never
@@ -51,7 +52,7 @@ export class KaitoRequest {
 
 		switch (type) {
 			case 'application/json': {
-				return json(Readable.from(req));
+				return json(Readable.from(await getBody(req)));
 			}
 
 			default: {
