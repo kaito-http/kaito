@@ -36,10 +36,6 @@ export type RunObject<Result, Context, Path extends string, Body> = {
 	body?: Parsable<Body>;
 };
 
-export type RunFunctionOrDefinition<Result, Context, Path extends string, Body> =
-	| RunFn<Result, Context, Path, Body>
-	| RunObject<Result, Context, Path, Body>;
-
 export type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
 export class KaitoRequest {
@@ -111,44 +107,38 @@ export class KaitoResponse {
 
 export type ServerOptions<Context> = {
 	xPoweredBy?: string | null;
-	router: Router<Context, readonly AnyRouteDefinition[]>;
+	router: Router<Context, readonly AnyRoute[]>;
 	onError: (error: Error) => Promise<{
 		message: string;
 		status: number;
 	}>;
 };
 
-export type RouteDefinition<Result, Context, M extends HTTPMethod, Path extends string, Body> = {
+export type Route<Result, Context, M extends HTTPMethod, Path extends string, Body> = {
 	path: Path;
 	method: M;
 	run: RunObject<Result, Context, Path, Body>;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AnyRouteDefinition = RouteDefinition<any, any, HTTPMethod, any, any>;
+export type AnyRoute = Route<any, any, HTTPMethod, any, any>;
 
-export type RouterMethodFunction<Context, Routes extends readonly AnyRouteDefinition[], M extends HTTPMethod> = <
+export type RouterMethodFunction<Context, Routes extends readonly AnyRoute[], M extends HTTPMethod> = <
 	Result,
 	Path extends string,
 	Body = undefined,
 >(
 	path: Path,
-	run: RunFunctionOrDefinition<Result, Context, Path, Body>,
-) => Router<Context, readonly [...Routes, RouteDefinition<Result, Context, M, Path, Body>]>;
+	run: RunFn<Result, Context, Path, Body> | RunObject<Result, Context, Path, Body>,
+) => Router<Context, readonly [...Routes, Route<Result, Context, M, Path, Body>]>;
 
-export type AppendPrefixToRoutes<Prefix extends `/${string}`, Routes extends readonly AnyRouteDefinition[]> = {
-	[Key in keyof Routes]: Routes[Key] extends RouteDefinition<
-		infer Result,
-		infer Context,
-		infer Method,
-		infer Path,
-		infer Body
-	>
-		? RouteDefinition<Result, Context, Method, `${Prefix}${Path}`, Body>
+export type AppendPrefixToRoutes<Prefix extends `/${string}`, Routes extends readonly AnyRoute[]> = {
+	[Key in keyof Routes]: Routes[Key] extends Route<infer Result, infer Context, infer Method, infer Path, infer Body>
+		? Route<Result, Context, Method, `${Prefix}${Path}`, Body>
 		: never;
 };
 
-export type Router<Context, Routes extends readonly AnyRouteDefinition[]> = {
+export type Router<Context, Routes extends readonly AnyRoute[]> = {
 	routes: Routes;
 
 	get: RouterMethodFunction<Context, Routes, 'GET'>;
@@ -166,7 +156,7 @@ export type Router<Context, Routes extends readonly AnyRouteDefinition[]> = {
 		handle: (options: ServerOptions<Context>, req: IncomingMessage, res: ServerResponse) => Promise<void>;
 	};
 
-	merge: <Prefix extends `/${string}`, NextRoutes extends readonly AnyRouteDefinition[]>(
+	merge: <Prefix extends `/${string}`, NextRoutes extends readonly AnyRoute[]>(
 		prefix: Prefix,
 		other: Router<Context, NextRoutes>,
 	) => Router<Context, readonly [...Routes, ...AppendPrefixToRoutes<Prefix, NextRoutes>]>;
@@ -183,7 +173,7 @@ export type APIResponse<T> =
 	| {success: false; status: number; message: string};
 
 export function getCreateRouter<Context>(getContext: (req: KaitoRequest, res: KaitoResponse) => Promise<Context>) {
-	function createRouter<Routes extends readonly AnyRouteDefinition[]>(routes: Routes): Router<Context, Routes> {
+	function createRouter<Routes extends readonly AnyRoute[]>(routes: Routes): Router<Context, Routes> {
 		const method =
 			<M extends HTTPMethod>(method: M): RouterMethodFunction<Context, Routes, M> =>
 			(path, run) =>
