@@ -4,7 +4,6 @@ import type {IncomingMessage, ServerResponse} from 'node:http';
 import * as http from 'node:http';
 import {Readable} from 'node:stream';
 import {json} from 'node:stream/consumers';
-import getRawBody from 'raw-body';
 
 export type ExtractRouteParams<T extends string> = string extends T
 	? never
@@ -23,22 +22,22 @@ export type Parsable<out Out> = {
 	parse: (value: unknown) => Out;
 };
 
-export type RunFn<Result, Context, Path extends string, BodyOut> = (arg: {
+export type RunFn<Result, Context, Path extends string, Body> = (arg: {
 	ctx: Context;
 	params: {
 		[Key in ExtractRouteParams<Path>]: string;
 	};
-	body: [BodyOut] extends [never] ? undefined : BodyOut;
+	body: [Body] extends [never] ? undefined : Body;
 }) => Promise<Result>;
 
-export type RunObject<Result, Context, Path extends string, BodyOut> = {
-	run: RunFn<Result, Context, Path, BodyOut>;
-	body?: Parsable<BodyOut>;
+export type RunObject<Result, Context, Path extends string, Body> = {
+	run: RunFn<Result, Context, Path, Body>;
+	body?: Parsable<Body>;
 };
 
-export type RunFunctionOrDefinition<Result, Context, Path extends string, BodyOut> =
-	| RunFn<Result, Context, Path, BodyOut>
-	| RunObject<Result, Context, Path, BodyOut>;
+export type RunFunctionOrDefinition<Result, Context, Path extends string, Body> =
+	| RunFn<Result, Context, Path, Body>
+	| RunObject<Result, Context, Path, Body>;
 
 export type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
@@ -48,13 +47,11 @@ export class KaitoRequest {
 			return null;
 		}
 
-		const buffer = await getRawBody(req);
-
 		const {type} = parseContentType(req.headers['content-type']);
 
 		switch (type) {
 			case 'application/json': {
-				return json(Readable.from(buffer));
+				return json(Readable.from(req));
 			}
 
 			default: {
@@ -120,10 +117,10 @@ export type ServerOptions<Context> = {
 	}>;
 };
 
-export type RouteDefinition<Result, Context, M extends HTTPMethod, Path extends string, BodyOut> = {
+export type RouteDefinition<Result, Context, M extends HTTPMethod, Path extends string, Body> = {
 	path: Path;
 	method: M;
-	run: RunObject<Result, Context, Path, BodyOut>;
+	run: RunObject<Result, Context, Path, Body>;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -132,11 +129,23 @@ export type AnyRouteDefinition = RouteDefinition<any, any, HTTPMethod, any, any>
 export type RouterMethodFunction<Context, Routes extends readonly AnyRouteDefinition[], M extends HTTPMethod> = <
 	Result,
 	Path extends string,
-	BodyOut,
+	Body = undefined,
 >(
 	path: Path,
-	run: RunFunctionOrDefinition<Result, Context, Path, BodyOut>,
-) => Router<Context, readonly [...Routes, RouteDefinition<Result, Context, M, Path, BodyOut>]>;
+	run: RunFunctionOrDefinition<Result, Context, Path, Body>,
+) => Router<Context, readonly [...Routes, RouteDefinition<Result, Context, M, Path, Body>]>;
+
+export type AppendPrefixToRoutes<Prefix extends `/${string}`, Routes extends readonly AnyRouteDefinition[]> = {
+	[Key in keyof Routes]: Routes[Key] extends RouteDefinition<
+		infer Result,
+		infer Context,
+		infer Method,
+		infer Path,
+		infer Body
+	>
+		? RouteDefinition<Result, Context, Method, `${Prefix}${Path}`, Body>
+		: never;
+};
 
 export type Router<Context, Routes extends readonly AnyRouteDefinition[]> = {
 	routes: Routes;
@@ -155,6 +164,11 @@ export type Router<Context, Routes extends readonly AnyRouteDefinition[]> = {
 		routes: Routes;
 		handle: (options: ServerOptions<Context>, req: IncomingMessage, res: ServerResponse) => Promise<void>;
 	};
+
+	merge: <Prefix extends `/${string}`, NextRoutes extends readonly AnyRouteDefinition[]>(
+		prefix: Prefix,
+		other: Router<Context, NextRoutes>,
+	) => Router<Context, readonly [...Routes, ...AppendPrefixToRoutes<Prefix, NextRoutes>]>;
 };
 
 export class KaitoNotFoundError extends Error {
@@ -164,35 +178,15 @@ export class KaitoNotFoundError extends Error {
 }
 
 export type APIResponse<T> =
-	| {
-			success: true;
-			status: number;
-			data: T;
-	  }
-	| {
-			success: false;
-			status: number;
-			message: string;
-	  };
+	| {success: true; status: number; data: T}
+	| {success: false; status: number; message: string};
 
 export function getCreateRouter<Context>(getContext: (req: KaitoRequest, res: KaitoResponse) => Promise<Context>) {
-	function getRouter<Routes extends readonly AnyRouteDefinition[]>(routes: Routes): Router<Context, Routes> {
+	function createRouter<Routes extends readonly AnyRouteDefinition[]>(routes: Routes): Router<Context, Routes> {
 		const method =
 			<M extends HTTPMethod>(method: M): RouterMethodFunction<Context, Routes, M> =>
-			<Result, Path extends string, BodyOut = never>(
-				path: Path,
-				run: RunFunctionOrDefinition<Result, Context, Path, BodyOut>,
-			) => {
-				const route: RouteDefinition<Result, Context, M, Path, BodyOut> = {
-					path,
-					method,
-					run: run instanceof Function ? {run} : run,
-				};
-
-				const next = [...routes, route] as readonly [...Routes, RouteDefinition<Result, Context, M, Path, BodyOut>];
-
-				return getRouter(next);
-			};
+			(path, run) =>
+				createRouter([...routes, {path, method, run: run instanceof Function ? {run} : run}]);
 
 		return {
 			routes,
@@ -203,8 +197,19 @@ export function getCreateRouter<Context>(getContext: (req: KaitoRequest, res: Ka
 			delete: method('DELETE'),
 			patch: method('PATCH'),
 
+			merge(prefix, other) {
+				return createRouter([
+					...routes,
+					...other.routes.map(route => ({
+						...route,
+						path: `${prefix}${route.path}`,
+					})),
+				] as never);
+			},
+
 			freeze() {
 				const fmw = findMyWay({
+					ignoreTrailingSlash: true,
 					defaultRoute() {
 						throw new KaitoNotFoundError();
 					},
@@ -223,46 +228,53 @@ export function getCreateRouter<Context>(getContext: (req: KaitoRequest, res: Ka
 					});
 				}
 
+				const execute = async (
+					options: ServerOptions<Context>,
+					req: IncomingMessage,
+					res: ServerResponse,
+				): Promise<APIResponse<unknown>> => {
+					try {
+						const result = (await fmw.lookup(req, res)) as unknown;
+
+						return {
+							success: true,
+							status: 200,
+							data: result,
+						};
+					} catch (e) {
+						if (e instanceof KaitoNotFoundError) {
+							return {
+								success: false,
+								status: 404,
+								message: 'Not found',
+							};
+						}
+
+						if (e instanceof Error) {
+							const {status, message} = await options.onError(e);
+
+							return {
+								success: false,
+								status,
+								message,
+							};
+						}
+
+						return {
+							success: false,
+							status: 500,
+							message: 'Internal server error',
+						};
+					}
+				};
+
 				return {
 					routes,
 					async handle(options, req, res) {
-						const result = await (async (): Promise<APIResponse<unknown>> => {
-							try {
-								const result = (await fmw.lookup(req, res)) as unknown;
-
-								return {
-									success: true,
-									status: 200,
-									data: result,
-								};
-							} catch (e) {
-								if (e instanceof KaitoNotFoundError) {
-									return {
-										success: false,
-										status: 404,
-										message: 'Not found',
-									};
-								}
-
-								if (e instanceof Error) {
-									const {status, message} = await options.onError(e);
-
-									return {
-										success: false,
-										status,
-										message,
-									};
-								}
-
-								return {
-									success: false,
-									status: 500,
-									message: 'Internal server error',
-								};
-							}
-						})();
+						const result = await execute(options, req, res);
 
 						res.statusCode = result.status;
+
 						res.setHeader('Content-Type', 'application/json');
 						res.end(JSON.stringify(result));
 					},
@@ -271,9 +283,7 @@ export function getCreateRouter<Context>(getContext: (req: KaitoRequest, res: Ka
 		};
 	}
 
-	const result = () => getRouter<[]>([]);
-
-	return result;
+	return () => createRouter<[]>([]);
 }
 
 export function createServer<Context>(options: ServerOptions<Context>) {
@@ -312,10 +322,19 @@ const x = createRouter()
 
 			return `Param: ${params.test}. Time: ${ctx.time}`;
 		},
+	})
+	.post('/users/:id', {
+		async run({body}) {
+			return body;
+		},
 	});
 
+const y = createRouter().get('/lol', async () => 'lol');
+
+const root = createRouter().merge('/x', x).merge('/y', y);
+
 const server = createServer({
-	router: x,
+	router: root,
 	async onError(e) {
 		if (e instanceof ShownError) {
 			return {

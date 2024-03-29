@@ -31,7 +31,6 @@
 	"dependencies": {
 		"content-type": "^1.0.5",
 		"cookie": "^0.6.0",
-		"find-my-way": "^8.1.0",
-		"raw-body": "^2.5.2"
+		"find-my-way": "^8.1.0"
 	}
 }
