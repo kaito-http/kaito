@@ -34,7 +34,7 @@ Route query schemas should always take a string, or array of strings as the inpu
 ```ts
 import {z} from 'zod';
 
-const router = createRouter().post('/echo', {
+const router = router().post('/echo', {
 	query: {
 		skip: z.string().transform(value => parseInt(value)),
 		take: z.string().transform(value => parseInt(value)),

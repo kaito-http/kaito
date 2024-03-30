@@ -7,53 +7,33 @@ import {Callout} from 'nextra-theme-docs';
 
 # Routers
 
-Routers hold all of our routes and their metadata. Cruically, they also provide a `.find()` method that Kaito's server uses to locate a route on each request.
+Routers hold all of our routes and their metadata. They can be merged together to allow for separating logic into different files.
 
 ## Creating a Router
 
-Routers can be created as many times as you want in your app with the `createRouter` function exported by `@kaito-http/core`. Example below:
+When using `createUtilities`, you get a `router` function that you can use to create a new router. This can be called as many times as you like, and you can merge routers together with a prefix to create a larger router.
 
-<Callout emoji="⚠">The example below is not the recommend approach, please continue reading afterwards</Callout>{' '}
+```ts {1,3}
+import {createUtilities} from '@kaito-http/core';
 
-```ts
-import {Router} from '@kaito-http/core';
-
-const router = Router.create();
-```
-
-This will be an instance of `Router`, with a few TypeScript generics to store our route response types.
-
-However, the recommended approach is to define, externally, a custom `createRouter` function that will include the type information from our `getContext` function.
-This is so that we do not have to copy and paste the type information into our `createRouter` function each time we would like to
-create another router.
-
-We can do this by exporting another function in our `context.ts` file called `createRouter` or `router` (or something like that).
-
-```ts {7,9-11}
-import {Router, createGetContext, InferContext} from '@kaito-http/core';
-
-export const getContext = createGetContext(async (req, res) => {
+export const {getContext, router} = createUtilities(async (req, res) => {
 	// ...
 });
 
-export type AppContext = InferContext<typeof getContext>;
-
-export function router() {
-	return Router.create<AppContext>();
-}
+const app = router().get(...);
 ```
 
 And then you are safe to use the `router` function around your app, which will guarantee context type safety.
 
 ## Router Merging
 
-Kaito supports Router Merging, which is bringing one router's route into another, with a prefix. This is incredibly useful for larger apps, for example when you have multiple versions of an API.
+Routers can be merged, which brings one router's routes into another, with a prefix. This is incredibly useful for larger apps, for example when you have multiple versions of an API.
 
 ```ts {4}
 import {v1} from './routers/v1';
 import {v2} from './routers/v1';
 
-export const api = createRouter().merge('/v1', v1).merge('/v2', v2);
+export const api = router().merge('/v1', v1).merge('/v2', v2);
 ```
 
 You can expect all type information to be carried over as well as the route names and their prefixes.
