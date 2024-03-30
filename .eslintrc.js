@@ -21,6 +21,7 @@ module.exports = {
 		'operator-linebreak': 'off',
 		'no-mixed-spaces-and-tabs': 'off',
 		'jsx-quotes': 'off',
+		'@typescript-eslint/quotes': 'off',
 		'@typescript-eslint/ban-types': [
 			'error',
 			{

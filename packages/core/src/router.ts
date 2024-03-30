@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/member-ordering */
 import type {Handler, HTTPMethod} from 'find-my-way';
 import fmw from 'find-my-way';
 import {z} from 'zod';
@@ -232,7 +233,7 @@ export class Router<Context, R extends Routes> {
 						: Omit<Route<Context, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
 				| Route<Context, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>['run']
 		) =>
-			this.add(method, path, route);
+			this.add<Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>(method, path, route);
 
 	public get = this.method('GET');
 	public post = this.method('POST');

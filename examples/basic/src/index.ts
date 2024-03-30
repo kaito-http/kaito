@@ -139,4 +139,4 @@ const server = createServer({
 
 server.listen(8080);
 
-export type App = typeof router;
+export type App = typeof root;
