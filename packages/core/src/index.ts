@@ -213,9 +213,12 @@ export function getCreateRouter<Context>(getContext: (req: KaitoRequest, res: Ka
 				});
 
 				for (const route of routes) {
-					fmw.on(route.method, route.path as string, async (req, res, params) => {
+					// eslint-disable-next-line max-params
+					fmw.on(route.method, route.path as string, async (req, res, params, store, query) => {
 						const ctx = await getContext(new KaitoRequest(req), new KaitoResponse(res));
 						const body = await KaitoRequest.getBody(req);
+
+						console.log({query});
 
 						return route.run({
 							ctx,
