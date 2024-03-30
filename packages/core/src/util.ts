@@ -1,10 +1,11 @@
-import {parse as parseContentType} from 'content-type';
-import type {HTTPMethod} from 'find-my-way';
-import {Readable} from 'node:stream';
-import {json} from 'node:stream/consumers';
+import { parse as parseContentType } from 'content-type';
+import type { HTTPMethod } from 'find-my-way';
+import { Readable } from 'node:stream';
+import { json } from 'node:stream/consumers';
 import getRawBody from 'raw-body';
-import type {KaitoRequest} from './req';
-import type {KaitoResponse} from './res';
+import type { KaitoRequest } from './req';
+import type { KaitoResponse } from './res';
+import { Router } from './router';
 
 export type ExtractRouteParams<T extends string> = string extends T
 	? Record<string, string>
@@ -18,9 +19,37 @@ export type KaitoMethod = HTTPMethod | '*';
 
 export type GetContext<Result> = (req: KaitoRequest, res: KaitoResponse) => Promise<Result>;
 
+/**
+ * @deprecated use `createUtilities` instead
+ */
 export function createGetContext<Context>(callback: GetContext<Context>) {
 	return callback;
 }
+
+/**
+ * A helper function to create typed necessary functions
+ * 
+ * @example
+ * ```ts
+ * const {router, getContext} = createUtilities(async (req, res) => {
+ *   // Return context here
+ * })
+ * 
+ * const app = router().get('/', async () => "hello");
+ * 
+ * const server = createServer({
+ *   router: app,
+ *   getContext,
+ *   // ...
+ * });
+ * ```
+ */
+export function createUtilities<Context>(getContext: GetContext<Context>) {
+	return {
+		getContext,
+		router: () => Router.create<Context>(),	
+	}
+}	
 
 export type InferContext<T> = T extends (req: KaitoRequest, res: KaitoResponse) => Promise<infer U> ? U : never;
 

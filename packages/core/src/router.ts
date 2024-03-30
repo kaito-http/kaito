@@ -3,7 +3,7 @@ import fmw from 'find-my-way';
 import {z} from 'zod';
 import {KaitoError, WrappedError} from './error';
 import {KaitoRequest} from './req';
-import {type APIResponse, KaitoResponse} from './res';
+import {KaitoResponse, type APIResponse} from './res';
 import type {AnyQueryDefinition, AnyRoute, Route} from './route';
 import type {ServerConfig} from './server';
 import type {ExtractRouteParams, KaitoMethod} from './util';
@@ -11,24 +11,25 @@ import {getBody} from './util';
 
 type Routes = readonly AnyRoute[];
 
-type RemapRoutePrefix<R extends AnyRoute, Prefix extends `/${string}`> = R extends Route<
-	infer Context,
-	infer Result,
-	infer Path,
-	infer Method,
-	infer Query,
-	infer BodyOutput,
-	infer BodyDef,
-	infer BodyInput
->
-	? Route<Context, Result, `${Prefix}${Path}`, Method, Query, BodyOutput, BodyDef, BodyInput>
-	: never;
+type RemapRoutePrefix<R extends AnyRoute, Prefix extends `/${string}`> =
+	R extends Route<
+		infer Context,
+		infer Result,
+		infer Path,
+		infer Method,
+		infer Query,
+		infer BodyOutput,
+		infer BodyDef,
+		infer BodyInput
+	>
+		? Route<Context, Result, `${Prefix}${Path}`, Method, Query, BodyOutput, BodyDef, BodyInput>
+		: never;
 
 type PrefixRoutesPath<Prefix extends `/${string}`, R extends Routes> = R extends [infer First, ...infer Rest]
 	? [
 			RemapRoutePrefix<Extract<First, AnyRoute>, Prefix>,
-			...PrefixRoutesPath<Prefix, Extract<Rest, readonly AnyRoute[]>>
-	  ]
+			...PrefixRoutesPath<Prefix, Extract<Rest, readonly AnyRoute[]>>,
+		]
 	: [];
 
 const getSend = (res: KaitoResponse) => (status: number, response: APIResponse<unknown>) => {
@@ -51,7 +52,7 @@ export class Router<Context, R extends Routes> {
 			params: Record<string, string | undefined>;
 			req: KaitoRequest;
 			res: KaitoResponse;
-		}
+		},
 	) {
 		const send = getSend(options.res);
 
@@ -118,28 +119,7 @@ export class Router<Context, R extends Routes> {
 		}
 	}
 
-	constructor(public readonly routes: R) {}
-
-	/**
-	 * Adds a new route to the router
-	 * @param route The route specification to add to this router
-	 * @returns A new router with this route added
-	 * @deprecated Use `Router#add` instead
-	 */
-	public old_add = <
-		Result,
-		Path extends string,
-		Method extends KaitoMethod,
-		Query extends AnyQueryDefinition = {},
-		BodyOutput = never,
-		BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
-		BodyInput = BodyOutput
-	>(
-		route: Method extends 'GET'
-			? Omit<Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>, 'body'>
-			: Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>
-	): Router<Context, [...R, Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]> =>
-		new Router([...this.routes, route]);
+	public constructor(public readonly routes: R) {}
 
 	/**
 	 * Adds a new route to the router
@@ -155,7 +135,7 @@ export class Router<Context, R extends Routes> {
 		Query extends AnyQueryDefinition = {},
 		BodyOutput = never,
 		BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
-		BodyInput = BodyOutput
+		BodyInput = BodyOutput,
 	>(
 		method: Method,
 		path: Path,
@@ -164,9 +144,9 @@ export class Router<Context, R extends Routes> {
 					? Omit<
 							Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
 							'body' | 'path' | 'method'
-					  >
+						>
 					: Omit<Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
-			| Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run']
+			| Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run'],
 	): Router<Context, [...R, Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]> => {
 		const merged: Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput> = {
 			...(typeof route === 'object' ? route : {run: route}),
@@ -177,9 +157,9 @@ export class Router<Context, R extends Routes> {
 		return new Router([...this.routes, merged]);
 	};
 
-	public merge = <PathPrefix extends `/${string}`, OtherRoutes extends Routes>(
+	public readonly merge = <PathPrefix extends `/${string}`, OtherRoutes extends Routes>(
 		pathPrefix: PathPrefix,
-		other: Router<Context, OtherRoutes>
+		other: Router<Context, OtherRoutes>,
 	) => {
 		const newRoutes = other.routes.map(route => ({
 			...route,
@@ -235,4 +215,31 @@ export class Router<Context, R extends Routes> {
 
 		return instance;
 	};
+
+	private readonly method =
+		<M extends KaitoMethod>(method: M) =>
+		<
+			Result,
+			Path extends string,
+			Query extends AnyQueryDefinition = {},
+			BodyOutput = never,
+			BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
+			BodyInput = BodyOutput,
+		>(
+			path: Path,
+			route:
+				| (M extends 'GET'
+						? Omit<Route<Context, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>, 'body' | 'path' | 'method'>
+						: Omit<Route<Context, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
+				| Route<Context, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>['run'],
+		) =>
+			this.add(method, path, route);
+
+	public get = this.method('GET');
+	public post = this.method('POST');
+	public put = this.method('PUT');
+	public patch = this.method('PATCH');
+	public delete = this.method('DELETE');
+	public head = this.method('HEAD');
+	public options = this.method('OPTIONS');
 }

@@ -1,10 +1,10 @@
-import {createServer, KaitoError} from '@kaito-http/core';
-import {z} from 'zod';
-import {createRouter, getContext} from './context';
+import { createServer, KaitoError } from '@kaito-http/core';
+import { z } from 'zod';
+import { createRouter, getContext } from './context';
 
-const users = createRouter().add('POST', '/:id', {
+const users = createRouter().post('/:id', {
 	body: z.object({
-		name: z.string(),
+		name: z.string(),	
 	}),
 
 	query: {
@@ -26,24 +26,24 @@ const users = createRouter().add('POST', '/:id', {
 
 const v1 = createRouter()
 	// Basic inline route
-	.add('GET', '/time', async () => Date.now())
+	.get('/time', async () => Date.now())
 
 	// Basic object route
-	.add('POST', '/time', {
+	.post('/time', {
 		async run() {
 			return {t: Date.now()};
 		},
 	})
 
 	// How to throw an error
-	.add('GET', '/throw', {
+	.get('/throw', {
 		run() {
 			throw new KaitoError(400, 'Something was intentionally thrown');
 		},
 	})
 
 	// Example parsing request body
-	.add('POST', '/echo', {
+	.post('/echo', {
 		body: z.record(z.string(), z.unknown()),
 
 		async run({body}) {
@@ -57,11 +57,11 @@ const v1 = createRouter()
 
 const router = createRouter()
 	// Basic inline access context
-	.add('GET', '/uptime', async ({ctx}) => ctx.uptime)
-	.add('POST', '/uptime', async ({ctx}) => ctx.uptime)
+	.get('/uptime', async ({ctx}) => ctx.uptime)
+	.post('/uptime', async ({ctx}) => ctx.uptime)
 
 	// Accessing query
-	.add('GET', '/query', {
+	.get('/query', {
 		query: {
 			age: z
 				.string()

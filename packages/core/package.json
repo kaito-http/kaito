@@ -1,6 +1,6 @@
 {
 	"name": "@kaito-http/core",
-	"version": "2.7.2",
+	"version": "2.8.0",
 	"description": "Functional HTTP Framework for TypeScript",
 	"repository": "https://github.com/kaito-http/kaito",
 	"author": "Alistair Smith <hi@alistair.sh>",
