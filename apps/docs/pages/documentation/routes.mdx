@@ -11,8 +11,10 @@ Creating a route requires us to have a router already established. If you don't,
 Here's an extremely basic example of a ping/pong route.
 
 ```ts
-const router = createRouter().add('GET', '/ping', async () => 'pong');
+const app = router().get('/ping', async () => 'pong');
 ```
+
+An older version of kaito did not have `.get`, `.post`, etc. Instead you'd write `.add('GET', '/', ...)`. This syntax is still supported and won't go away (in case you need custom method names, etc), but the new syntax is recommended.
 
 ## Constraints
 
@@ -32,7 +34,7 @@ Route query schemas should always take a string, or array of strings as the inpu
 ```ts
 import {z} from 'zod';
 
-const router = createRouter().add('POST', '/echo', {
+const router = createRouter().post('/echo', {
 	query: {
 		skip: z.string().transform(value => parseInt(value)),
 		take: z.string().transform(value => parseInt(value)),

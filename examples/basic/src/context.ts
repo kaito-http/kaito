@@ -1,11 +1,13 @@
 /* eslint-disable arrow-body-style */
 
-import type {InferContext, KaitoResponse} from '@kaito-http/core';
-import {createGetContext, Router} from '@kaito-http/core';
+import type { KaitoResponse } from '@kaito-http/core';
+import { createUtilities } from '@kaito-http/core';
 
 const serverStarted = Date.now();
 
-export const getContext = createGetContext(async (req, res) => {
+export const { getContext, router } = createUtilities(async (req, res) => {
+	// Just an example...
+
 	// Where possible, I find it nice to avoid
 	// using res inside of context. Providing direct access
 	// to res in any route allows for developers to
@@ -29,14 +31,3 @@ export const getContext = createGetContext(async (req, res) => {
 		uptime: Date.now() - serverStarted,
 	};
 });
-
-// Infer context type from `getContext`
-export type AppContext = InferContext<typeof getContext>;
-
-/**
- * Creates a new router app wide, typed with the app context.
- * @returns A router
- */
-export function createRouter() {
-	return Router.create<AppContext>();
-}

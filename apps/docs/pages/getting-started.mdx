@@ -23,7 +23,7 @@ Kaito is very simple to use, it revolves around a few basic concepts. Before we 
 A route is a function that is available on the API. Simply put, it's something that will exist over HTTP and returns a single value that will be JSON encoded. Below is a basic example
 
 ```ts
-export const getUsers = router().add('GET', '/users', {
+export const getUsers = router().get('/users', {
 	async run() {
 		return database.getUsers();
 	},
@@ -43,25 +43,19 @@ Context is a variable that is generated on every single request. It is up to dev
 Firstly, we need to setup our context. You can put this in a `context.ts` file, for example.
 
 ```typescript
-import {createGetContext, InferContext, Router} from '@kaito-http/core';
+import {createUtilities, InferContext, Router} from '@kaito-http/core';
 
 // Define the time that we started the server at
 const serverStarted = Date.now();
 
-// Provide context to every route — our uptime and `req` & `res` objects
-export const getContext = createGetContext(async (req, res) => ({
+// Context is generated on every request, and is available in every route.
+// We can choose to pass in the request and response objects, as well as
+// any other utilities (perhaps a database connection, ORM, other utils, etc).
+export const {router, getContext} = createUtilities(async (req, res) => ({
 	req,
 	res,
 	uptime: Date.now() - serverStarted,
 }));
-
-// Export a type of our context
-export type AppContext = InferContext<typeof getContext>;
-
-// Define a context-typed router
-export function router() {
-	return Router.create<AppContext>();
-}
 ```
 
 Secondly, we'll need to create a router, a server, and our first route.
@@ -70,7 +64,7 @@ Secondly, we'll need to create a router, a server, and our first route.
 import {createServer} from '@kaito-http/core';
 import {router, getContext} from './context';
 
-const app = router().add('GET', '/', ({ctx}) => {
+const app = router().get('/', ({ctx}) => {
 	return {
 		uptime: ctx.uptime,
 		time_now: Date.now(),
@@ -78,7 +72,10 @@ const app = router().add('GET', '/', ({ctx}) => {
 });
 
 const server = createServer({
+	// Pass our getContext function to the root server options
 	getContext,
+
+	// And pass our root router
 	router: app,
 
 	// Define an async `onError` handler, in case something goes wrong inside of the route.

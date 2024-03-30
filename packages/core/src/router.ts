@@ -11,25 +11,24 @@ import {getBody} from './util';
 
 type Routes = readonly AnyRoute[];
 
-type RemapRoutePrefix<R extends AnyRoute, Prefix extends `/${string}`> =
-	R extends Route<
-		infer Context,
-		infer Result,
-		infer Path,
-		infer Method,
-		infer Query,
-		infer BodyOutput,
-		infer BodyDef,
-		infer BodyInput
-	>
-		? Route<Context, Result, `${Prefix}${Path}`, Method, Query, BodyOutput, BodyDef, BodyInput>
-		: never;
+type RemapRoutePrefix<R extends AnyRoute, Prefix extends `/${string}`> = R extends Route<
+	infer Context,
+	infer Result,
+	infer Path,
+	infer Method,
+	infer Query,
+	infer BodyOutput,
+	infer BodyDef,
+	infer BodyInput
+>
+	? Route<Context, Result, `${Prefix}${Path}`, Method, Query, BodyOutput, BodyDef, BodyInput>
+	: never;
 
 type PrefixRoutesPath<Prefix extends `/${string}`, R extends Routes> = R extends [infer First, ...infer Rest]
 	? [
 			RemapRoutePrefix<Extract<First, AnyRoute>, Prefix>,
-			...PrefixRoutesPath<Prefix, Extract<Rest, readonly AnyRoute[]>>,
-		]
+			...PrefixRoutesPath<Prefix, Extract<Rest, readonly AnyRoute[]>>
+	  ]
 	: [];
 
 const getSend = (res: KaitoResponse) => (status: number, response: APIResponse<unknown>) => {
@@ -52,7 +51,7 @@ export class Router<Context, R extends Routes> {
 			params: Record<string, string | undefined>;
 			req: KaitoRequest;
 			res: KaitoResponse;
-		},
+		}
 	) {
 		const send = getSend(options.res);
 
@@ -135,7 +134,7 @@ export class Router<Context, R extends Routes> {
 		Query extends AnyQueryDefinition = {},
 		BodyOutput = never,
 		BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
-		BodyInput = BodyOutput,
+		BodyInput = BodyOutput
 	>(
 		method: Method,
 		path: Path,
@@ -144,9 +143,9 @@ export class Router<Context, R extends Routes> {
 					? Omit<
 							Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
 							'body' | 'path' | 'method'
-						>
+					  >
 					: Omit<Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
-			| Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run'],
+			| Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run']
 	): Router<Context, [...R, Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]> => {
 		const merged: Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput> = {
 			...(typeof route === 'object' ? route : {run: route}),
@@ -159,7 +158,7 @@ export class Router<Context, R extends Routes> {
 
 	public readonly merge = <PathPrefix extends `/${string}`, OtherRoutes extends Routes>(
 		pathPrefix: PathPrefix,
-		other: Router<Context, OtherRoutes>,
+		other: Router<Context, OtherRoutes>
 	) => {
 		const newRoutes = other.routes.map(route => ({
 			...route,
@@ -224,14 +223,14 @@ export class Router<Context, R extends Routes> {
 			Query extends AnyQueryDefinition = {},
 			BodyOutput = never,
 			BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
-			BodyInput = BodyOutput,
+			BodyInput = BodyOutput
 		>(
 			path: Path,
 			route:
 				| (M extends 'GET'
 						? Omit<Route<Context, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>, 'body' | 'path' | 'method'>
 						: Omit<Route<Context, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
-				| Route<Context, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>['run'],
+				| Route<Context, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>['run']
 		) =>
 			this.add(method, path, route);
 

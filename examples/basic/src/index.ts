@@ -1,10 +1,10 @@
 import { createServer, KaitoError } from '@kaito-http/core';
 import { z } from 'zod';
-import { createRouter, getContext } from './context';
+import { getContext, router } from './context';
 
-const users = createRouter().post('/:id', {
+const users = router().post('/:id', {
 	body: z.object({
-		name: z.string(),	
+		name: z.string(),
 	}),
 
 	query: {
@@ -24,7 +24,7 @@ const users = createRouter().post('/:id', {
 	},
 });
 
-const v1 = createRouter()
+const v1 = router()
 	// Basic inline route
 	.get('/time', async () => Date.now())
 
@@ -55,7 +55,7 @@ const v1 = createRouter()
 	// Merge this router with another router (users).
 	.merge('/users', users);
 
-const router = createRouter()
+const root = router()
 	// Basic inline access context
 	.get('/uptime', async ({ctx}) => ctx.uptime)
 	.post('/uptime', async ({ctx}) => ctx.uptime)
@@ -76,7 +76,7 @@ const router = createRouter()
 	.merge('/v1', v1);
 
 const server = createServer({
-	router,
+	router: root,
 	getContext,
 
 	// Example of handling routes outside of Kaito.
@@ -92,7 +92,7 @@ const server = createServer({
 					// This is not included in Kaito's raw routes because raw routes
 					// are just a wrapper around Node's `http` module.
 
-					response.end('welcome to kaito\'s raw routes');
+					response.end("welcome to kaito's raw routes");
 				},
 			},
 		],

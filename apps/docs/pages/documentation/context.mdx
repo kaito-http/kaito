@@ -11,8 +11,13 @@ For example, if you want to provide the `req` and `res` objects to each route, y
 
 Below is an example of things that you could include, but it's really up to you and what you would find useful to include in your app.
 
+It's important to note that passing the response object is potentially harmful. This is because a developer could misuse it and start overwriting headers or sending data to the client in a way that you didn't intend. Instead, I'd recommend only passing as few values as needed. If you needed access to cookies, perhaps provide a `getCookie(name: string)` method, or something similar. This is by principle of least privilege.
+
 ```ts
-export const getContext = createGetContext(async (req, res) => {
+import {createUtilities} from '@kaito-http/core';
+
+// Use the `createUtilities` helper to also create a `router` function, and all nicely typed
+export const {getContext, router} = createUtilities(async (req, res) => {
 	return {
 		req,
 		res,
@@ -46,8 +51,9 @@ You can then use this context, when setup correctly with a router, inside every 
 
 ```ts
 import {z} from 'zod';
+import {router} from './context';
 
-export const users = createRouter().add('GET', '/users', {
+export const users = router().get('/users', {
 	query: {
 		search: z.string(),
 	},
