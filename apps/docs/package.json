@@ -2,7 +2,6 @@
 	"name": "@kaito-http/docs",
 	"private": true,
 	"version": "2.8.0",
-	"main": "index.js",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
 	"dependencies": {
