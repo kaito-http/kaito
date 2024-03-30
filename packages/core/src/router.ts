@@ -172,7 +172,7 @@ export class Router<Context, R extends Routes> {
 
 	// Allow for any server context to be passed
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public toFindMyWay = (server: ServerConfig<Context, any>) => {
+	public freeze = (server: ServerConfig<Context, any>) => {
 		const instance = fmw({
 			ignoreTrailingSlash: true,
 			async defaultRoute(req, serverResponse) {

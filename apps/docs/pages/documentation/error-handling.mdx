@@ -3,7 +3,7 @@ title: Error Handling
 description: Learn how errors are handled
 ---
 
-import { Callout } from 'nextra-theme-docs';
+import {Callout} from 'nextra-theme-docs';
 
 # Error Handling
 
@@ -14,7 +14,8 @@ Errors are handled very gracefully in Kaito. You can throw an error in any route
 Kaito has a built in error called `KaitoError`. You can throw this error in your routes, and it will be caught and sent back to the client.
 
 <Callout>
-	Throwing a `KaitoError` will **not** call your `.onError` handler defined in your server. KaitoErrors are handled internally and are always sent back to the client.
+	Throwing a `KaitoError` will **not** call your `.onError` handler defined in your server. KaitoErrors are handled
+	internally and are always sent back to the client.
 </Callout>
 
 ```ts {8}

@@ -45,7 +45,7 @@ export type ServerConfig<Context, BeforeAfterContext> = ServerConfigWithBefore<B
 };
 
 export function createFMWServer<Context, BeforeAfterContext = null>(config: ServerConfig<Context, BeforeAfterContext>) {
-	const fmw = config.router.toFindMyWay(config);
+	const router = config.router.freeze(config);
 
 	const rawRoutes = config.rawRoutes ?? {};
 
@@ -62,11 +62,11 @@ export function createFMWServer<Context, BeforeAfterContext = null>(config: Serv
 
 		for (const route of routes) {
 			if (method === '*') {
-				fmw.all(route.path, route.handler);
+				router.all(route.path, route.handler);
 				continue;
 			}
 
-			fmw[method.toLowerCase() as Lowercase<Exclude<KaitoMethod, '*'>>](route.path, route.handler);
+			router[method.toLowerCase() as Lowercase<Exclude<KaitoMethod, '*'>>](route.path, route.handler);
 		}
 	}
 
@@ -84,14 +84,14 @@ export function createFMWServer<Context, BeforeAfterContext = null>(config: Serv
 			return;
 		}
 
-		const result = (await fmw.lookup(req, res)) as HandlerResult;
+		const result = (await router.lookup(req, res)) as HandlerResult;
 
 		if ('after' in config && config.after) {
 			await config.after(before, result);
 		}
 	});
 
-	return {server, fmw} as const;
+	return {server, fmw: router} as const;
 }
 
 export function createServer<Context, BeforeAfterContext = null>(config: ServerConfig<Context, BeforeAfterContext>) {

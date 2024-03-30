@@ -1,11 +1,11 @@
 /* eslint-disable arrow-body-style */
 
-import type { KaitoResponse } from '@kaito-http/core';
-import { createUtilities } from '@kaito-http/core';
+import type {KaitoResponse} from '@kaito-http/core';
+import {createUtilities} from '@kaito-http/core';
 
 const serverStarted = Date.now();
 
-export const { getContext, router } = createUtilities(async (req, res) => {
+export const {getContext, router} = createUtilities(async (req, res) => {
 	// Just an example...
 
 	// Where possible, I find it nice to avoid

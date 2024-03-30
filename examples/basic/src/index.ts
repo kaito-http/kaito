@@ -1,6 +1,6 @@
-import { createServer, KaitoError } from '@kaito-http/core';
-import { z } from 'zod';
-import { getContext, router } from './context';
+import {createServer, KaitoError} from '@kaito-http/core';
+import {z} from 'zod';
+import {getContext, router} from './context';
 
 const users = router().post('/:id', {
 	body: z.object({
