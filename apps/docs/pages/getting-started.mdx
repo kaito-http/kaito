@@ -24,7 +24,7 @@ A route is a function that is available on the API. Simply put, it's something t
 
 ```ts
 export const getUsers = router().get('/users', {
-	async run() {
+	run: async () => {
 		return database.getUsers();
 	},
 });
@@ -64,7 +64,7 @@ Secondly, we'll need to create a router, a server, and our first route.
 import {createServer} from '@kaito-http/core';
 import {router, getContext} from './context';
 
-const app = router().get('/', ({ctx}) => {
+const app = router().get('/', async ({ctx}) => {
 	return {
 		uptime: ctx.uptime,
 		time_now: Date.now(),
