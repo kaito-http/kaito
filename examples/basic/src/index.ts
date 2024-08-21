@@ -55,10 +55,19 @@ const v1 = router()
 	// Merge this router with another router (users).
 	.merge('/users', users);
 
+const exampleOfThrough = router()
+	.through(async old => ({
+		...old,
+		lol: new Date(),
+	}))
+	.get('/test', async ({ctx}) => ctx.lol.getTime());
+
 const root = router()
 	// Basic inline access context
 	.get('/uptime', async ({ctx}) => ctx.uptime)
 	.post('/uptime', async ({ctx}) => ctx.uptime)
+
+	.merge('/through', exampleOfThrough)
 
 	// Accessing query
 	.get('/query', {

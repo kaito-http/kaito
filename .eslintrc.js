@@ -22,6 +22,7 @@ module.exports = {
 		'no-mixed-spaces-and-tabs': 'off',
 		'jsx-quotes': 'off',
 		'@typescript-eslint/quotes': 'off',
+		'@typescript-eslint/parameter-properties': 'off',
 		'@typescript-eslint/ban-types': [
 			'error',
 			{

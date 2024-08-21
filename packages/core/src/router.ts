@@ -40,13 +40,24 @@ const getSend = (res: KaitoResponse) => (status: number, response: APIResponse<u
 	res.status(status).json(response);
 };
 
-export class Router<Context, R extends Routes> {
-	public static create = <Context>() => new Router<Context, []>([]);
+export type RouterOptions<ContextFrom, ContextTo> = {
+	through: (context: ContextFrom) => Promise<ContextTo>;
+};
 
-	private static async handle<Path extends string, Context>(
+export class Router<ContextFrom, ContextTo, R extends Routes> {
+	private readonly routerOptions: RouterOptions<ContextFrom, ContextTo>;
+	public readonly routes: R;
+
+	public static create = <Context>() =>
+		new Router<Context, Context, []>([], {
+			through: async context => context,
+		});
+
+	private static async handle<Path extends string, ContextFrom, ContextTo>(
 		// Allow for any server to be passed
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		server: ServerConfig<Context, any>,
+		server: ServerConfig<ContextFrom, any>,
+		routerOptions: RouterOptions<ContextFrom, ContextTo>,
 		route: AnyRoute,
 		options: {
 			params: Record<string, string | undefined>;
@@ -57,7 +68,8 @@ export class Router<Context, R extends Routes> {
 		const send = getSend(options.res);
 
 		try {
-			const ctx = await server.getContext(options.req, options.res);
+			const rootCtx = await server.getContext(options.req, options.res);
+			const through = await routerOptions.through(rootCtx);
 
 			const body = ((await route.body?.parse(await getBody(options.req))) ?? undefined) as unknown;
 
@@ -66,7 +78,7 @@ export class Router<Context, R extends Routes> {
 			) as z.ZodObject<AnyQueryDefinition>['_type'];
 
 			const result = (await route.run({
-				ctx,
+				ctx: through,
 				body,
 				query,
 				params: options.params as ExtractRouteParams<Path>,
@@ -119,7 +131,10 @@ export class Router<Context, R extends Routes> {
 		}
 	}
 
-	public constructor(public readonly routes: R) {}
+	public constructor(routes: R, options: RouterOptions<ContextFrom, ContextTo>) {
+		this.routerOptions = options;
+		this.routes = routes;
+	}
 
 	/**
 	 * Adds a new route to the router
@@ -142,24 +157,28 @@ export class Router<Context, R extends Routes> {
 		route:
 			| (Method extends 'GET'
 					? Omit<
-							Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
+							Route<ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
 							'body' | 'path' | 'method'
 					  >
-					: Omit<Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
-			| Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run']
-	): Router<Context, [...R, Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]> => {
-		const merged: Route<Context, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput> = {
+					: Omit<Route<ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
+			| Route<ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run']
+	): Router<
+		ContextFrom,
+		ContextTo,
+		[...R, Route<ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]
+	> => {
+		const merged: Route<ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput> = {
 			...(typeof route === 'object' ? route : {run: route}),
 			method,
 			path,
 		};
 
-		return new Router([...this.routes, merged]);
+		return new Router([...this.routes, merged], this.routerOptions);
 	};
 
 	public readonly merge = <PathPrefix extends `/${string}`, OtherRoutes extends Routes>(
 		pathPrefix: PathPrefix,
-		other: Router<Context, OtherRoutes>
+		other: Router<ContextTo, ContextTo, OtherRoutes>
 	) => {
 		const newRoutes = other.routes.map(route => ({
 			...route,
@@ -168,12 +187,12 @@ export class Router<Context, R extends Routes> {
 
 		type Result = [...R, ...PrefixRoutesPath<PathPrefix, OtherRoutes>];
 
-		return new Router<Context, Result>([...this.routes, ...newRoutes] as Result);
+		return new Router<ContextFrom, ContextTo, Result>([...this.routes, ...newRoutes] as Result, this.routerOptions);
 	};
 
 	// Allow for any server context to be passed
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public freeze = (server: ServerConfig<Context, any>) => {
+	public freeze = (server: ServerConfig<ContextFrom, any>) => {
 		const instance = fmw({
 			ignoreTrailingSlash: true,
 			async defaultRoute(req, serverResponse) {
@@ -198,7 +217,7 @@ export class Router<Context, R extends Routes> {
 				const req = new KaitoRequest(incomingMessage);
 				const res = new KaitoResponse(serverResponse);
 
-				return Router.handle(server, route, {
+				return Router.handle(server, this.routerOptions, route, {
 					params,
 					req,
 					res,
@@ -229,9 +248,9 @@ export class Router<Context, R extends Routes> {
 			path: Path,
 			route:
 				| (M extends 'GET'
-						? Omit<Route<Context, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>, 'body' | 'path' | 'method'>
-						: Omit<Route<Context, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
-				| Route<Context, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>['run']
+						? Omit<Route<ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>, 'body' | 'path' | 'method'>
+						: Omit<Route<ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
+				| Route<ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>['run']
 		) =>
 			this.add<Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>(method, path, route);
 
@@ -242,4 +261,13 @@ export class Router<Context, R extends Routes> {
 	public delete = this.method('DELETE');
 	public head = this.method('HEAD');
 	public options = this.method('OPTIONS');
+
+	public through = <NextContext>(transform: (context: ContextTo) => Promise<NextContext>) =>
+		new Router<ContextFrom, NextContext, R>(this.routes, {
+			through: async context => {
+				const fromCurrentRouter = await this.routerOptions.through(context);
+
+				return transform(fromCurrentRouter);
+			},
+		});
 }
