@@ -13,7 +13,8 @@ import {getBody} from './util';
 type Routes = readonly AnyRoute[];
 
 type RemapRoutePrefix<R extends AnyRoute, Prefix extends `/${string}`> = R extends Route<
-	infer Context,
+	infer ContextFrom,
+	infer ContextTo,
 	infer Result,
 	infer Path,
 	infer Method,
@@ -22,7 +23,7 @@ type RemapRoutePrefix<R extends AnyRoute, Prefix extends `/${string}`> = R exten
 	infer BodyDef,
 	infer BodyInput
 >
-	? Route<Context, Result, `${Prefix}${Path}`, Method, Query, BodyOutput, BodyDef, BodyInput>
+	? Route<ContextFrom, ContextTo, Result, `${Prefix}${Path}`, Method, Query, BodyOutput, BodyDef, BodyInput>
 	: never;
 
 type PrefixRoutesPath<Prefix extends `/${string}`, R extends Routes> = R extends [infer First, ...infer Rest]
@@ -53,11 +54,10 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 			through: async context => context,
 		});
 
-	private static async handle<Path extends string, ContextFrom, ContextTo>(
+	private static async handle<Path extends string, ContextFrom>(
 		// Allow for any server to be passed
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		server: ServerConfig<ContextFrom, any>,
-		routerOptions: RouterOptions<ContextFrom, ContextTo>,
 		route: AnyRoute,
 		options: {
 			params: Record<string, string | undefined>;
@@ -69,7 +69,7 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 
 		try {
 			const rootCtx = await server.getContext(options.req, options.res);
-			const through = await routerOptions.through(rootCtx);
+			const ctx = (await route.through(rootCtx)) as unknown;
 
 			const body = ((await route.body?.parse(await getBody(options.req))) ?? undefined) as unknown;
 
@@ -78,7 +78,7 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 			) as z.ZodObject<AnyQueryDefinition>['_type'];
 
 			const result = (await route.run({
-				ctx: through,
+				ctx,
 				body,
 				query,
 				params: options.params as ExtractRouteParams<Path>,
@@ -157,20 +157,24 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 		route:
 			| (Method extends 'GET'
 					? Omit<
-							Route<ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
-							'body' | 'path' | 'method'
+							Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
+							'body' | 'path' | 'method' | 'through'
 					  >
-					: Omit<Route<ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
-			| Route<ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run']
+					: Omit<
+							Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
+							'path' | 'method' | 'through'
+					  >)
+			| Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run']
 	): Router<
 		ContextFrom,
 		ContextTo,
-		[...R, Route<ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]
+		[...R, Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]
 	> => {
-		const merged: Route<ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput> = {
+		const merged: Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput> = {
 			...(typeof route === 'object' ? route : {run: route}),
 			method,
 			path,
+			through: this.routerOptions.through,
 		};
 
 		return new Router([...this.routes, merged], this.routerOptions);
@@ -217,7 +221,7 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 				const req = new KaitoRequest(incomingMessage);
 				const res = new KaitoResponse(serverResponse);
 
-				return Router.handle(server, this.routerOptions, route, {
+				return Router.handle(server, route, {
 					params,
 					req,
 					res,
@@ -248,9 +252,15 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 			path: Path,
 			route:
 				| (M extends 'GET'
-						? Omit<Route<ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>, 'body' | 'path' | 'method'>
-						: Omit<Route<ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>, 'path' | 'method'>)
-				| Route<ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>['run']
+						? Omit<
+								Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>,
+								'body' | 'path' | 'method' | 'through'
+						  >
+						: Omit<
+								Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>,
+								'path' | 'method' | 'through'
+						  >)
+				| Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>['run']
 		) =>
 			this.add<Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>(method, path, route);
 

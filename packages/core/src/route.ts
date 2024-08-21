@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type {z} from 'zod';
 import type {ExtractRouteParams, KaitoMethod} from './util';
 
@@ -12,7 +13,8 @@ export type AnyQueryDefinition = Record<string, z.ZodTypeAny>;
 
 export type Route<
 	// Router context
-	Context,
+	ContextFrom,
+	ContextTo,
 	// Route information
 	Result,
 	Path extends string,
@@ -24,13 +26,22 @@ export type Route<
 	BodyDef extends z.ZodTypeDef,
 	BodyInput
 > = {
+	through: (context: ContextFrom) => Promise<ContextTo>;
 	body?: z.ZodType<BodyOutput, BodyDef, BodyInput>;
 	query?: Query;
 	path: Path;
 	method: Method;
-	run(args: RouteArgument<Path, Context, z.infer<z.ZodObject<Query>>, BodyOutput>): Promise<Result>;
+	run(args: RouteArgument<Path, ContextTo, z.infer<z.ZodObject<Query>>, BodyOutput>): Promise<Result>;
 };
 
-// This must be any here, because we can't use the generic type in the type definition
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AnyRoute<Context = any> = Route<Context, any, any, any, AnyQueryDefinition, any, any, any>;
+export type AnyRoute<FromContext = any, ToContext = any> = Route<
+	FromContext,
+	ToContext,
+	any,
+	any,
+	any,
+	AnyQueryDefinition,
+	any,
+	any,
+	any
+>;
