@@ -18,11 +18,11 @@ export type ServerConfigWithBefore<BeforeAfterContext> =
 	| {before: Before<BeforeAfterContext>; after?: After<BeforeAfterContext>}
 	| {before?: undefined};
 
-export type ServerConfig<Context, BeforeAfterContext> = ServerConfigWithBefore<BeforeAfterContext> & {
+export type ServerConfig<ContextFrom, BeforeAfterContext> = ServerConfigWithBefore<BeforeAfterContext> & {
 	// We really want to accept any here.
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	router: Router<Context, any>;
-	getContext: GetContext<Context>;
+	router: Router<ContextFrom, unknown, any>;
+	getContext: GetContext<ContextFrom>;
 
 	// Escape hatch for routes that will be loaded to fmw
 	// but are not in the router.
