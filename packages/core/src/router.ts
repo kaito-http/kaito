@@ -182,7 +182,12 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 
 	public readonly merge = <PathPrefix extends `/${string}`, OtherRoutes extends Routes>(
 		pathPrefix: PathPrefix,
-		other: Router<ContextTo, ContextTo, OtherRoutes>
+
+		// The ContextTo is irrelevant here, because we
+		// keep the .through() handler of this existing router
+		// which means that ContextTo doesn't actually change.
+		// We DO, however, require that the ContextFrom is the same
+		other: Router<ContextFrom, unknown, OtherRoutes>
 	) => {
 		const newRoutes = other.routes.map(route => ({
 			...route,
