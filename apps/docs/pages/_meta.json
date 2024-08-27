@@ -1,13 +1,13 @@
 {
 	"index": "Introduction",
-	"--- Documentation": {
+	"getting-started": "Getting Started",
+	"help": "Help",
+	"--- documentation": {
 		"type": "separator",
 		"title": "Documentation"
 	},
-	"getting-started": "Getting Started",
-	"documentation": "Documentation",
-	"--- Reference": {
+	"--- recipes": {
 		"type": "separator",
-		"title": "Reference"
+		"title": "Recipes"
 	}
 }

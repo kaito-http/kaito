@@ -1,6 +1,5 @@
 import {Callout} from 'nextra-theme-docs';
 
-
 # Getting the Client's IP
 
 Kaito was designed to be light and unopinionated outside of the core functionality. Other libraries like [Express](https://expressjs.com/) and [Fastify](https://www.fastify.io/) have a lot of configuration options for things that are not core to its functionality.
@@ -9,31 +8,33 @@ This is why you may find some features missing from Kaito. One example of this i
 
 ### Example (With a Proxy)
 
-The way you fetch your client's IP can change depending on what proxy you are using. Often times, proxys will add headers to the request so you can extract the IP from them. 
+The way to access the client's IP address can vary depending on if you are hosting behind a reverse proxy (like nginx) or not. Proxys will often add a header(s) to the request with the client's IP address.
 
 Please refer to your proxy's documentation for specific information on how to get it.
 
-Here is a point of concept for how you can get the client's IP with a proxy in front of you Kaito server.
+Here is an example of accessing the client's IP address with a proxy in front of your Kaito server
 
-<Callout>
-  WARNING: Below should ONLY be used if you *trust* your proxy. Otherwise these headers *can* be spoofed and manipulated. **Make sure** to only include headers that you know are expected to be present.
+<Callout type="warning">
+	The code below should ONLY be used if you *trust* your proxy. Otherwise these headers *can* be spoofed by the client
+	and manipulated. **Make sure** to only include headers that you know are expected to be present.
 </Callout>
 
 ```ts
 import {createUtilities, type KaitoRequest} from '@kaito-http/core';
 
-// Incomplete list of possible headers, these are typically the ones you would find on popular proxies, like CloudFlare, NGinx, and other cloud providers.
-// Make sure to only include headers that you know are expected to be present.
+// Incomplete list of possible headers, these are typically the ones you would
+// find on popular proxies, like CloudFlare, Nginx, and other cloud providers.
+// Make sure to only include headers that you expect to be present.
 const possibleHeaders = [
-  "x-forwarded-for",
-  "x-forwarded",
-  "forwarded-for",
-  "forwarded",
-  "x-client-ip",
-  "x-real-ip",
-  "cf-connecting-ip",
-  "true-client-ip",
-  "x-cluster-client-ip",
+	'x-forwarded-for',
+	'x-forwarded',
+	'forwarded-for',
+	'forwarded',
+	'x-client-ip',
+	'x-real-ip',
+	'cf-connecting-ip',
+	'true-client-ip',
+	'x-cluster-client-ip',
 ] as const;
 
 /**
@@ -41,25 +42,28 @@ const possibleHeaders = [
  * This function tries to extract it from common headers,
  * and if it fails, it tries to extract it from the socket's connecting IP,
  * otherwise it returns null.
- * 
+ *
  * @param req The Kaito request object.
  * @returns The client's IP address, or null if it cannot be extracted.
  */
-export function extractIPFromRequest(req: KaitoRequest) {
-  for (const header of possibleHeaders) {
-    const ip = req.headers[header];
+function extractIPFromRequest(req: KaitoRequest) {
+	for (const header of possibleHeaders) {
+		const ip = req.headers[header];
 
-    return ip;
-  }
+		if (ip !== undefined) {
+			return ip;
+		}
+	}
 
-  // If the headers don't contain the IP, you can try to return it from the socket, but chances are this will be the proxy's IP. Most *might* want to remove the line below
-  if (req.raw.socket.remoteAddress) {
-    return req.raw.socket.remoteAddress;
-  }
+	// If the headers don't contain the IP, you can try to return it from the socket,
+	// but chances are this will be the proxy's IP. Most *might* want to remove the line below
+	if (req.raw.socket.remoteAddress) {
+		// Accessing .raw to get the underlying Node.js request object
+		return req.raw.socket.remoteAddress;
+	}
 
-  return null;
+	return null;
 }
-
 
 export const {getContext, router} = createUtilities(async (req, res) => {
 	return {
@@ -79,10 +83,7 @@ export const {getContext, router} = createUtilities(async (req, res) => {
 	return {
 		req,
 		res,
-		clientIp: req.socket.remoteAddress || null,
+		clientIp: req.raw.socket.remoteAddress || null,
 	};
 });
 ```
-
-
-
