@@ -134,7 +134,7 @@ const usersRouter = router()
 
 A nice pattern that `.through()` enables is to export a router from another file that already has some 'through-logic' applied to it. This allows for extremely powerful composition of routers.
 
-```ts filename="@/src/routers/authed.ts"
+```ts filename="routers/authed.ts"
 export const authedRouter = router().through(async ctx => {
 	const session = await ctx.getSession();
 
@@ -149,8 +149,8 @@ export const authedRouter = router().through(async ctx => {
 });
 ```
 
-```ts filename="@/src/routes/v1/posts.ts"
-import {authedRouter} from './authed';
+```ts filename="routes/posts.ts"
+import {authedRouter} from '../routers/authed.ts';
 
 // Note: I am not calling calling authedRouter here. All router methods are immutable
 // so we can just import the router and use it as is, rather than instantiating it again
