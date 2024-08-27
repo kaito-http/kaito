@@ -37,3 +37,114 @@ export const api = router().merge('/v1', v1).merge('/v2', v2);
 ```
 
 You can expect all type information to be carried over as well as the route names and their prefixes.
+
+## `.through()` (Middleware alternative)
+
+Kaito takes a different approach to what most people call "middleware", mainly because of its inpredictable nature. Instead, Kaito offers a `.through()` method so you can easily add functions before the request is handled. `.through()` gives the end developer better type-safety, and most importantly, is much easier to know *when* it will run.
+
+### How to use `.through()`
+
+`.through()` takes in a function that is provided the context (Learn more about context [here](/documentation/context)). You can add as many `.through()` methods as you would like, they will be called in the order they are added.
+
+#### Examples
+
+Take the following snippet:
+
+```ts
+const createPost = router().post("/posts", {
+  async run({ ctx, body, query, params }) {
+    // Do something with the request
+    console.log(ctx.user);
+    // ^? ctx.user is not defined, this will through a type error, accessing will result in being undefined.
+  }
+})
+```
+
+
+##### Basic Example
+
+A common approach using `.through()` is adding specific functions before the request is handled for only specific routes. That can look something like this:
+
+```ts
+
+const usersRouter = router()
+  .get("/posts", {
+    async run({ ctx, body, query, params }) {
+      // Some route that doesn't require the user.
+      console.log(ctx.user); // <-- Undefined
+    }
+  })
+  .through(async (ctx) => {
+    const sessionToken = ctx.sessionToken; // sessionToken is a string that was provided in `createUtilities`.
+    const user = await getUserFromSessionToken(sessionToken); // getUserFromSessionToken is a function that provides the user, or null
+
+    return {
+      ...ctx,
+      user
+    }
+  })
+  .post("/posts", {
+    async run({ ctx, body, query, params }) {
+      // Do something with the request
+      console.log(ctx.user);
+      // ^? ctx.user is now a User object, or it is null.
+    }
+  })
+```
+
+
+##### Stacking `.through()` methods
+
+You can even stack them and add as many `.through()` methods as you would like, they will be called in the order they are added.
+
+<Callout>
+	Each `.through()` method is called with the latest context, so you can easily build on top of the existing context.
+</Callout>
+
+```ts
+const usersRouter = router()
+  .get("/posts", {
+    async run({ ctx, body, query, params }) {
+      // Some route that doesn't require the user.
+      console.log(ctx.user); // <-- Undefined
+    }
+  })
+  .through(async (ctx) => {
+    const sessionToken = ctx.sessionToken; // sessionToken is a string that was provided in `createUtilities`.
+    const user = await getUserFromSessionToken(sessionToken); // getUserFromSessionToken is a function that provides the user, or null
+
+    return {
+      ...ctx,
+      user
+    }
+  })
+  .post("/posts", {
+    async run({ ctx, body, query, params }) {
+      // Do something with the request
+      console.log(ctx.user);
+      // ^? ctx.user is now a User object, or it is null.
+    }
+  })
+  .through(async (ctx) => {
+    if(!ctx.user) {
+      return {
+        ...ctx,
+        isAdmin: false,
+      }
+    }
+
+    const checkIfUserIsAdmin = await checkIfUserIsAdmin(ctx.user);
+
+    return {
+      ...ctx,
+      isAdmin: checkIfUserIsAdmin
+    }
+  })
+  .delete("/posts", {
+    async run({ ctx, body, query, params }) {
+      // Now this route has access to ctx.user and ctx.isAdmin
+      console.log(ctx.user); // <-- User object or null
+      console.log(ctx.isAdmin); // <-- boolean
+    }
+  })
+```
