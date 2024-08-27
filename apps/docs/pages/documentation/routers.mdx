@@ -51,13 +51,11 @@ Kaito takes a different approach to what most people call "middleware", mainly b
 Take the following snippet:
 
 ```ts
-const createPost = router().post("/posts", {
-  async run({ ctx, body, query, params }) {
+const createPost = router().post("/posts", async ({ ctx, body, query, params }) => {
     // Do something with the request
     console.log(ctx.user);
     // ^? ctx.user is not defined, this will through a type error, accessing will result in being undefined.
-  }
-})
+  })
 ```
 
 
@@ -68,27 +66,23 @@ A common approach using `.through()` is adding specific functions before the req
 ```ts
 
 const usersRouter = router()
-  .get("/posts", {
-    async run({ ctx, body, query, params }) {
-      // Some route that doesn't require the user.
-      console.log(ctx.user); // <-- Undefined
-    }
+  .get("/posts", async ({ ctx, body, query, params }) => {
+    // Some route that doesn't require the user.
+    console.log(ctx.user); // <-- Undefined
   })
   .through(async (ctx) => {
-    const sessionToken = ctx.sessionToken; // sessionToken is a string that was provided in `createUtilities`.
-    const user = await getUserFromSessionToken(sessionToken); // getUserFromSessionToken is a function that provides the user, or null
+    const session = ctx.getSession() // getSession is a function that provides the an object with a user property, or null
+    if(!session) {
+      throw new KaitoError(401, "Unauthorized");
+    }
 
     return {
       ...ctx,
-      user
+      user: session.user
     }
   })
-  .post("/posts", {
-    async run({ ctx, body, query, params }) {
-      // Do something with the request
-      console.log(ctx.user);
-      // ^? ctx.user is now a User object, or it is null.
-    }
+  .post("/posts", async ({ ctx, body, query, params }) => {
+    // ctx.user is now a User object and can be accessed.
   })
 ```
 
@@ -103,48 +97,48 @@ You can even stack them and add as many `.through()` methods as you would like, 
 
 ```ts
 const usersRouter = router()
-  .get("/posts", {
-    async run({ ctx, body, query, params }) {
-      // Some route that doesn't require the user.
-      console.log(ctx.user); // <-- Undefined
+  .get("/posts", async ({ ctx, body, query, params }) => {
+    const posts = await getPosts(); // fictional function
+
+    return {
+      posts,
+      self_user: ctx.user // => Undefined
     }
   })
   .through(async (ctx) => {
-    const sessionToken = ctx.sessionToken; // sessionToken is a string that was provided in `createUtilities`.
-    const user = await getUserFromSessionToken(sessionToken); // getUserFromSessionToken is a function that provides the user, or null
+    const session = ctx.getSession() // getSession is a function that provides the an object with a user property, or null
+    if(!session) {
+      throw new KaitoError(401, "Unauthorized");
+    }
 
     return {
       ...ctx,
-      user
+      user: session.user
     }
   })
-  .post("/posts", {
-    async run({ ctx, body, query, params }) {
-      // Do something with the request
-      console.log(ctx.user);
-      // ^? ctx.user is now a User object, or it is null.
-    }
+  .post("/posts", async ({ ctx, body, query, params }) => {
+    const post = await createPost(ctx.user.id);
+
+    return post;
   })
   .through(async (ctx) => {
-    if(!ctx.user) {
-      return {
-        ...ctx,
-        isAdmin: false,
-      }
-    }
-
+    // no need to check if user is null, because that last .through() threw a KaitoError
     const checkIfUserIsAdmin = await checkIfUserIsAdmin(ctx.user);
 
+    if(!checkIfUserIsAdmin) {
+      throw new KaitoError(403, "Forbidden"); 
+    }
+
     return {
       ...ctx,
-      isAdmin: checkIfUserIsAdmin
+      user: {
+        ...ctx.user,
+        isAdmin: true
+      }
     }
   })
-  .delete("/posts", {
-    async run({ ctx, body, query, params }) {
-      // Now this route has access to ctx.user and ctx.isAdmin
-      console.log(ctx.user); // <-- User object or null
-      console.log(ctx.isAdmin); // <-- boolean
-    }
+  .delete("/posts", async ({ ctx, body, query, params }) => {
+    ctx.user.isAdmin; // => true
+    await deleteAllPosts();
   })
 ```
