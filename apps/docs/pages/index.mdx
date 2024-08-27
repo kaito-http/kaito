@@ -2,6 +2,8 @@ import { Callout } from 'nextra-theme-docs';
 
 # Introduction
 
+Kaito is a minimalistic, API-oriented HTTP framework for Node.js and TypeScript.
+
 ### Features
 
 - ✍ Built in zod schema + body validation support
@@ -10,12 +12,8 @@ import { Callout } from 'nextra-theme-docs';
 - 💨 Extremely easy to use, functional pattern
 - 📦 Tiny, with only 4 small dependencies
 
-## What is Kaito?
-
-Kaito is a minimalistic, API-oriented HTTP framework for Node.js and TypeScript.
-
 ## Principles
 
-- No middleware! I've always disliked the middleware pattern, for two reasons. The first is that it's difficult to make guarantees about where and the order that middleware run, and secondly it's hard to provide robust type information for middleware
+- No middleware! I've always disliked the middleware pattern, for two reasons. The first is that it's difficult to make guarantees about where and the order that middleware run, and secondly it's hard to provide robust type information for middleware. **Instead**, Kaito offers a `.through()` method that allows you to easily (and type-safely) add functions before the request is handled. Read more about that [here](/documentation/routers#through-middleware-alternative).
 - JSON only. This makes it über easy to build an API without having to think about what's happening behind the scenes
 - e2e types. Kaito supports exporting the entire API as a TypeScript interfaces, including all response types. This allows for easy building of a client

@@ -6,5 +6,8 @@
 	},
 	"getting-started": "Getting Started",
 	"documentation": "Documentation",
-	"faq": "FAQ"
+	"--- Reference": {
+		"type": "separator",
+		"title": "Reference"
+	}
 }

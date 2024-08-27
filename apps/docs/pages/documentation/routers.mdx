@@ -36,4 +36,128 @@ import {v2} from './routers/v1';
 export const api = router().merge('/v1', v1).merge('/v2', v2);
 ```
 
-You can expect all type information to be carried over as well as the route names and their prefixes.
+You can expect all type information to be carried over as well as the route names and correct prefixes.
+
+## `.through()` (Middleware alternative)
+
+Kaito takes a different approach to traditional express.js style "middleware." This is mostly because of the inpredictable nature of such a pattern. Kaito offers a superior alternative, `.through()`.
+
+### How to use `.through()`
+
+`.through()` accepts a function that is provided the current context, and should return the next context (learn more about context [here](/documentation/context)). This will swap out the context for all routes defined after the `.through()`. You can also throw any kind of errors inside the callback, and they will be caught and handled as you would expect.
+
+#### Examples
+
+Take the following snippet:
+
+```ts
+const postsRouter = router().post('/', async ({ctx}) => {
+	// Imagine we wanted to get the current user here. Right now this is not defined anywhere
+	const user = ctx.user;
+
+	// ...
+});
+```
+
+One common reason to reach for `.through()` is to append specific properties to the context, and in our example that will be accessing the session.
+
+```ts
+const postsRouter = router()
+	.through(async ctx => {
+		// Just an example. This getSession() method would be
+		// defined in the root `getContext` function. Probably
+		// would read the cookies and then resolve a session from a database.
+		const session = await ctx.getSession();
+
+		if (!session) {
+			throw new KaitoError(401, 'You are not logged in');
+		}
+
+		return {
+			...ctx,
+			user: session.user,
+		};
+	})
+	.post('/', async ({ctx}) => {
+		// ctx.user is now defined, and correctly typed!
+		ctx.user; // => {id: string, name: string, ...}
+
+		await ctx.db.posts.create(ctx.user.id);
+	});
+```
+
+##### Multiple `.through()` calls
+
+You can call `.through()` multiple times, where each `.through()` will accept the result of the previous call.
+
+```ts
+const usersRouter = router()
+	.through(async ctx => {
+		const session = await ctx.getSession();
+
+		if (!session) {
+			throw new KaitoError(401, 'You are not logged in');
+		}
+
+		return {
+			...ctx,
+			user: session.user,
+		};
+	})
+	.post('/posts', async ({ctx}) => {
+		const post = await ctx.db.posts.create(ctx.user.id);
+		return post;
+	})
+	.through(async ctx => {
+		// ctx.user is guaranteed to exist here, because of the previous `.through()`
+		const checkIfUserIsAdmin = await checkIfUserIsAdmin(ctx.user);
+
+		if (!checkIfUserIsAdmin) {
+			throw new KaitoError(403, 'Forbidden');
+		}
+
+		return {
+			...ctx,
+			user: {
+				...ctx.user,
+				isAdmin: true,
+			},
+		};
+	})
+	.delete('/posts', async ({ctx, body, query, params}) => {
+		ctx.user.isAdmin; // => true
+		await deleteAllPosts();
+	});
+```
+
+## Advanced usage with `.through()`
+
+A nice pattern that `.through()` enables is to export a router from another file that already has some 'through-logic' applied to it. This allows for extremely powerful composition of routers.
+
+```ts filename="routers/authed.ts"
+export const authedRouter = router().through(async ctx => {
+	const session = await ctx.getSession();
+
+	if (!session) {
+		throw new KaitoError(401, 'You are not logged in');
+	}
+
+	return {
+		...ctx,
+		user: session.user,
+	};
+});
+```
+
+```ts filename="routes/posts.ts"
+import {authedRouter} from '../routers/authed.ts';
+
+// Note: I am not calling calling authedRouter here. All router methods are immutable
+// so we can just import the router and use it as is, rather than instantiating it again
+// for the sake of some syntax
+export const postsRouter = authedRouter.post('/', async ({ctx}) => {
+	// There is now NO .through() logic here, but we still
+	// get access to a strongly typed `ctx.user` object! Incredible right?
+	await ctx.db.posts.create(ctx.user.id);
+});
+```
