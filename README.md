@@ -11,4 +11,4 @@ View the [documentation here](https://http.kaito.cloud)
 #### Credits
 
 - [Vercel](https://vercel.com?utm_source=kaito-http&utm_campaign=oss), for sponsoring the project and hosting the documentation
-- [Alistair Smith](https://twitter.com/aabbccsmith)
+- [Alistair Smith](https://twitter.com/alistaiir)
