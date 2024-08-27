@@ -27,15 +27,17 @@ In the example above, you can see I have included a property called `onError`. T
 
 ```ts
 import {createServer} from '@kaito-http/core';
+import {ZodError} from 'zod';
 
 const server = createServer({
 	// Be careful with using `res` here. It will enable you to send a response early (which will break your application).
-	// I may remove it in the future, too.
+	// It may be removed it in the future.
 	onError: async ({error, req, res}) => {
-		return {
-			status: 500,
-			message: error.message ?? 'Internal Server Error',
-		};
+		if (error instanceof ZodError) {
+			return {status: 400, message: 'Invalid request'};
+		}
+
+		return {status: 500, message: 'Internal Server Error'};
 	},
 	// ...
 });
@@ -43,12 +45,15 @@ const server = createServer({
 
 ## Before/After
 
-Kaito has a concept of before and after hooks, which are executed before and after the router. This is useful for things like logging, authentication, etc. Personally, I use it to add CORS headers.
+Kaito has a concept of before and after hooks, which are executed before and after the router. This is useful for things like logging etc. Personally, I use it to add CORS headers.
 
 ```ts
 const server = createServer({
 	getContext,
 	router,
+	onError: async ({error, req, res}) => {
+		// ...
+	},
 	// Before runs code before every request. This is helpful for setting things like CORS.
 	// You can return a value from before, and it will be passed to the after call.
 	// If you end the response in `before`, the router will not be called.
@@ -67,15 +72,15 @@ const server = createServer({
 
 		// Return something from `before`, and it will be passed to `after`.
 		return {
-			timestamp: Date.now(),
+			now: Date.now(),
 		};
 	},
 
 	// Access the return value from `before` in `after`.
 	// If the before function ends the response, this *will* be called!
 	// So be careful about logging request durations etc
-	after: async ({timestamp}) => {
-		console.log(`Request took ${Date.now() - timestamp}ms`);
+	after: async ({now}) => {
+		console.log(`Request took ${Date.now() - now}ms`);
 	},
 });
 ```

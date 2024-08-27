@@ -11,37 +11,35 @@ For example, if you want to provide the `req` and `res` objects to each route, y
 
 Below is an example of things that you could include, but it's really up to you and what you would find useful to include in your app.
 
+In the documentation about routers, you'll learn about how routers can create their own context, enabling powerful separation of concerns.
+
 It's important to note that passing the response object is potentially harmful. This is because a developer could misuse it and start overwriting headers or sending data to the client in a way that you didn't intend. Instead, I'd recommend only passing as few values as needed. If you needed access to cookies, perhaps provide a `getCookie(name: string)` method, or something similar. This is by principle of least privilege.
 
 ```ts
 import {createUtilities} from '@kaito-http/core';
 
-// Use the `createUtilities` helper to also create a `router` function, and all nicely typed
+// Use the `createUtilities` helper to also create a strongly typed `router` function
 export const {getContext, router} = createUtilities(async (req, res) => {
 	return {
 		req,
 		res,
 		time: new Date(),
 
-		// Example implementing some database resources
-		users: {
-			async search(query: string) {
-				//
-			},
-
-			async byId(id: string) {
-				//
-			},
+		searchForUser: async (query: string) => {
+			return await db.users.search(query);
 		},
 
-		sessions: {
-			async create(userId: string) {
-				//
-			},
+		// This is just an example
+		getSession: async () => {
+			const cookies = req.headers.cookie;
 
-			async resolve() {
-				return req.headers.authorization;
-			},
+			// this is bad code, use a cookie parser library! npmjs.com/package/cookie is a good one
+			const token = cookies
+				?.split(';')
+				.find(cookie => cookie.startsWith('token='))
+				.split('=')[1];
+
+			return await db.sessions.findByToken(token);
 		},
 	};
 });
@@ -59,7 +57,8 @@ export const users = router().get('/users', {
 	},
 
 	async run({ctx, query}) {
-		return ctx.users.search(query.search);
+		const users = await ctx.searchForUser(query.search);
+		return users;
 	},
 });
 ```

@@ -1,4 +1,13 @@
+import {Callout} from 'nextra-theme-docs';
+
 # Getting started
+
+<Callout type="warning">
+	Please read all documentation. These docs are not complete and although almost all of the features of Kaito are
+	described least somewhere on this website, it might not be where you would expect it to be. I don't have infinite time
+	to work on Kaito and its docs, so if you would like to help you can sponsor me on GitHub, or submit documentation PRs
+	yourself. Thank you!
+</Callout>
 
 ## Installation
 
@@ -23,10 +32,8 @@ Kaito is very simple to use, it revolves around a few basic concepts. Before we 
 A route is a function that is available on the API. Simply put, it's something that will exist over HTTP and returns a single value that will be JSON encoded. Below is a basic example
 
 ```ts
-export const getUsers = router().get('/users', {
-	run: async () => {
-		return database.getUsers();
-	},
+export const app = router().get('/users', async ({ctx}) => {
+	return ctx.db.getUsers();
 });
 ```
 
@@ -36,7 +43,7 @@ The Kaito router is a class that holds all of our routes and their type informat
 
 ### Context
 
-Context is a variable that is generated on every single request. It is up to developers what to place inside their context, but it will be available to access in every single route. For example, you could include the `req` and `res` objects, a method to get the current user (replacing middleware), etc.
+Context is a variable that is generated on every single request. It is up to developers what to place inside their context, but it will be available to access in every single route. For example, you could include the `req` and `res` objects, a method to get the current session, etc.
 
 ## Quickstart
 
@@ -57,6 +64,11 @@ export const {router, getContext} = createUtilities(async (req, res) => ({
 	uptime: Date.now() - serverStarted,
 }));
 ```
+
+<Callout>
+	You should avoid throwing errors inside of `getContext()`, but if you must, it will be handled by the server's
+	`.onError` handler (which you will learn about below).
+</Callout>
 
 Secondly, we'll need to create a router, a server, and our first route.
 
