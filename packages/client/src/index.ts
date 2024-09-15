@@ -18,7 +18,7 @@ export type ExtractRouteParams<T extends string> = string extends T
 	? Param
 	: never;
 
-export class FetcherHTTPError extends Error {
+export class KaitoClientHTTPError extends Error {
 	constructor(
 		public readonly request: Request,
 		public readonly response: Response,
@@ -90,7 +90,7 @@ export function createAPIClient<APP extends Router<never, never, never> = never>
 			const result = (await response.json()) as APIResponse<never>;
 
 			if (!result.success) {
-				throw new FetcherHTTPError(request, response, result);
+				throw new KaitoClientHTTPError(request, response, result);
 			}
 
 			return result.data;
@@ -125,7 +125,7 @@ export async function safe<T>(
 	return promise
 		.then(res => ({success: true as const, data: res}))
 		.catch((error: unknown) => {
-			if (error instanceof FetcherHTTPError) {
+			if (error instanceof KaitoClientHTTPError) {
 				return {
 					success: false as const,
 					error,
