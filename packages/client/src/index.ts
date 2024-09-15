@@ -10,6 +10,10 @@ export type OptionalUndefinedValues<T> = {
 	[K in keyof T as T[K] extends undefined ? never : K]: T[K];
 };
 
+export type AlwaysEnabledOptions = {
+	signal?: AbortSignal | null | undefined;
+};
+
 export type ExtractRouteParams<T extends string> = string extends T
 	? string
 	: T extends `${string}:${infer Param}/${infer Rest}`
@@ -28,7 +32,7 @@ export class KaitoClientHTTPError extends Error {
 	}
 }
 
-export function createAPIClient<APP extends Router<never, never, never> = never>(rootOptions: {base: string}) {
+export function createKaitoHTTPClient<APP extends Router<never, never, never> = never>(rootOptions: {base: string}) {
 	type RequestOptionsFor<M extends KaitoMethod, Path extends Extract<APP['routes'][number], {method: M}>['path']> = {
 		body: IfNeverThen<NonNullable<Extract<APP['routes'][number], {method: M; path: Path}>['body']>['_input']>;
 
@@ -39,10 +43,6 @@ export function createAPIClient<APP extends Router<never, never, never> = never>
 				>[Key]['_input'];
 			}
 		>;
-	};
-
-	type AlwaysEnabledOptions = {
-		signal?: AbortSignal | null | undefined;
 	};
 
 	const create = <M extends KaitoMethod>(method: M) => {
