@@ -6,10 +6,10 @@ import {KaitoRequest} from './req.ts';
 import {KaitoResponse, type APIResponse} from './res.ts';
 import type {AnyQueryDefinition, AnyRoute, Route} from './route.ts';
 import type {ServerConfig} from './server.ts';
-import type {ExtractRouteParams, KaitoMethod, Values} from './util.ts';
+import type {ExtractRouteParams, KaitoMethod} from './util.ts';
 import {getBody} from './util.ts';
 
-type RemapRoutePrefix<R extends AnyRoute, Prefix extends `/${string}`> =
+type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 	R extends Route<
 		infer ContextFrom,
 		infer ContextTo,
@@ -22,9 +22,9 @@ type RemapRoutePrefix<R extends AnyRoute, Prefix extends `/${string}`> =
 		? Route<ContextFrom, ContextTo, Result, `${Prefix}${Path}`, Method, Query, BodyOutput>
 		: never;
 
-type PrefixRoutesPath<Prefix extends `/${string}`, R extends AnyRoute> = Values<{
-	[Route in R as `${Route['method']}:${Route['path']}`]: RemapRoutePrefix<Route, Prefix>;
-}>;
+type PrefixRoutesPath<Prefix extends `/${string}`, R extends AnyRoute> = R extends R
+	? PrefixRoutesPathInner<R, Prefix>
+	: never;
 
 const getSend = (res: KaitoResponse) => (status: number, response: APIResponse<unknown>) => {
 	if (res.raw.headersSent) {
