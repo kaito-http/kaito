@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type {z} from 'zod';
-import type {ExtractRouteParams, KaitoMethod} from './util';
+import type {ExtractRouteParams, KaitoMethod, Parsable} from './util.ts';
 
 export type RouteArgument<Path extends string, Context, QueryOutput, BodyOutput> = {
 	ctx: Context;
@@ -9,7 +8,15 @@ export type RouteArgument<Path extends string, Context, QueryOutput, BodyOutput>
 	params: ExtractRouteParams<Path>;
 };
 
-export type AnyQueryDefinition = Record<string, z.ZodTypeAny>;
+export type AnyQueryDefinition = Record<string, Parsable<any>>;
+export type InferQuery<T extends AnyQueryDefinition> = {
+	[Key in keyof T]: InferParsable<T[Key]>;
+};
+export type InferParsable<T> = T extends Parsable<infer U> ? U : never;
+
+export type RouteRunner<Result, Path extends string, Context, QueryOutput, BodyOutput> = (
+	args: RouteArgument<Path, Context, QueryOutput, BodyOutput>,
+) => Promise<Result>;
 
 export type Route<
 	// Router context
@@ -19,19 +26,16 @@ export type Route<
 	Result,
 	Path extends string,
 	Method extends KaitoMethod,
-	// Query params
+	// Schemas
 	Query extends AnyQueryDefinition,
-	// Body
 	BodyOutput,
-	BodyDef extends z.ZodTypeDef,
-	BodyInput
 > = {
 	through: (context: ContextFrom) => Promise<ContextTo>;
-	body?: z.ZodType<BodyOutput, BodyDef, BodyInput>;
+	body?: Parsable<BodyOutput>;
 	query?: Query;
 	path: Path;
 	method: Method;
-	run(args: RouteArgument<Path, ContextTo, z.infer<z.ZodObject<Query>>, BodyOutput>): Promise<Result>;
+	run(arg: RouteArgument<Path, ContextTo, InferQuery<Query>, BodyOutput>): Promise<Result>;
 };
 
 export type AnyRoute<FromContext = any, ToContext = any> = Route<
@@ -41,7 +45,5 @@ export type AnyRoute<FromContext = any, ToContext = any> = Route<
 	any,
 	any,
 	AnyQueryDefinition,
-	any,
-	any,
 	any
 >;

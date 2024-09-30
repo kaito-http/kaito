@@ -1,27 +1,20 @@
 {
 	"compilerOptions": {
-		"target": "es6",
-		"lib": ["dom", "dom.iterable", "esnext"],
-		"allowJs": true,
-		"skipLibCheck": true,
-		"esModuleInterop": true,
-		"allowSyntheticDefaultImports": true,
+		"moduleResolution": "NodeNext",
+		"module": "NodeNext",
+		"target": "ESNext",
 		"strict": true,
-		"forceConsistentCasingInFileNames": true,
-		"noFallthroughCasesInSwitch": true,
-		"module": "commonjs",
-		"moduleResolution": "node",
-		"resolveJsonModule": true,
-		"isolatedModules": true,
 		"noEmit": true,
-		"sourceMap": true,
-		"experimentalDecorators": true,
-		"declaration": true,
-		"emitDecoratorMetadata": true,
-		"baseUrl": "packages",
-		"importHelpers": true,
-		"downlevelIteration": true,
-		"jsx": "react"
-	},
-	"exclude": ["node_modules", "dist"]
+		"useUnknownInCatchVariables": true,
+		"noImplicitOverride": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"exactOptionalPropertyTypes": true,
+		"noImplicitReturns": true,
+		"noUncheckedIndexedAccess": true,
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"isolatedModules": true
+	}
 }
