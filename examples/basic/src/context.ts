@@ -1,5 +1,3 @@
-/* eslint-disable arrow-body-style */
-
 import type {KaitoResponse} from '@kaito-http/core';
 import {createUtilities} from '@kaito-http/core';
 

@@ -3,17 +3,18 @@ import type {HTTPMethod} from 'find-my-way';
 import {Readable} from 'node:stream';
 import {json} from 'node:stream/consumers';
 import getRawBody from 'raw-body';
-import type {KaitoRequest} from './req';
-import type {KaitoResponse} from './res';
-import {Router} from './router';
+import type {KaitoRequest} from './req.ts';
+import type {KaitoResponse} from './res.ts';
+import {Router} from './router.ts';
 
 export type ExtractRouteParams<T extends string> = string extends T
 	? Record<string, string>
 	: T extends `${string}:${infer Param}/${infer Rest}`
-	? {[k in Param | keyof ExtractRouteParams<Rest>]: string}
-	: T extends `${string}:${infer Param}`
-	? {[k in Param]: string}
-	: {};
+		? {[k in Param | keyof ExtractRouteParams<Rest>]: string}
+		: T extends `${string}:${infer Param}`
+			? {[k in Param]: string}
+			: // biome-ignore lint/complexity/noBannedTypes: Do actually mean empty object here
+				{};
 
 export type KaitoMethod = HTTPMethod | '*';
 

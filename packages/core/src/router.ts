@@ -1,14 +1,13 @@
-/* eslint-disable @typescript-eslint/member-ordering */
-import type {Handler, HTTPMethod} from 'find-my-way';
+import type {HTTPMethod, Handler} from 'find-my-way';
 import fmw from 'find-my-way';
 import {z} from 'zod';
-import {KaitoError, WrappedError} from './error';
-import {KaitoRequest} from './req';
-import {KaitoResponse, type APIResponse} from './res';
-import type {AnyQueryDefinition, AnyRoute, Route} from './route';
-import type {ServerConfig} from './server';
-import type {ExtractRouteParams, KaitoMethod} from './util';
-import {getBody} from './util';
+import {KaitoError, WrappedError} from './error.ts';
+import {KaitoRequest} from './req.ts';
+import {type APIResponse, KaitoResponse} from './res.ts';
+import type {AnyQueryDefinition, AnyRoute, Route} from './route.ts';
+import type {ServerConfig} from './server.ts';
+import type {ExtractRouteParams, KaitoMethod} from './util.ts';
+import {getBody} from './util.ts';
 
 type Routes = readonly AnyRoute[];
 
@@ -29,8 +28,8 @@ type RemapRoutePrefix<R extends AnyRoute, Prefix extends `/${string}`> = R exten
 type PrefixRoutesPath<Prefix extends `/${string}`, R extends Routes> = R extends [infer First, ...infer Rest]
 	? [
 			RemapRoutePrefix<Extract<First, AnyRoute>, Prefix>,
-			...PrefixRoutesPath<Prefix, Extract<Rest, readonly AnyRoute[]>>
-	  ]
+			...PrefixRoutesPath<Prefix, Extract<Rest, readonly AnyRoute[]>>,
+		]
 	: [];
 
 const getSend = (res: KaitoResponse) => (status: number, response: APIResponse<unknown>) => {
@@ -55,15 +54,14 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 		});
 
 	private static async handle<Path extends string, ContextFrom>(
-		// Allow for any server to be passed
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: Allow for any server ContextTo
 		server: ServerConfig<ContextFrom, any>,
 		route: AnyRoute,
 		options: {
 			params: Record<string, string | undefined>;
 			req: KaitoRequest;
 			res: KaitoResponse;
-		}
+		},
 	) {
 		const send = getSend(options.res);
 
@@ -147,10 +145,11 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 		Result,
 		Path extends string,
 		Method extends KaitoMethod,
+		// biome-ignore lint/complexity/noBannedTypes: <explanation>
 		Query extends AnyQueryDefinition = {},
 		BodyOutput = never,
 		BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
-		BodyInput = BodyOutput
+		BodyInput = BodyOutput,
 	>(
 		method: Method,
 		path: Path,
@@ -159,12 +158,12 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 					? Omit<
 							Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
 							'body' | 'path' | 'method' | 'through'
-					  >
+						>
 					: Omit<
 							Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
 							'path' | 'method' | 'through'
-					  >)
-			| Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run']
+						>)
+			| Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run'],
 	): Router<
 		ContextFrom,
 		ContextTo,
@@ -187,7 +186,7 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 		// keep the .through() handler of this existing router
 		// which means that ContextTo doesn't actually change.
 		// We DO, however, require that the ContextFrom is the same
-		other: Router<ContextFrom, unknown, OtherRoutes>
+		other: Router<ContextFrom, unknown, OtherRoutes>,
 	) => {
 		const newRoutes = other.routes.map(route => ({
 			...route,
@@ -199,8 +198,7 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 		return new Router<ContextFrom, ContextTo, Result>([...this.routes, ...newRoutes] as Result, this.routerOptions);
 	};
 
-	// Allow for any server context to be passed
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	// biome-ignore lint/suspicious/noExplicitAny: We really do want to accept `any` here
 	public freeze = (server: ServerConfig<ContextFrom, any>) => {
 		const instance = fmw({
 			ignoreTrailingSlash: true,
@@ -249,10 +247,11 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 		<
 			Result,
 			Path extends string,
+			// biome-ignore lint/complexity/noBannedTypes: <explanation>
 			Query extends AnyQueryDefinition = {},
 			BodyOutput = never,
 			BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
-			BodyInput = BodyOutput
+			BodyInput = BodyOutput,
 		>(
 			path: Path,
 			route:
@@ -260,12 +259,12 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 						? Omit<
 								Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>,
 								'body' | 'path' | 'method' | 'through'
-						  >
+							>
 						: Omit<
 								Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>,
 								'path' | 'method' | 'through'
-						  >)
-				| Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>['run']
+							>)
+				| Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>['run'],
 		) =>
 			this.add<Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>(method, path, route);
 

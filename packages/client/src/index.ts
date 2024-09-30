@@ -1,4 +1,3 @@
-/* eslint-disable arrow-body-style */
 import type {APIResponse, ErroredAPIResponse, KaitoMethod, Router} from '@kaito-http/core';
 import {pathcat} from 'pathcat';
 import pkg from '../package.json';
@@ -17,16 +16,16 @@ export type AlwaysEnabledOptions = {
 export type ExtractRouteParams<T extends string> = string extends T
 	? string
 	: T extends `${string}:${infer Param}/${infer Rest}`
-	? Param | ExtractRouteParams<Rest>
-	: T extends `${string}:${infer Param}`
-	? Param
-	: never;
+		? Param | ExtractRouteParams<Rest>
+		: T extends `${string}:${infer Param}`
+			? Param
+			: never;
 
 export class KaitoClientHTTPError extends Error {
 	constructor(
 		public readonly request: Request,
 		public readonly response: Response,
-		public readonly body: ErroredAPIResponse
+		public readonly body: ErroredAPIResponse,
 	) {
 		super(body.message);
 	}
@@ -52,6 +51,7 @@ export function createKaitoHTTPClient<APP extends Router<never, never, never> = 
 				? [options?: AlwaysEnabledOptions]
 				: [options: OptionalUndefinedValues<RequestOptionsFor<M, Path>> & AlwaysEnabledOptions]
 		): Promise<Awaited<ReturnType<Extract<APP['routes'][number], {method: M; path: Path}>['run']>>> => {
+			// biome-ignore lint/complexity/noBannedTypes: Do actually mean empty object here
 			const params = (options as {params?: {}}).params ?? {};
 			const body = (options as {body?: unknown}).body ?? undefined;
 
@@ -110,7 +110,7 @@ export function createKaitoHTTPClient<APP extends Router<never, never, never> = 
 
 export async function safe<T>(
 	promise: Promise<T>,
-	fallbackErrorMessage: ((error: unknown) => string) | string = 'Something went wrong'
+	fallbackErrorMessage: ((error: unknown) => string) | string = 'Something went wrong',
 ): Promise<
 	| {
 			success: true;

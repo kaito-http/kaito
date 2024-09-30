@@ -35,7 +35,6 @@ const config: DocsThemeConfig = {
 		link: 'https://discord.gg/PeEPDMKBEn',
 	},
 
-	// eslint-disable-next-line func-name-matching, func-names
 	head: function Head() {
 		const config = useConfig();
 

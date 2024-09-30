@@ -1,7 +1,7 @@
 import type {HTTPMethod} from 'find-my-way';
 import type {IncomingMessage} from 'node:http';
 import {TLSSocket} from 'node:tls';
-import {getLastEntryInMultiHeaderValue} from './util';
+import {getLastEntryInMultiHeaderValue} from './util.ts';
 
 export class KaitoRequest {
 	private _url: URL | null = null;

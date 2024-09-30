@@ -17,7 +17,10 @@ export class WrappedError<T> extends Error {
 }
 
 export class KaitoError extends Error {
-	constructor(public readonly status: number, message: string) {
+	constructor(
+		public readonly status: number,
+		message: string,
+	) {
 		super(message);
 	}
 }

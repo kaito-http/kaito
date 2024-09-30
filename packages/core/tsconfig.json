@@ -1,11 +1,20 @@
 {
-	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"target": "es6",
+		"moduleResolution": "NodeNext",
+		"module": "NodeNext",
+		"target": "ES6",
+		"strict": true,
 		"noEmit": true,
-		"declaration": false,
-		"sourceMap": true
+		"useUnknownInCatchVariables": true,
+		"noImplicitOverride": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"exactOptionalPropertyTypes": true,
+		"noImplicitReturns": true,
+		"noUncheckedIndexedAccess": true,
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true
 	},
-	"include": ["tests", "."],
 	"exclude": ["node_modules", "dist"]
 }
