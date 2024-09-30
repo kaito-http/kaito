@@ -3,17 +3,17 @@ import type {HTTPMethod} from 'find-my-way';
 import {Readable} from 'node:stream';
 import {json} from 'node:stream/consumers';
 import getRawBody from 'raw-body';
-import type {KaitoRequest} from './req';
-import type {KaitoResponse} from './res';
-import {Router} from './router';
+import type {KaitoRequest} from './req.ts';
+import type {KaitoResponse} from './res.ts';
+import {Router} from './router.ts';
 
 export type ExtractRouteParams<T extends string> = string extends T
 	? Record<string, string>
 	: T extends `${string}:${infer Param}/${infer Rest}`
-	? {[k in Param | keyof ExtractRouteParams<Rest>]: string}
-	: T extends `${string}:${infer Param}`
-	? {[k in Param]: string}
-	: {};
+		? {[k in Param | keyof ExtractRouteParams<Rest>]: string}
+		: T extends `${string}:${infer Param}`
+			? {[k in Param]: string}
+			: {};
 
 export type KaitoMethod = HTTPMethod | '*';
 
@@ -22,7 +22,7 @@ export type GetContext<Result> = (req: KaitoRequest, res: KaitoResponse) => Prom
 /**
  * @deprecated use `createUtilities` instead
  */
-export function createGetContext<Context>(callback: GetContext<Context>) {
+export function createGetContext<Context>(callback: GetContext<Context>): GetContext<Context> {
 	return callback;
 }
 
@@ -44,7 +44,10 @@ export function createGetContext<Context>(callback: GetContext<Context>) {
  * });
  * ```
  */
-export function createUtilities<Context>(getContext: GetContext<Context>) {
+export function createUtilities<Context>(getContext: GetContext<Context>): {
+	getContext: GetContext<Context>;
+	router: () => Router<Context, Context, never>;
+} {
 	return {
 		getContext,
 		router: () => Router.create<Context>(),
@@ -53,20 +56,24 @@ export function createUtilities<Context>(getContext: GetContext<Context>) {
 
 export type InferContext<T> = T extends (req: KaitoRequest, res: KaitoResponse) => Promise<infer U> ? U : never;
 
-export function getLastEntryInMultiHeaderValue(headerValue: string | string[]) {
+export function getLastEntryInMultiHeaderValue(headerValue: string | string[]): string {
 	const normalized = Array.isArray(headerValue) ? headerValue.join(',') : headerValue;
 	const lastIndex = normalized.lastIndexOf(',');
 
 	return lastIndex === -1 ? normalized.trim() : normalized.slice(lastIndex + 1).trim();
 }
 
-type RemoveEndSlashes<T extends string> = T extends `${infer U}/` ? U : T;
-type AddStartSlashes<T extends string> = T extends `/${infer U}` ? `/${U}` : `/${T}`;
+export interface Parsable<T> {
+	parse: (value: unknown) => T;
+}
+
+export type RemoveEndSlashes<T extends string> = T extends `${infer U}/` ? U : T;
+export type AddStartSlashes<T extends string> = T extends `/${infer U}` ? `/${U}` : `/${T}`;
 export type NormalizePath<T extends string> = AddStartSlashes<RemoveEndSlashes<T>>;
 export type Values<T> = T[keyof T];
 export type NoEmpty<T> = [keyof T] extends [never] ? never : T;
 
-export async function getBody(req: KaitoRequest) {
+export async function getBody(req: KaitoRequest): Promise<unknown> {
 	if (!req.headers['content-type']) {
 		return null;
 	}
