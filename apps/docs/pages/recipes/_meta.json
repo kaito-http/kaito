@@ -1,3 +1,4 @@
 {
-	"getting-clients-ip": "Getting the Client's IP"
+	"getting-clients-ip": "Getting the Client's IP",
+	"cors": "Handling CORS"
 }
