@@ -1,6 +1,6 @@
-import urlcat from 'es-urlcat';
 import type {DocsThemeConfig} from 'nextra-theme-docs';
 import {useConfig} from 'nextra-theme-docs';
+import {pathcat} from 'pathcat';
 
 const config: DocsThemeConfig = {
 	project: {
@@ -43,7 +43,7 @@ const config: DocsThemeConfig = {
 
 		const ogImage =
 			meta.image ??
-			urlcat('https://ogmeta.kaito.cloud', '/', {
+			pathcat('https://ogmeta.kaito.cloud', '/', {
 				title,
 				subtitle: meta.description ?? undefined ?? 'Kaito: An HTTP framework for TypeScript',
 				dark: 'true',

@@ -7,8 +7,9 @@
 	"dependencies": {
 		"es-urlcat": "^1.0.0",
 		"next": "^14.2.13",
-		"nextra": "^3.0.2",
-		"nextra-theme-docs": "^3.0.2",
+		"nextra": "3.0.0-alpha.24",
+		"nextra-theme-docs": "3.0.0-alpha.24",
+		"pathcat": "^1.3.2",
 		"react": "^18.3.1",
 		"react-dom": "^18.3.1"
 	},

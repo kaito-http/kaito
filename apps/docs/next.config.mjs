@@ -1,8 +1,8 @@
 // @ts-check
 
-import makeWithNextra from 'nextra';
+import nextra from 'nextra';
 
-const withNextra = makeWithNextra({
+const withNextra = nextra({
 	theme: 'nextra-theme-docs',
 	themeConfig: './src/theme.config.tsx',
 });
