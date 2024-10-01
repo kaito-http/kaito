@@ -1,0 +1,35 @@
+# Handling CORS with Kaito
+
+Kaito does not include any CORS handling out of the box. This is by design to keep the library lightweight and unopinionated. You can easily implement CORS handling in your server by using the [`before`](/documentation/server#beforeafter) hook.
+
+## Example
+
+```ts
+const ALLOWED_ORIGINS = ['http://localhost:3000'];
+
+const server = createServer({
+	getContext,
+	router,
+	onError: async ({error, req, res}) => {
+		// ...
+	},
+	before: async (req, res) => {
+    if (typeof req.headers.origin === 'string' && ALLOWED_ORIGINS.includes(req.headers.origin)) {
+      res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Max-Age', '86400');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+
+    // ...
+	},
+});
+```
+
+## References
+
+- [MDN: CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
+- [MDN: Access-Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin)
+
+
