@@ -263,19 +263,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 			return this.add<Result, Path, M, Query, BodyOutput>(method, path, route);
 		};
 
-	public get: <Result, Path extends string, Query extends AnyQueryDefinition = {}, BodyOutput = never>(
-		path: Path,
-		route:
-			| ((
-					arg: import('./route.ts').RouteArgument<Path, ContextTo, import('./route.ts').InferQuery<Query>, BodyOutput>,
-			  ) => Promise<Result>)
-			| Omit<
-					Route<ContextFrom, ContextTo, Result, Path, 'GET', Query, BodyOutput>,
-					'body' | 'path' | 'method' | 'through'
-			  >,
-	) => Router<ContextFrom, ContextTo, R | Route<ContextFrom, ContextTo, Result, Path, 'GET', Query, BodyOutput>> =
-		this.method('GET');
-
+	public get = this.method('GET');
 	public post = this.method('POST');
 	public put = this.method('PUT');
 	public patch = this.method('PATCH');
