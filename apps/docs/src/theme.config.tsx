@@ -1,7 +1,6 @@
 import urlcat from 'es-urlcat';
 import type {DocsThemeConfig} from 'nextra-theme-docs';
 import {useConfig} from 'nextra-theme-docs';
-import React from 'react';
 
 const config: DocsThemeConfig = {
 	project: {
@@ -21,10 +20,11 @@ const config: DocsThemeConfig = {
 		content: 'Feedback',
 	},
 
+	faviconGlyph: '✦',
 	logo: <span>Kaito</span>,
 
 	footer: {
-		text: (
+		content: (
 			<span>
 				An open-source project by <a href="https://alistair.sh">Alistair Smith</a>
 			</span>
@@ -35,7 +35,6 @@ const config: DocsThemeConfig = {
 		link: 'https://discord.gg/PeEPDMKBEn',
 	},
 
-	// eslint-disable-next-line func-name-matching, func-names
 	head: function Head() {
 		const config = useConfig();
 
@@ -46,7 +45,7 @@ const config: DocsThemeConfig = {
 			meta.image ??
 			urlcat('https://ogmeta.kaito.cloud', '/', {
 				title,
-				subtitle: meta.description ?? undefined,
+				subtitle: meta.description ?? undefined ?? 'Kaito: An HTTP framework for TypeScript',
 				dark: 'true',
 			});
 
@@ -57,9 +56,9 @@ const config: DocsThemeConfig = {
 				<meta name="description" content={meta.description ?? 'Kaito: An HTTP framework for TypeScript'} />
 				<meta name="og:description" content={meta.description ?? 'Kaito: An HTTP framework for TypeScript'} />
 				<meta name="twitter:card" content="summary_large_image" />
-				<meta name="twitter:site" content="@alistaiiiir" />
+				<meta name="twitter:site" content="@alistaiir" />
 				<meta name="twitter:image" content={ogImage} />
-				<meta name="og:title" content={title ? title + ' — Hop' : 'Kaito: An HTTP framework for TypeScript'} />
+				<meta name="og:title" content={title ? title + ' — Kaito' : 'Kaito: An HTTP framework for TypeScript'} />
 				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 				<meta name="description" content="Kaito: An HTTP framework for TypeScript" />
 				<meta name="og:title" content="Kaito: An HTTP framework for TypeScript" />{' '}

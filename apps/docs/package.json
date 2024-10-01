@@ -1,7 +1,6 @@
 {
 	"name": "@kaito-http/docs",
 	"private": true,
-	"type": "module",
 	"version": "3.0.0-beta.2",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
@@ -14,12 +13,15 @@
 		"react-dom": "^18.3.1"
 	},
 	"scripts": {
-		"dev": "next dev",
+		"dev": "next",
 		"start": "next start",
 		"build": "next build"
 	},
 	"devDependencies": {
-		"@types/react": "^18.0.25"
+		"@types/node": "^22.7.4",
+		"@types/react": "^18.3.10",
+		"@types/react-dom": "^18.3.0",
+		"typescript": "^5.6.2"
 	},
 	"description": "Functional HTTP Framework for TypeScript",
 	"homepage": "https://github.com/kaito-http/kaito",
