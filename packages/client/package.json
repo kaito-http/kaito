@@ -1,20 +1,27 @@
 {
 	"name": "@kaito-http/client",
-	"packageManager": "yarn@3.2.0",
+	"version": "3.0.0-beta.2",
 	"type": "module",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"description": "Functional HTTP Framework for TypeScript",
+	"scripts": {
+		"build": "tsup"
+	},
 	"exports": {
-		".": "./dist/kaito-http-client.js",
-		"./package.json": "./package.json"
+		"./package.json": "./package.json",
+		".": "./dist/index.js"
 	},
 	"homepage": "https://github.com/kaito-http/kaito",
+	"repository": "https://github.com/kaito-http/kaito",
 	"keywords": [
 		"typescript",
 		"http",
 		"framework"
 	],
 	"license": "MIT",
-	"repository": "https://github.com/kaito-http/kaito",
-	"version": "3.0.0-beta.1"
+	"files": [
+		"package.json",
+		"README.md",
+		"dist"
+	]
 }
