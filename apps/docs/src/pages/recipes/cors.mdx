@@ -14,15 +14,15 @@ const server = createServer({
 		// ...
 	},
 	before: async (req, res) => {
-    if (typeof req.headers.origin === 'string' && ALLOWED_ORIGINS.includes(req.headers.origin)) {
-      res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-      res.setHeader('Access-Control-Max-Age', '86400');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-    }
+		if (typeof req.headers.origin === 'string' && ALLOWED_ORIGINS.includes(req.headers.origin)) {
+			res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+			res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+			res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+			res.setHeader('Access-Control-Max-Age', '86400');
+			res.setHeader('Access-Control-Allow-Credentials', 'true');
+		}
 
-    // ...
+		// ...
 	},
 });
 ```
@@ -31,5 +31,3 @@ const server = createServer({
 
 - [MDN: CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
 - [MDN: Access-Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin)
-
-
