@@ -65,11 +65,6 @@ export const {router, getContext} = createUtilities(async (req, res) => ({
 }));
 ```
 
-<Callout>
-	You should avoid throwing errors inside of `getContext()`, but if you must, it will be handled by the server's
-	`.onError` handler (which you will learn about below).
-</Callout>
-
 Secondly, we'll need to create a router, a server, and our first route.
 
 ```typescript
