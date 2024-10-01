@@ -1,6 +1,6 @@
 {
 	"name": "kaito-http",
-	"version": "2.9.5",
+	"version": "3.0.0-beta.2",
 	"repository": "https://github.com/kaito-http/kaito",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
@@ -12,33 +12,10 @@
 			"examples/*"
 		]
 	},
-	"devDependencies": {
-		"@babel/preset-env": "^7.20.2",
-		"@babel/preset-typescript": "^7.18.6",
-		"@preconstruct/cli": "^2.2.2",
-		"@typescript-eslint/eslint-plugin": "^5.43.0",
-		"@typescript-eslint/parser": "^5.43.0",
-		"eslint": "^8.27.0",
-		"eslint-config-next": "^13.0.3",
-		"eslint-config-xo": "^0.43.1",
-		"eslint-config-xo-typescript": "^0.55.0",
-		"prettier": "^2.7.1",
-		"typescript": "^4.9.3"
-	},
 	"scripts": {
-		"example": "yarn workspace @kaito-http-examples/basic dev",
-		"dev": "preconstruct dev",
-		"docs:dev": "yarn workspace @kaito-http/docs dev",
-		"docs:build": "yarn workspace @kaito-http/docs build",
-		"build": "preconstruct build",
+		"build": "yarn workspaces foreach -Rp -j unlimited --from '@kaito-http/*' --no-private run build",
 		"release": "yarn constraints --fix && yarn build && yarn publish-all",
-		"publish-all": "yarn workspaces foreach --from '@kaito-http/*' --no-private npm publish --access public"
-	},
-	"packageManager": "yarn@3.3.0",
-	"preconstruct": {
-		"packages": [
-			"packages/*"
-		]
+		"publish-all": "yarn workspaces foreach -R --from '@kaito-http/*' --no-private npm publish --access public"
 	},
 	"description": "Functional HTTP Framework for TypeScript",
 	"homepage": "https://github.com/kaito-http/kaito",
@@ -46,5 +23,17 @@
 		"typescript",
 		"http",
 		"framework"
-	]
+	],
+	"devDependencies": {
+		"@typescript-eslint/eslint-plugin": "^8.8.0",
+		"@typescript-eslint/parser": "^8.8.0",
+		"eslint": "^9.11.1",
+		"eslint-config-next": "^14.2.13",
+		"eslint-config-xo": "^0.46.0",
+		"eslint-config-xo-typescript": "^7.0.0",
+		"prettier": "^3.3.3",
+		"tsup": "^8.3.0",
+		"typescript": "^5.6.2"
+	},
+	"packageManager": "yarn@4.5.0"
 }

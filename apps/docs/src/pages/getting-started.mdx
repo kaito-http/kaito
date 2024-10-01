@@ -1,4 +1,4 @@
-import {Callout} from 'nextra-theme-docs';
+import {Callout} from 'nextra/components';
 
 # Getting started
 
@@ -13,13 +13,13 @@ import {Callout} from 'nextra-theme-docs';
 
 Kaito depends on `zod` for schema validation, make sure you install it too.
 
-```
+```bash
 yarn add @kaito-http/core zod
 ```
 
 Or with npm:
 
-```
+```bash
 npm install @kaito-http/core zod
 ```
 
@@ -64,11 +64,6 @@ export const {router, getContext} = createUtilities(async (req, res) => ({
 	uptime: Date.now() - serverStarted,
 }));
 ```
-
-<Callout>
-	You should avoid throwing errors inside of `getContext()`, but if you must, it will be handled by the server's
-	`.onError` handler (which you will learn about below).
-</Callout>
 
 Secondly, we'll need to create a router, a server, and our first route.
 

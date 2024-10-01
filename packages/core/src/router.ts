@@ -1,37 +1,30 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import type {Handler, HTTPMethod} from 'find-my-way';
 import fmw from 'find-my-way';
-import {z} from 'zod';
-import {KaitoError, WrappedError} from './error';
-import {KaitoRequest} from './req';
-import {KaitoResponse, type APIResponse} from './res';
-import type {AnyQueryDefinition, AnyRoute, Route} from './route';
-import type {ServerConfig} from './server';
-import type {ExtractRouteParams, KaitoMethod} from './util';
-import {getBody} from './util';
+import {KaitoError, WrappedError} from './error.ts';
+import {KaitoRequest} from './req.ts';
+import {KaitoResponse, type APIResponse} from './res.ts';
+import type {AnyQueryDefinition, AnyRoute, Route} from './route.ts';
+import type {ServerConfig} from './server.ts';
+import type {ExtractRouteParams, KaitoMethod} from './util.ts';
+import {getBody} from './util.ts';
 
-type Routes = readonly AnyRoute[];
+type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
+	R extends Route<
+		infer ContextFrom,
+		infer ContextTo,
+		infer Result,
+		infer Path,
+		infer Method,
+		infer Query,
+		infer BodyOutput
+	>
+		? Route<ContextFrom, ContextTo, Result, `${Prefix}${Path}`, Method, Query, BodyOutput>
+		: never;
 
-type RemapRoutePrefix<R extends AnyRoute, Prefix extends `/${string}`> = R extends Route<
-	infer ContextFrom,
-	infer ContextTo,
-	infer Result,
-	infer Path,
-	infer Method,
-	infer Query,
-	infer BodyOutput,
-	infer BodyDef,
-	infer BodyInput
->
-	? Route<ContextFrom, ContextTo, Result, `${Prefix}${Path}`, Method, Query, BodyOutput, BodyDef, BodyInput>
+type PrefixRoutesPath<Prefix extends `/${string}`, R extends AnyRoute> = R extends R
+	? PrefixRoutesPathInner<R, Prefix>
 	: never;
-
-type PrefixRoutesPath<Prefix extends `/${string}`, R extends Routes> = R extends [infer First, ...infer Rest]
-	? [
-			RemapRoutePrefix<Extract<First, AnyRoute>, Prefix>,
-			...PrefixRoutesPath<Prefix, Extract<Rest, readonly AnyRoute[]>>
-	  ]
-	: [];
 
 const getSend = (res: KaitoResponse) => (status: number, response: APIResponse<unknown>) => {
 	if (res.raw.headersSent) {
@@ -45,14 +38,37 @@ export type RouterOptions<ContextFrom, ContextTo> = {
 	through: (context: ContextFrom) => Promise<ContextTo>;
 };
 
-export class Router<ContextFrom, ContextTo, R extends Routes> {
+export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 	private readonly routerOptions: RouterOptions<ContextFrom, ContextTo>;
-	public readonly routes: R;
+	public readonly routes: Set<R>;
 
-	public static create = <Context>() =>
-		new Router<Context, Context, []>([], {
+	public static create = <Context>(): Router<Context, Context, never> =>
+		new Router<Context, Context, never>([], {
 			through: async context => context,
 		});
+
+	private static parseQuery<T extends AnyQueryDefinition>(schema: T | undefined, url: URL) {
+		if (!schema) {
+			return {};
+		}
+
+		const result: Record<PropertyKey, unknown> = {};
+
+		for (const [key, value] of url.searchParams.entries()) {
+			const parsable = schema[key as keyof typeof schema];
+
+			if (!parsable) {
+				continue;
+			}
+
+			const parsed = parsable.parse(value);
+			result[key] = parsed;
+		}
+
+		return result as {
+			[Key in keyof T]: ReturnType<T[Key]['parse']>;
+		};
+	}
 
 	private static async handle<Path extends string, ContextFrom>(
 		// Allow for any server to be passed
@@ -63,7 +79,7 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 			params: Record<string, string | undefined>;
 			req: KaitoRequest;
 			res: KaitoResponse;
-		}
+		},
 	) {
 		const send = getSend(options.res);
 
@@ -73,9 +89,7 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 
 			const body = ((await route.body?.parse(await getBody(options.req))) ?? undefined) as unknown;
 
-			const query = (
-				route.query ? z.object(route.query).parse(Object.fromEntries(options.req.url.searchParams.entries())) : {}
-			) as z.ZodObject<AnyQueryDefinition>['_type'];
+			const query = Router.parseQuery(route.query, options.req.url);
 
 			const result = (await route.run({
 				ctx,
@@ -131,17 +145,14 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 		}
 	}
 
-	public constructor(routes: R, options: RouterOptions<ContextFrom, ContextTo>) {
+	public constructor(routes: Iterable<R>, options: RouterOptions<ContextFrom, ContextTo>) {
 		this.routerOptions = options;
-		this.routes = routes;
+		this.routes = new Set(routes);
 	}
 
 	/**
 	 * Adds a new route to the router
-	 * @param method The HTTP method to add a route for
-	 * @param path The path to add a route for
-	 * @param route The route specification to add to this router
-	 * @returns A new router with this route added
+	 * @deprecated Use the method-specific methods instead
 	 */
 	public add = <
 		Result,
@@ -149,28 +160,19 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 		Method extends KaitoMethod,
 		Query extends AnyQueryDefinition = {},
 		BodyOutput = never,
-		BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
-		BodyInput = BodyOutput
 	>(
 		method: Method,
 		path: Path,
 		route:
 			| (Method extends 'GET'
 					? Omit<
-							Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
+							Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput>,
 							'body' | 'path' | 'method' | 'through'
-					  >
-					: Omit<
-							Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>,
-							'path' | 'method' | 'through'
-					  >)
-			| Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>['run']
-	): Router<
-		ContextFrom,
-		ContextTo,
-		[...R, Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput>]
-	> => {
-		const merged: Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput, BodyDef, BodyInput> = {
+						>
+					: Omit<Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput>, 'path' | 'method' | 'through'>)
+			| Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput>['run'],
+	): Router<ContextFrom, ContextTo, R | Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput>> => {
+		const merged: Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput> = {
 			...(typeof route === 'object' ? route : {run: route}),
 			method,
 			path,
@@ -180,28 +182,29 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 		return new Router([...this.routes, merged], this.routerOptions);
 	};
 
-	public readonly merge = <PathPrefix extends `/${string}`, OtherRoutes extends Routes>(
+	public readonly merge = <PathPrefix extends `/${string}`, OtherRoutes extends AnyRoute>(
 		pathPrefix: PathPrefix,
 
 		// The ContextTo is irrelevant here, because we
 		// keep the .through() handler of this existing router
 		// which means that ContextTo doesn't actually change.
 		// We DO, however, require that the ContextFrom is the same
-		other: Router<ContextFrom, unknown, OtherRoutes>
-	) => {
-		const newRoutes = other.routes.map(route => ({
+		other: Router<ContextFrom, unknown, OtherRoutes>,
+	): Router<ContextFrom, ContextTo, Extract<R | PrefixRoutesPath<PathPrefix, OtherRoutes>, AnyRoute>> => {
+		const newRoutes = [...other.routes].map(route => ({
 			...route,
 			path: `${pathPrefix}${route.path as string}`,
 		}));
 
-		type Result = [...R, ...PrefixRoutesPath<PathPrefix, OtherRoutes>];
-
-		return new Router<ContextFrom, ContextTo, Result>([...this.routes, ...newRoutes] as Result, this.routerOptions);
+		return new Router<ContextFrom, ContextTo, Extract<R | PrefixRoutesPath<PathPrefix, OtherRoutes>, AnyRoute>>(
+			[...this.routes, ...newRoutes] as never,
+			this.routerOptions,
+		);
 	};
 
 	// Allow for any server context to be passed
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public freeze = (server: ServerConfig<ContextFrom, any>) => {
+	public freeze = (server: ServerConfig<ContextFrom, any>): fmw.Instance<fmw.HTTPVersion.V1> => {
 		const instance = fmw({
 			ignoreTrailingSlash: true,
 			async defaultRoute(req, serverResponse) {
@@ -246,28 +249,19 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 
 	private readonly method =
 		<M extends KaitoMethod>(method: M) =>
-		<
-			Result,
-			Path extends string,
-			Query extends AnyQueryDefinition = {},
-			BodyOutput = never,
-			BodyDef extends z.ZodTypeDef = z.ZodTypeDef,
-			BodyInput = BodyOutput
-		>(
+		<Result, Path extends string, Query extends AnyQueryDefinition = {}, BodyOutput = never>(
 			path: Path,
 			route:
 				| (M extends 'GET'
 						? Omit<
-								Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>,
+								Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput>,
 								'body' | 'path' | 'method' | 'through'
-						  >
-						: Omit<
-								Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>,
-								'path' | 'method' | 'through'
-						  >)
-				| Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>['run']
-		) =>
-			this.add<Result, Path, M, Query, BodyOutput, BodyDef, BodyInput>(method, path, route);
+							>
+						: Omit<Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput>, 'path' | 'method' | 'through'>)
+				| Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput>['run'],
+		) => {
+			return this.add<Result, Path, M, Query, BodyOutput>(method, path, route);
+		};
 
 	public get = this.method('GET');
 	public post = this.method('POST');
@@ -277,7 +271,9 @@ export class Router<ContextFrom, ContextTo, R extends Routes> {
 	public head = this.method('HEAD');
 	public options = this.method('OPTIONS');
 
-	public through = <NextContext>(transform: (context: ContextTo) => Promise<NextContext>) =>
+	public through = <NextContext>(
+		transform: (context: ContextTo) => Promise<NextContext>,
+	): Router<ContextFrom, NextContext, R> =>
 		new Router<ContextFrom, NextContext, R>(this.routes, {
 			through: async context => {
 				const fromCurrentRouter = await this.routerOptions.through(context);

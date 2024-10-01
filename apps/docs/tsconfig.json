@@ -1,18 +1,16 @@
 {
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"target": "es5",
-		"module": "esnext",
-		"moduleResolution": "node",
-		"resolveJsonModule": true,
-		"isolatedModules": true,
-		"emitDecoratorMetadata": true,
-		"experimentalDecorators": true,
-		"noEmit": true,
 		"jsx": "preserve",
+		"lib": ["dom", "dom.iterable", "esnext"],
+		"allowJs": true,
 		"skipLibCheck": true,
-		"incremental": true
+		"incremental": true,
+		"esModuleInterop": true,
+		"resolveJsonModule": true,
+		"module": "Preserve",
+		"moduleResolution": "Bundler"
 	},
-	"exclude": ["node_modules", "dist", "build", ".next"],
-	"include": ["src", "next-env.d.ts"]
+	"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+	"exclude": ["node_modules"]
 }

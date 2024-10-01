@@ -1,13 +1,13 @@
 import * as http from 'node:http';
-import type {KaitoError} from './error';
-import type {KaitoRequest} from './req';
-import type {KaitoResponse} from './res';
-import type {Router} from './router';
-import type {GetContext, KaitoMethod} from './util';
+import type {KaitoError} from './error.ts';
+import type {KaitoRequest} from './req.ts';
+import type {KaitoResponse} from './res.ts';
+import type {Router} from './router.ts';
+import type {GetContext, KaitoMethod} from './util.ts';
 
 export type Before<BeforeAfterContext> = (
 	req: http.IncomingMessage,
-	res: http.ServerResponse
+	res: http.ServerResponse,
 ) => Promise<BeforeAfterContext>;
 
 export type HandlerResult = {success: true; data: unknown} | {success: false; data: {status: number; message: string}};

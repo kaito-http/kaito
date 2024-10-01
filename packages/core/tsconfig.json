@@ -1,11 +1,3 @@
 {
-	"extends": "../../tsconfig.json",
-	"compilerOptions": {
-		"target": "es6",
-		"noEmit": true,
-		"declaration": false,
-		"sourceMap": true
-	},
-	"include": ["tests", "."],
-	"exclude": ["node_modules", "dist"]
+	"extends": "../../tsconfig.json"
 }

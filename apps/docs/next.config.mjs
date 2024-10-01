@@ -1,14 +1,12 @@
 // @ts-check
 
-import makeWithNextra from 'nextra';
+import nextra from 'nextra';
 
-const withNextra = makeWithNextra({
+const withNextra = nextra({
 	theme: 'nextra-theme-docs',
-	themeConfig: './theme.config.tsx',
-	unstable_flexsearch: true,
-	unstable_staticImage: true,
-	unstable_defaultShowCopyCode: true,
-	unstable_readingTime: true,
+	themeConfig: './src/theme.config.tsx',
 });
 
-export default withNextra({});
+export default withNextra({
+	reactStrictMode: true,
+});
