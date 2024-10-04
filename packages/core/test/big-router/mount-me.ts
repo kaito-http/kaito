@@ -1,7 +1,7 @@
-import {type Parsable} from 'core/src/util.ts';
+import {type Parsable} from '../../src/util.ts';
 import {router} from './router.ts';
 
-declare const schema: Parsable<{hello: string}>;
+declare const schema: Parsable<{hello: string}, string>;
 
 export const mountMe = router()
 	.post('/post', {
@@ -9,8 +9,8 @@ export const mountMe = router()
 			name: schema,
 		},
 		body: schema,
-		run: async ({ctx, body}) => {
-			return body.hello + ctx.foo;
+		run: async ({ctx, body, query}) => {
+			return body.hello + ctx.foo + query.name.hello;
 		},
 	})
 	.put('/put', {

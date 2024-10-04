@@ -63,9 +63,18 @@ export function getLastEntryInMultiHeaderValue(headerValue: string | string[]): 
 	return lastIndex === -1 ? normalized.trim() : normalized.slice(lastIndex + 1).trim();
 }
 
-export interface Parsable<T> {
-	parse: (value: unknown) => T;
+export interface Parsable<Output = any, Input = Output> {
+	_input?: Input;
+	parse: (value: unknown) => Output;
 }
+
+export type InferParsable<T> =
+	T extends Parsable<infer Output, infer Input>
+		? {
+				input: Input;
+				output: Output;
+			}
+		: never;
 
 export type RemoveEndSlashes<T extends string> = T extends `${infer U}/` ? U : T;
 export type AddStartSlashes<T extends string> = T extends `/${infer U}` ? `/${U}` : `/${T}`;

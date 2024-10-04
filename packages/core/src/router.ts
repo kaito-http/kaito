@@ -6,7 +6,7 @@ import {KaitoRequest} from './req.ts';
 import {KaitoResponse, type APIResponse} from './res.ts';
 import type {AnyQueryDefinition, AnyRoute, Route} from './route.ts';
 import type {ServerConfig} from './server.ts';
-import type {ExtractRouteParams, KaitoMethod} from './util.ts';
+import type {ExtractRouteParams, KaitoMethod, Parsable} from './util.ts';
 import {getBody} from './util.ts';
 
 type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
@@ -159,20 +159,20 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		Path extends string,
 		Method extends KaitoMethod,
 		Query extends AnyQueryDefinition = {},
-		BodyOutput = never,
+		Body extends Parsable = never,
 	>(
 		method: Method,
 		path: Path,
 		route:
 			| (Method extends 'GET'
 					? Omit<
-							Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput>,
+							Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>,
 							'body' | 'path' | 'method' | 'through'
 						>
-					: Omit<Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput>, 'path' | 'method' | 'through'>)
-			| Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput>['run'],
-	): Router<ContextFrom, ContextTo, R | Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput>> => {
-		const merged: Route<ContextFrom, ContextTo, Result, Path, Method, Query, BodyOutput> = {
+					: Omit<Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>, 'path' | 'method' | 'through'>)
+			| Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>['run'],
+	): Router<ContextFrom, ContextTo, R | Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>> => {
+		const merged: Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body> = {
 			...(typeof route === 'object' ? route : {run: route}),
 			method,
 			path,
@@ -249,18 +249,15 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 
 	private readonly method =
 		<M extends KaitoMethod>(method: M) =>
-		<Result, Path extends string, Query extends AnyQueryDefinition = {}, BodyOutput = never>(
+		<Result, Path extends string, Query extends AnyQueryDefinition = {}, Body extends Parsable = never>(
 			path: Path,
 			route:
 				| (M extends 'GET'
-						? Omit<
-								Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput>,
-								'body' | 'path' | 'method' | 'through'
-							>
-						: Omit<Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput>, 'path' | 'method' | 'through'>)
-				| Route<ContextFrom, ContextTo, Result, Path, M, Query, BodyOutput>['run'],
+						? Omit<Route<ContextFrom, ContextTo, Result, Path, M, Query, Body>, 'body' | 'path' | 'method' | 'through'>
+						: Omit<Route<ContextFrom, ContextTo, Result, Path, M, Query, Body>, 'path' | 'method' | 'through'>)
+				| Route<ContextFrom, ContextTo, Result, Path, M, Query, Body>['run'],
 		) => {
-			return this.add<Result, Path, M, Query, BodyOutput>(method, path, route);
+			return this.add<Result, Path, M, Query, Body>(method, path, route);
 		};
 
 	public get = this.method('GET');

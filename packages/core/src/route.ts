@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type {ExtractRouteParams, KaitoMethod, Parsable} from './util.ts';
+import type {ExtractRouteParams, InferParsable, KaitoMethod, Parsable} from './util.ts';
 
 export type RouteArgument<Path extends string, Context, QueryOutput, BodyOutput> = {
 	ctx: Context;
@@ -8,11 +8,7 @@ export type RouteArgument<Path extends string, Context, QueryOutput, BodyOutput>
 	params: ExtractRouteParams<Path>;
 };
 
-export type AnyQueryDefinition = Record<string, Parsable<any>>;
-export type InferQuery<T extends AnyQueryDefinition> = {
-	[Key in keyof T]: InferParsable<T[Key]>;
-};
-export type InferParsable<T> = T extends Parsable<infer U> ? U : never;
+export type AnyQueryDefinition = Record<string, Parsable>;
 
 export type RouteRunner<Result, Path extends string, Context, QueryOutput, BodyOutput> = (
 	args: RouteArgument<Path, Context, QueryOutput, BodyOutput>,
@@ -28,14 +24,23 @@ export type Route<
 	Method extends KaitoMethod,
 	// Schemas
 	Query extends AnyQueryDefinition,
-	BodyOutput,
+	Body extends Parsable,
 > = {
 	through: (context: ContextFrom) => Promise<ContextTo>;
-	body?: Parsable<BodyOutput>;
+	body?: Body;
 	query?: Query;
 	path: Path;
 	method: Method;
-	run(arg: RouteArgument<Path, ContextTo, InferQuery<Query>, BodyOutput>): Promise<Result>;
+	run(
+		arg: RouteArgument<
+			Path,
+			ContextTo,
+			{
+				[Key in keyof Query]: InferParsable<Query[Key]>['output'];
+			},
+			InferParsable<Body>['output']
+		>,
+	): Promise<Result>;
 };
 
 export type AnyRoute<FromContext = any, ToContext = any> = Route<
