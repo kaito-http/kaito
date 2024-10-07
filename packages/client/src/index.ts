@@ -47,6 +47,14 @@ export class KaitoClientHTTPError extends Error {
 	}
 }
 
+export type JSONIFY<T> = T extends Date
+	? string
+	: T extends Record<string, unknown>
+		? {[K in keyof T]: JSONIFY<T[K]>}
+		: T extends Array<unknown>
+			? Array<JSONIFY<T[number]>>
+			: T;
+
 export type Prettify<T> = {
 	[K in keyof T]: T[K];
 } & {};
@@ -82,7 +90,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			...[options = {}]: [keyof PickRequiredKeys<RequestOptionsFor<M, Path>>] extends [never]
 				? [options?: AlwaysEnabledOptions]
 				: [options: RemoveOnlyUndefinedKeys<UndefinedKeysToOptional<RequestOptionsFor<M, Path>>> & AlwaysEnabledOptions]
-		): Promise<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> => {
+		): Promise<JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>> => {
 			const params = (options as {params?: {}}).params ?? {};
 			const query = (options as {query?: {}}).query ?? {};
 			const body = (options as {body?: unknown}).body ?? undefined;
