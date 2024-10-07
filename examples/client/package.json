@@ -1,0 +1,12 @@
+{
+	"name": "@kaito-http-examples/client",
+	"packageManager": "yarn@4.5.0",
+	"type": "module",
+	"dependencies": {
+		"@kaito-http-examples/basic": "workspace:^",
+		"@kaito-http/client": "workspace:^"
+	},
+	"devDependencies": {
+		"typescript": "^5.6.2"
+	}
+}

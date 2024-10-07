@@ -8,7 +8,7 @@ export type RouteArgument<Path extends string, Context, QueryOutput, BodyOutput>
 	params: ExtractRouteParams<Path>;
 };
 
-export type AnyQueryDefinition = Record<string, Parsable>;
+export type AnyQueryDefinition = Record<string, Parsable<any, string | undefined>>;
 
 export type RouteRunner<Result, Path extends string, Context, QueryOutput, BodyOutput> = (
 	args: RouteArgument<Path, Context, QueryOutput, BodyOutput>,

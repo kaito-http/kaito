@@ -1,6 +1,7 @@
 {
 	"name": "@kaito-http-examples/basic",
 	"private": true,
+	"type": "module",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"description": "Functional HTTP Framework for TypeScript",
 	"homepage": "https://github.com/kaito-http/kaito",

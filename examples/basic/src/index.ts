@@ -1,6 +1,6 @@
 import {createServer, KaitoError} from '@kaito-http/core';
 import {z} from 'zod';
-import {getContext, router} from './context';
+import {getContext, router} from './context.ts';
 
 const users = router().post('/:id', {
 	body: z.object({
@@ -12,6 +12,7 @@ const users = router().post('/:id', {
 			.string()
 			.transform(value => parseInt(value, 10))
 			.default('10'),
+		skip: z.string().transform(value => parseInt(value, 10)),
 	},
 
 	async run({ctx, body, params, query}) {
@@ -45,6 +46,9 @@ const v1 = router()
 	// Example parsing request body
 	.post('/echo', {
 		body: z.record(z.string(), z.unknown()),
+		query: {
+			name: z.string(),
+		},
 
 		async run({body}) {
 			// Body is typed as `Record<string, unknown>`

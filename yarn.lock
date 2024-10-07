@@ -339,7 +339,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@kaito-http-examples/basic@workspace:examples/basic":
+"@kaito-http-examples/basic@workspace:^, @kaito-http-examples/basic@workspace:examples/basic":
   version: 0.0.0-use.local
   resolution: "@kaito-http-examples/basic@workspace:examples/basic"
   dependencies:
@@ -351,9 +351,22 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@kaito-http-examples/client@workspace:examples/client":
+  version: 0.0.0-use.local
+  resolution: "@kaito-http-examples/client@workspace:examples/client"
+  dependencies:
+    "@kaito-http-examples/basic": "workspace:^"
+    "@kaito-http/client": "workspace:^"
+    typescript: "npm:^5.6.2"
+  languageName: unknown
+  linkType: soft
+
 "@kaito-http/client@workspace:^, @kaito-http/client@workspace:packages/client":
   version: 0.0.0-use.local
   resolution: "@kaito-http/client@workspace:packages/client"
+  dependencies:
+    pathcat: "npm:^1.3.4"
+    tsup: "npm:^8.3.0"
   languageName: unknown
   linkType: soft
 
@@ -368,6 +381,7 @@ __metadata:
     cookie: "npm:^0.6.0"
     find-my-way: "npm:^9.1.0"
     raw-body: "npm:^3.0.0"
+    tsup: "npm:^8.3.0"
     typescript: "npm:^5.6.2"
   languageName: unknown
   linkType: soft
@@ -6642,6 +6656,13 @@ __metadata:
   version: 1.3.2
   resolution: "pathcat@npm:1.3.2"
   checksum: 10c0/f88a71d2b7860add20d72ce29e08b15e6a57450d862b0b407174d9bbd06cea02286845147266f8b6a054872cea51f9c18cf20a2cc3c64abe96c0115b8d049c20
+  languageName: node
+  linkType: hard
+
+"pathcat@npm:^1.3.4":
+  version: 1.3.4
+  resolution: "pathcat@npm:1.3.4"
+  checksum: 10c0/ce42dd5264183088ce1e909726f7a6e5e268b956c672af24a8452f09598ebf1b53f808f365ea96b47ddaf238e01eab6239dc0fbe3b2ee025c0efece57ff11aef
   languageName: node
   linkType: hard
 

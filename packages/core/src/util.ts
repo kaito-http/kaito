@@ -64,7 +64,7 @@ export function getLastEntryInMultiHeaderValue(headerValue: string | string[]): 
 }
 
 export interface Parsable<Output = any, Input = Output> {
-	_input?: Input;
+	_input: Input;
 	parse: (value: unknown) => Output;
 }
 
@@ -75,6 +75,12 @@ export type InferParsable<T> =
 				output: Output;
 			}
 		: never;
+
+export function parsable<T>(parse: (value: unknown) => T): Parsable<T, T> {
+	return {
+		parse,
+	} as Parsable<T, T>;
+}
 
 export type RemoveEndSlashes<T extends string> = T extends `${infer U}/` ? U : T;
 export type AddStartSlashes<T extends string> = T extends `/${infer U}` ? `/${U}` : `/${T}`;

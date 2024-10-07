@@ -23,5 +23,11 @@
 		"package.json",
 		"README.md",
 		"dist"
-	]
+	],
+	"devDependencies": {
+		"tsup": "^8.3.0"
+	},
+	"dependencies": {
+		"pathcat": "^1.3.4"
+	}
 }

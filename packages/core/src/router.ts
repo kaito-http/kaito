@@ -38,6 +38,8 @@ export type RouterOptions<ContextFrom, ContextTo> = {
 	through: (context: ContextFrom) => Promise<ContextTo>;
 };
 
+export type InferRoutes<R extends Router<any, any, any>> = R extends Router<any, any, infer R> ? R : never;
+
 export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 	private readonly routerOptions: RouterOptions<ContextFrom, ContextTo>;
 	public readonly routes: Set<R>;
