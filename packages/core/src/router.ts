@@ -56,15 +56,10 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 
 		const result: Record<PropertyKey, unknown> = {};
 
-		for (const [key, value] of url.searchParams.entries()) {
-			const parsable = schema[key as keyof typeof schema];
+		for (const [key, parsable] of Object.entries(schema)) {
+			const value = url.searchParams.get(key);
 
-			if (!parsable) {
-				continue;
-			}
-
-			const parsed = parsable.parse(value);
-			result[key] = parsed;
+			result[key] = parsable.parse(value);
 		}
 
 		return result as {
