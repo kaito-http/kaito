@@ -66,6 +66,24 @@ const exampleOfThrough = router()
 	}))
 	.get('/test', async ({ctx}) => ctx.lol.getTime());
 
+const exampleOfRaw = router()
+	.through(async old => ({
+		...old,
+		lol: new Date(),
+	}))
+	.get.raw('/', async ({req, res, ctx}) => {
+		ctx.lol;
+
+		if (Math) {
+			res.raw.end('hi');
+			return; // Function returns Promise<void> here
+		} else {
+			res.raw.end('handled by me');
+			return;
+			// return 'cool';
+		}
+	});
+
 const root = router()
 	// Basic inline access context
 	.get('/uptime', async ({ctx}) => ctx.uptime)

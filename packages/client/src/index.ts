@@ -1,6 +1,6 @@
 import type {APIResponse, ErroredAPIResponse, InferParsable, InferRoutes, KaitoMethod, Router} from '@kaito-http/core';
 import {pathcat} from 'pathcat';
-import pkg from '../package.json';
+import pkg from '../package.json' with {type: 'json'};
 
 export type PickRequiredKeys<T> = {
 	[K in keyof T as undefined extends T[K] ? never : K]: T[K];

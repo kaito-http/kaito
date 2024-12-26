@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import type {Handler, HTTPMethod} from 'find-my-way';
 import fmw from 'find-my-way';
+import {} from 'node:_http_common';
 import {KaitoError, WrappedError} from './error.ts';
 import {KaitoRequest} from './req.ts';
 import {KaitoResponse, type APIResponse} from './res.ts';
-import type {AnyQueryDefinition, AnyRoute, Route} from './route.ts';
+import type {AnyQueryDefinition, AnyRawRoute, AnyRoute, RawRouteDefinition, RawRouteRunner, Route} from './route.ts';
 import type {ServerConfig} from './server.ts';
 import type {ExtractRouteParams, KaitoMethod, Parsable} from './util.ts';
 import {getBody} from './util.ts';
@@ -34,19 +35,22 @@ const getSend = (res: KaitoResponse) => (status: number, response: APIResponse<u
 	res.status(status).json(response);
 };
 
-export type RouterOptions<ContextFrom, ContextTo> = {
+export type RouterState<Routes extends AnyRoute, ContextFrom, ContextTo> = {
+	routes: Set<Routes>;
+	rawRoutes: Set<AnyRawRoute>;
 	through: (context: ContextFrom) => Promise<ContextTo>;
 };
 
 export type InferRoutes<R extends Router<any, any, any>> = R extends Router<any, any, infer R> ? R : never;
 
 export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
-	private readonly routerOptions: RouterOptions<ContextFrom, ContextTo>;
-	public readonly routes: Set<R>;
+	private readonly state: RouterState<R, ContextFrom, ContextTo>;
 
 	public static create = <Context>(): Router<Context, Context, never> =>
-		new Router<Context, Context, never>([], {
+		new Router<Context, Context, never>({
 			through: async context => context,
+			rawRoutes: new Set(),
+			routes: new Set(),
 		});
 
 	private static parseQuery<T extends AnyQueryDefinition>(schema: T | undefined, url: URL) {
@@ -142,9 +146,8 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		}
 	}
 
-	public constructor(routes: Iterable<R>, options: RouterOptions<ContextFrom, ContextTo>) {
-		this.routerOptions = options;
-		this.routes = new Set(routes);
+	public constructor(options: RouterState<R, ContextFrom, ContextTo>) {
+		this.state = options;
 	}
 
 	/**
@@ -173,10 +176,13 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 			...(typeof route === 'object' ? route : {run: route}),
 			method,
 			path,
-			through: this.routerOptions.through,
+			through: this.state.through,
 		};
 
-		return new Router([...this.routes, merged], this.routerOptions);
+		return new Router({
+			...this.state,
+			routes: new Set([...this.state.routes, merged]),
+		});
 	};
 
 	public readonly merge = <PathPrefix extends `/${string}`, OtherRoutes extends AnyRoute>(
@@ -188,15 +194,15 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		// We DO, however, require that the ContextFrom is the same
 		other: Router<ContextFrom, unknown, OtherRoutes>,
 	): Router<ContextFrom, ContextTo, Extract<R | PrefixRoutesPath<PathPrefix, OtherRoutes>, AnyRoute>> => {
-		const newRoutes = [...other.routes].map(route => ({
+		const newRoutes = [...other.state.routes].map(route => ({
 			...route,
 			path: `${pathPrefix}${route.path as string}`,
 		}));
 
-		return new Router<ContextFrom, ContextTo, Extract<R | PrefixRoutesPath<PathPrefix, OtherRoutes>, AnyRoute>>(
-			[...this.routes, ...newRoutes] as never,
-			this.routerOptions,
-		);
+		return new Router<ContextFrom, ContextTo, Extract<R | PrefixRoutesPath<PathPrefix, OtherRoutes>, AnyRoute>>({
+			...this.state,
+			routes: new Set([...this.state.routes, ...newRoutes] as never),
+		});
 	};
 
 	// Allow for any server context to be passed
@@ -221,7 +227,22 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 			},
 		});
 
-		for (const route of this.routes) {
+		for (const route of this.state.rawRoutes) {
+			const handler: Handler<fmw.HTTPVersion.V1> = async (incomingMessage, serverResponse, params) => {
+				new Response(incomingMessage);
+
+				const req = new KaitoRequest(incomingMessage);
+				const res = new KaitoResponse(serverResponse);
+			};
+
+			if (route.method === '*') {
+				instance.all(route.path, handler);
+			} else {
+				instance.on(route.method, route.path, handler);
+			}
+		}
+
+		for (const route of this.state.routes) {
 			const handler: Handler<fmw.HTTPVersion.V1> = async (incomingMessage, serverResponse, params) => {
 				const req = new KaitoRequest(incomingMessage);
 				const res = new KaitoResponse(serverResponse);
@@ -244,9 +265,8 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		return instance;
 	};
 
-	private readonly method =
-		<M extends KaitoMethod>(method: M) =>
-		<Result, Path extends string, Query extends AnyQueryDefinition = {}, Body extends Parsable = never>(
+	private readonly method = <M extends KaitoMethod>(method: M) => {
+		const add = <Result, Path extends string, Query extends AnyQueryDefinition = {}, Body extends Parsable = never>(
 			path: Path,
 			route:
 				| (M extends 'GET'
@@ -256,6 +276,23 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		) => {
 			return this.add<Result, Path, M, Query, Body>(method, path, route);
 		};
+
+		add.raw = (path: string, run: RawRouteRunner<ContextTo>) => {
+			const def: RawRouteDefinition<ContextFrom, ContextTo> = {
+				method,
+				path,
+				run,
+				through: this.state.through,
+			};
+
+			return new Router({
+				...this.state,
+				rawRoutes: new Set([...this.state.rawRoutes, def]),
+			});
+		};
+
+		return add;
+	};
 
 	public get = this.method('GET');
 	public post = this.method('POST');
@@ -268,9 +305,11 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 	public through = <NextContext>(
 		transform: (context: ContextTo) => Promise<NextContext>,
 	): Router<ContextFrom, NextContext, R> =>
-		new Router<ContextFrom, NextContext, R>(this.routes, {
+		new Router<ContextFrom, NextContext, R>({
+			routes: this.state.routes,
+			rawRoutes: this.state.rawRoutes,
 			through: async context => {
-				const fromCurrentRouter = await this.routerOptions.through(context);
+				const fromCurrentRouter = await this.state.through(context);
 
 				return transform(fromCurrentRouter);
 			},
