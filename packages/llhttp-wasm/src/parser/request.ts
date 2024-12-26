@@ -1,38 +1,23 @@
-import {CallbackReturn, HTTPParser, ParserType} from './http-parser';
+import * as constants from '../llhttp/build/wasm/constants.js';
+import {CallbackReturn, HTTPParser, ParserType} from './http-parser.ts';
 
-type RequestWithBody = Request & {
-	httpVersion: string;
-	rawBodyStream: ReadableStream<Uint8Array>;
-};
-
-class BodyStream extends ReadableStream<Uint8Array> {
+class BodyStream {
+	private stream: ReadableStream<Uint8Array>;
 	private controller: ReadableStreamDefaultController<Uint8Array> | null = null;
 	private chunks: Uint8Array[] = [];
 	private closed = false;
 
 	constructor() {
-		let controller: ReadableStreamDefaultController<Uint8Array>;
-
-		super(
+		this.stream = new ReadableStream<Uint8Array>(
 			{
-				start: c => {
-					controller = c;
-					this.controller = c;
-
-					// If we have queued chunks, send them immediately
+				start: controller => {
+					this.controller = controller;
 					while (this.chunks.length > 0) {
 						const chunk = this.chunks.shift();
 						if (chunk) controller.enqueue(chunk);
 					}
-
 					if (this.closed) controller.close();
 				},
-
-				pull: async controller => {
-					// Implement backpressure by waiting if needed
-					await new Promise(resolve => setTimeout(resolve, 0));
-				},
-
 				cancel: () => {
 					this.chunks = [];
 					this.closed = true;
@@ -46,9 +31,12 @@ class BodyStream extends ReadableStream<Uint8Array> {
 		);
 	}
 
+	public get readable(): ReadableStream<Uint8Array> {
+		return this.stream;
+	}
+
 	public pushChunk(chunk: Uint8Array): void {
 		if (this.closed) return;
-
 		if (this.controller) {
 			this.controller.enqueue(chunk);
 		} else {
@@ -58,7 +46,6 @@ class BodyStream extends ReadableStream<Uint8Array> {
 
 	public complete(): void {
 		if (this.closed) return;
-
 		this.closed = true;
 		if (this.controller) {
 			this.controller.close();
@@ -67,7 +54,6 @@ class BodyStream extends ReadableStream<Uint8Array> {
 
 	public error(err: Error): void {
 		if (this.closed) return;
-
 		this.closed = true;
 		if (this.controller) {
 			this.controller.error(err);
@@ -75,19 +61,32 @@ class BodyStream extends ReadableStream<Uint8Array> {
 	}
 }
 
+const invertedMethodMap = Object.fromEntries(
+	Object.entries(constants.METHODS).map(entry => [entry[1], entry[0]] as const),
+);
+
 class HTTPRequestParser extends HTTPParser {
-	private url = '';
-	private method = '';
 	private headers = new Headers();
 	private bodyStream: BodyStream;
-	private resolve!: (value: RequestWithBody) => void;
+
+	private resolve!: (value: Request) => void;
 	private reject!: (reason: Error) => void;
-	private httpMajor = 1;
-	private httpMinor = 1;
 
 	constructor() {
 		super(ParserType.REQUEST);
 		this.bodyStream = new BodyStream();
+	}
+
+	public override onResponse(): CallbackReturn {
+		throw new Error('onResponse() is not supported in the HTTPRequestParser');
+	}
+
+	private static headersObjectToHeaders(headers: Record<string, string>): Headers {
+		const headersInstance = new Headers();
+		for (const [key, value] of Object.entries(headers)) {
+			headersInstance.append(key, value);
+		}
+		return headersInstance;
 	}
 
 	protected override onRequest(
@@ -100,41 +99,19 @@ class HTTPRequestParser extends HTTPParser {
 		upgrade: boolean,
 		shouldKeepAlive: boolean,
 	): number {
-		this.httpMajor = versionMajor;
-		this.httpMinor = versionMinor;
-		this.url = url;
+		const methodString = invertedMethodMap[methodNum];
 
-		const methods = [
-			'DELETE',
-			'GET',
-			'HEAD',
-			'POST',
-			'PUT',
-			'CONNECT',
-			'OPTIONS',
-			'TRACE',
-			'COPY',
-			'LOCK',
-			'MKCOL',
-			'MOVE',
-			'PROPFIND',
-			'PROPPATCH',
-			'UNLOCK',
-			'REPORT',
-			'MKACTIVITY',
-			'CHECKOUT',
-			'MERGE',
-			'M-SEARCH',
-			'NOTIFY',
-			'SUBSCRIBE',
-			'UNSUBSCRIBE',
-			'PATCH',
-		];
-		this.method = methods[methodNum - 1] || 'GET';
+		const request = new Request(url, {
+			body: this.bodyStream.readable,
+			method: methodString,
+			headers: HTTPRequestParser.headersObjectToHeaders(headers),
+			keepalive: shouldKeepAlive,
 
-		for (let i = 0; i < rawHeaders.length; i += 2) {
-			this.headers.append(rawHeaders[i], rawHeaders[i + 1]);
-		}
+			// @ts-expect-error
+			duplex: 'half',
+		});
+
+		this.resolve(request);
 
 		return CallbackReturn.OK;
 	}
@@ -151,45 +128,16 @@ class HTTPRequestParser extends HTTPParser {
 
 	protected override onMessageComplete(): number {
 		try {
-			const host = this.headers.get('host') || 'localhost';
-			const protocol = this.headers.get('x-forwarded-proto') || 'http';
-			const fullUrl = new URL(this.url, `${protocol}://${host}`);
-
-			// Create a cloned stream for the Request body
-			const requestStream = this.bodyStream;
 			this.bodyStream.complete();
-
-			const request = new Request(fullUrl.toString(), {
-				method: this.method,
-				headers: this.headers,
-				body: this.method !== 'GET' && this.method !== 'HEAD' ? requestStream : null,
-				duplex: 'half',
-			}) as RequestWithBody;
-
-			Object.defineProperties(request, {
-				httpVersion: {
-					value: `${this.httpMajor}.${this.httpMinor}`,
-					enumerable: true,
-					configurable: true,
-				},
-				rawBodyStream: {
-					value: requestStream,
-					enumerable: true,
-					configurable: true,
-				},
-			});
-
-			this.resolve(request);
 		} catch (err) {
 			const error = err instanceof Error ? err : new Error(String(err));
 			this.bodyStream.error(error);
-			this.reject(error);
 		}
 
 		return CallbackReturn.OK;
 	}
 
-	public parseRequest(data: Buffer): Promise<RequestWithBody> {
+	public parse(data: Buffer): Promise<Request> {
 		return new Promise((resolve, reject) => {
 			this.resolve = resolve;
 			this.reject = reject;
@@ -203,19 +151,23 @@ class HTTPRequestParser extends HTTPParser {
 		});
 	}
 
-	public static async parse(data: Buffer): Promise<RequestWithBody> {
+	public static async parse(data: Buffer): Promise<Request> {
 		const parser = new HTTPRequestParser();
+
 		try {
-			return await parser.parseRequest(data);
+			return await parser.parse(data);
 		} finally {
 			parser.destroy();
 		}
 	}
 }
 
-// Initialize once at startup
-export async function initializeParser(wasmPath: string): Promise<void> {
-	await HTTPParser.initialize(wasmPath);
-}
-
 export {HTTPRequestParser};
+
+await HTTPParser.initialize();
+
+const r = await HTTPRequestParser.parse(
+	Buffer.from(['POST /owo HTTP/1.1', 'X: Y', 'Content-Length: 9', '', 'uh, meow?', ''].join('\r\n')),
+);
+
+console.log(r);

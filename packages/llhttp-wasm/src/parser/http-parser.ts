@@ -1,5 +1,4 @@
-import {readFileSync} from 'fs';
-import {resolve} from 'path';
+import {wasmBase64} from '../llhttp/troll.ts';
 
 // We'll export these for users of the parser
 export const enum ParserType {
@@ -44,16 +43,16 @@ const instanceMap = new Map<number, HTTPParser>();
 const ptrToString = (memory: WebAssembly.Memory, ptr: number, len: number): string =>
 	Buffer.from(new Uint8Array(memory.buffer, ptr, len)).toString();
 
-class HTTPParser {
+export abstract class HTTPParser {
 	private static wasmInstance: WebAssembly.Instance;
 	private static exports: WASMExports;
 	private static initialized = false;
 
-	public static async initialize(wasmPath: string): Promise<void> {
+	public static async initialize(): Promise<void> {
 		if (this.initialized) return;
 
-		const wasmBinary = readFileSync(resolve(wasmPath));
-		const wasmModule = await WebAssembly.compile(wasmBinary);
+		const buf = Buffer.from(wasmBase64, 'base64');
+		const wasmModule = await WebAssembly.compile(buf);
 
 		this.wasmInstance = await WebAssembly.instantiate(wasmModule, {
 			env: {
@@ -123,7 +122,7 @@ class HTTPParser {
 	private [kHeaderValues]: string[] = [];
 	private [kBody]: Buffer | null = null;
 
-	constructor(type: ParserType) {
+	public constructor(type: ParserType) {
 		if (!HTTPParser.initialized) {
 			throw new Error('HTTPParser must be initialized before instantiation');
 		}
@@ -174,8 +173,8 @@ class HTTPParser {
 		for (let i = 0; i < this[kHeaderFields].length; i++) {
 			const field = this[kHeaderFields][i];
 			const value = this[kHeaderValues][i];
-			headers[field.toLowerCase()] = value;
-			rawHeaders.push(field, value);
+			headers[field!.toLowerCase()] = value!;
+			rawHeaders.push(field!, value!);
 		}
 
 		if (type === ParserType.REQUEST) {
@@ -205,7 +204,7 @@ class HTTPParser {
 		}
 	}
 
-	protected onRequest(
+	protected abstract onRequest(
 		versionMajor: number,
 		versionMinor: number,
 		headers: Record<string, string>,
@@ -214,11 +213,9 @@ class HTTPParser {
 		url: string,
 		upgrade: boolean,
 		shouldKeepAlive: boolean,
-	): number {
-		return CallbackReturn.OK;
-	}
+	): CallbackReturn;
 
-	protected onResponse(
+	abstract onResponse(
 		versionMajor: number,
 		versionMinor: number,
 		headers: Record<string, string>,
@@ -227,24 +224,18 @@ class HTTPParser {
 		statusMessage: string,
 		upgrade: boolean,
 		shouldKeepAlive: boolean,
-	): number {
-		return CallbackReturn.OK;
-	}
+	): CallbackReturn;
 
-	protected onBody(chunk: Buffer): number {
-		return CallbackReturn.OK;
-	}
+	protected abstract onBody(chunk: Buffer): CallbackReturn;
 
-	protected onMessageComplete(): number {
-		return CallbackReturn.OK;
-	}
+	protected abstract onMessageComplete(): CallbackReturn;
 
 	public destroy(): void {
 		instanceMap.delete(this[kPtr]);
 		HTTPParser.exports.free(this[kPtr]);
 	}
 
-	public get url(): string {
+	public getURL(): string {
 		return this[kUrl];
 	}
 
@@ -252,25 +243,7 @@ class HTTPParser {
 		return this[kStatusMessage];
 	}
 
-	public get headers(): Record<string, string> {
-		const headers: Record<string, string> = {};
-		for (let i = 0; i < this[kHeaderFields].length; i++) {
-			headers[this[kHeaderFields][i].toLowerCase()] = this[kHeaderValues][i];
-		}
-		return headers;
-	}
-
-	public get rawHeaders(): string[] {
-		const raw: string[] = [];
-		for (let i = 0; i < this[kHeaderFields].length; i++) {
-			raw.push(this[kHeaderFields][i], this[kHeaderValues][i]);
-		}
-		return raw;
-	}
-
 	public get body(): Buffer | null {
 		return this[kBody];
 	}
 }
-
-export {HTTPParser};
