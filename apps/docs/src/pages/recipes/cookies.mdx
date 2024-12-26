@@ -14,12 +14,12 @@ export const {getContext, router} = createUtilities(async (req, res) => {
 		req,
 		res,
 		get cookies() {
-      const header = req.headers.cookie;
-      return header ? parse(header) : {};
-    },
-    setCookie(name: string, value: string, options: SerializeOptions) {
-      res.setHeader('Set-Cookie', serialize(name, value, options));
-    },
+			const header = req.headers.cookie;
+			return header ? parse(header) : {};
+		},
+		setCookie(name: string, value: string, options: SerializeOptions) {
+			res.setHeader('Set-Cookie', serialize(name, value, options));
+		},
 	};
 });
 ```
