@@ -1,7 +1,7 @@
 /* eslint-disable arrow-body-style */
 
-import type {KaitoResponse} from '@kaito-http/core';
 import {createUtilities} from '@kaito-http/core';
+import {serialize, type SerializeOptions} from 'cookie';
 
 const serverStarted = Date.now();
 
@@ -24,8 +24,8 @@ export const {getContext, router} = createUtilities(async (req, res) => {
 
 		// The only time I'd ever need to use res is setting a cookie,
 		// so it wise to move it here and not expose it to the routes.
-		setCookie(...[name, value, options]: Parameters<KaitoResponse['cookie']>) {
-			res.cookie(name, value, options);
+		setCookie(name: string, value: string, options: SerializeOptions) {
+			res.setHeader('Set-Cookie', serialize(name, value, options));
 		},
 
 		uptime: Date.now() - serverStarted,

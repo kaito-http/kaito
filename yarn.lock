@@ -345,6 +345,7 @@ __metadata:
   dependencies:
     "@kaito-http/client": "workspace:^"
     "@kaito-http/core": "workspace:^"
+    cookie: "npm:^1.0.2"
     tsx: "npm:^4.19.1"
     typescript: "npm:^5.6.2"
     zod: "npm:^3.23.8"
@@ -377,7 +378,6 @@ __metadata:
     "@types/content-type": "npm:^1.1.8"
     "@types/node": "npm:^22.7.4"
     content-type: "npm:^1.0.5"
-    cookie: "npm:^1.0.2"
     find-my-way: "npm:^9.1.0"
     raw-body: "npm:^3.0.0"
     tsup: "npm:^8.3.0"
