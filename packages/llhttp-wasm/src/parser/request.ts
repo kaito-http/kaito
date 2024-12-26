@@ -61,10 +61,6 @@ class BodyStream {
 	}
 }
 
-declare interface Request extends globalThis.Request {
-	_kaito_parsed_url: URL;
-}
-
 export interface ParseOptions {
 	secure: boolean;
 	hostname: string;
@@ -76,14 +72,14 @@ const invertedMethodMap = Object.fromEntries(
 
 class HTTPRequestParser extends HTTPParser {
 	private options: ParseOptions;
-	private bodyStream: BodyStream;
+	private bodyStream: BodyStream | null;
 
 	private resolve!: (value: Request) => void;
 
 	constructor(options: ParseOptions) {
 		super(ParserType.REQUEST);
 		this.options = options;
-		this.bodyStream = new BodyStream();
+		this.bodyStream = null;
 	}
 
 	private static headersObjectToHeaders(headers: Record<string, string>): Headers {
@@ -94,7 +90,16 @@ class HTTPRequestParser extends HTTPParser {
 		return headersInstance;
 	}
 
-	protected override onRequest(
+	private getBodyStream() {
+		if (this.bodyStream) {
+			return this.bodyStream;
+		}
+
+		this.bodyStream = new BodyStream();
+		return this.bodyStream;
+	}
+
+	override onRequest(
 		versionMajor: number,
 		versionMinor: number,
 		headersAsMap: Record<string, string>,
@@ -102,7 +107,7 @@ class HTTPRequestParser extends HTTPParser {
 		methodNum: number,
 		url: string,
 		// upgrade: boolean,
-		shouldKeepAlive: boolean,
+		// shouldKeepAlive: boolean,
 	): number {
 		const methodString = invertedMethodMap[methodNum];
 
@@ -110,10 +115,10 @@ class HTTPRequestParser extends HTTPParser {
 		const fullUrl = new URL(url, `${protocol}://${this.options.hostname}`);
 
 		const request = new Request(fullUrl, {
-			body: this.bodyStream.readable,
+			body: methodString === 'HEAD' || methodString === 'GET' ? null : this.getBodyStream().readable,
 			method: methodString,
 			headers: HTTPRequestParser.headersObjectToHeaders(headersAsMap),
-			keepalive: shouldKeepAlive,
+			// keepalive: shouldKeepAlive,
 
 			// @ts-expect-error
 			duplex: 'half',
@@ -138,22 +143,22 @@ class HTTPRequestParser extends HTTPParser {
 		return CallbackReturn.OK;
 	}
 
-	protected override onBody(chunk: Buffer): number {
+	override onBody(chunk: Buffer): number {
 		try {
-			this.bodyStream.pushChunk(new Uint8Array(chunk));
+			this.getBodyStream().pushChunk(new Uint8Array(chunk));
 			return CallbackReturn.OK;
 		} catch (err) {
-			this.bodyStream.error(err instanceof Error ? err : new Error(String(err)));
+			this.getBodyStream().error(err instanceof Error ? err : new Error(String(err)));
 			return CallbackReturn.ERROR;
 		}
 	}
 
-	protected override onMessageComplete(): number {
+	public override onMessageComplete(): number {
 		try {
-			this.bodyStream.complete();
+			this.getBodyStream().complete();
 		} catch (err) {
 			const error = err instanceof Error ? err : new Error(String(err));
-			this.bodyStream.error(error);
+			this.getBodyStream().error(error);
 		}
 
 		return CallbackReturn.OK;
@@ -167,7 +172,7 @@ class HTTPRequestParser extends HTTPParser {
 				this.execute(data);
 			} catch (err) {
 				const error = err instanceof Error ? err : new Error(String(err));
-				this.bodyStream.error(error);
+				this.getBodyStream().error(error);
 				reject(error);
 			}
 		});
@@ -186,14 +191,14 @@ class HTTPRequestParser extends HTTPParser {
 
 export {HTTPRequestParser};
 
-const text = JSON.stringify({alistair: true, landon: true});
+// const text = JSON.stringify({alistair: true, landon: true});
 
-const r = await HTTPRequestParser.parse(
-	Buffer.from(['POST /owo?name=true HTTP/1.1', 'X: Y', `Content-Length: ${text.length}`, '', text, ''].join('\r\n')),
-	{
-		secure: false,
-		hostname: '127.0.0.1',
-	},
-);
+// const r = await HTTPRequestParser.parse(
+// 	Buffer.from(['POST /owo?name=true HTTP/1.1', 'X: Y', `Content-Length: ${text.length}`, '', text, ''].join('\r\n')),
+// 	{
+// 		secure: false,
+// 		hostname: '127.0.0.1',
+// 	},
+// );
 
-console.log(await r.json());
+// console.log(await r.json());

@@ -940,6 +940,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@kaito-http/llhttp-wasm@workspace:packages/llhttp-wasm":
+  version: 0.0.0-use.local
+  resolution: "@kaito-http/llhttp-wasm@workspace:packages/llhttp-wasm"
+  languageName: unknown
+  linkType: soft
+
 "@mdx-js/mdx@npm:^3.0.0":
   version: 3.0.1
   resolution: "@mdx-js/mdx@npm:3.0.1"

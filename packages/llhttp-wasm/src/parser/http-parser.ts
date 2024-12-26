@@ -151,9 +151,9 @@ export abstract class HTTPParser {
 		// rawHeaders: string[],
 		method: number,
 		url: string,
-		// upgrade: boolean,
-		shouldKeepAlive: boolean,
-	): CallbackReturn;
+	) // upgrade: boolean,
+	// shouldKeepAlive: boolean,
+	: CallbackReturn;
 
 	public abstract onBody(chunk: Buffer): CallbackReturn;
 	public abstract onMessageComplete(): CallbackReturn;
@@ -183,7 +183,7 @@ export abstract class HTTPParser {
 			method,
 			this[kUrl],
 			// upgrade,
-			shouldKeepAlive,
+			// shouldKeepAlive,
 		);
 	}
 
