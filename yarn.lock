@@ -375,10 +375,9 @@ __metadata:
   resolution: "@kaito-http/core@workspace:packages/core"
   dependencies:
     "@types/content-type": "npm:^1.1.8"
-    "@types/cookie": "npm:^0.6.0"
     "@types/node": "npm:^22.7.4"
     content-type: "npm:^1.0.5"
-    cookie: "npm:^0.6.0"
+    cookie: "npm:^1.0.2"
     find-my-way: "npm:^9.1.0"
     raw-body: "npm:^3.0.0"
     tsup: "npm:^8.3.0"
@@ -1020,13 +1019,6 @@ __metadata:
   version: 1.1.8
   resolution: "@types/content-type@npm:1.1.8"
   checksum: 10c0/5115a68f9eeb2139f7598519245a47c7e39cae0965c5ea64067190f934e6d1568d6fec0643b113b54351a9472f8b810958b8040af53b15c82d2b2ca46d9af2be
-  languageName: node
-  linkType: hard
-
-"@types/cookie@npm:^0.6.0":
-  version: 0.6.0
-  resolution: "@types/cookie@npm:0.6.0"
-  checksum: 10c0/5b326bd0188120fb32c0be086b141b1481fec9941b76ad537f9110e10d61ee2636beac145463319c71e4be67a17e85b81ca9e13ceb6e3bb63b93d16824d6c149
   languageName: node
   linkType: hard
 
@@ -1997,10 +1989,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cookie@npm:^0.6.0":
-  version: 0.6.0
-  resolution: "cookie@npm:0.6.0"
-  checksum: 10c0/f2318b31af7a31b4ddb4a678d024514df5e705f9be5909a192d7f116cfb6d45cbacf96a473fa733faa95050e7cff26e7832bb3ef94751592f1387b71c8956686
+"cookie@npm:^1.0.2":
+  version: 1.0.2
+  resolution: "cookie@npm:1.0.2"
+  checksum: 10c0/fd25fe79e8fbcfcaf6aa61cd081c55d144eeeba755206c058682257cb38c4bd6795c6620de3f064c740695bb65b7949ebb1db7a95e4636efb8357a335ad3f54b
   languageName: node
   linkType: hard
 
