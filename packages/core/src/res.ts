@@ -1,6 +1,5 @@
 import type {ServerResponse} from 'node:http';
-import type {CookieSerializeOptions} from 'cookie';
-import {serialize} from 'cookie';
+import {serialize, type SerializeOptions} from 'cookie';
 
 export type ErroredAPIResponse = {success: false; data: null; message: string};
 export type SuccessfulAPIResponse<T> = {success: true; data: T; message: 'OK'};
@@ -38,7 +37,7 @@ export class KaitoResponse<T = unknown> {
 	 * @param options The options for the cookie
 	 * @returns The response object
 	 */
-	cookie(name: string, value: string, options: CookieSerializeOptions): this {
+	cookie(name: string, value: string, options: SerializeOptions): this {
 		this.raw.setHeader('Set-Cookie', serialize(name, value, options));
 		return this;
 	}
