@@ -43,76 +43,62 @@ const instanceMap = new Map<number, HTTPParser>();
 const ptrToString = (memory: WebAssembly.Memory, ptr: number, len: number): string =>
 	Buffer.from(new Uint8Array(memory.buffer, ptr, len)).toString();
 
+const wasmModule = new WebAssembly.Module(Buffer.from(wasmBase64, 'base64'));
+
+const wasmInstance = new WebAssembly.Instance(wasmModule, {
+	env: {
+		wasm_on_message_begin: (parser: number) => {
+			const instance = instanceMap.get(parser);
+			if (!instance) return CallbackReturn.ERROR;
+			instance[kReset]();
+			return CallbackReturn.OK;
+		},
+		wasm_on_url: (parser: number, at: number, length: number) => {
+			const instance = instanceMap.get(parser);
+			if (!instance) return CallbackReturn.ERROR;
+			instance[kUrl] = ptrToString((wasmInstance.exports as WASMExports).memory, at, length);
+			return CallbackReturn.OK;
+		},
+		wasm_on_status: (parser: number, at: number, length: number) => {
+			const instance = instanceMap.get(parser);
+			if (!instance) return CallbackReturn.ERROR;
+			instance[kStatusMessage] = ptrToString((wasmInstance.exports as WASMExports).memory, at, length);
+			return CallbackReturn.OK;
+		},
+		wasm_on_header_field: (parser: number, at: number, length: number) => {
+			const instance = instanceMap.get(parser);
+			if (!instance) return CallbackReturn.ERROR;
+			instance[kHeaderFields].push(ptrToString((wasmInstance.exports as WASMExports).memory, at, length));
+			return CallbackReturn.OK;
+		},
+		wasm_on_header_value: (parser: number, at: number, length: number) => {
+			const instance = instanceMap.get(parser);
+			if (!instance) return CallbackReturn.ERROR;
+			instance[kHeaderValues].push(ptrToString((wasmInstance.exports as WASMExports).memory, at, length));
+			return CallbackReturn.OK;
+		},
+		wasm_on_headers_complete: (parser: number) => {
+			const instance = instanceMap.get(parser);
+			if (!instance) return CallbackReturn.ERROR;
+			return instance.onHeadersComplete();
+		},
+		wasm_on_body: (parser: number, at: number, length: number) => {
+			const instance = instanceMap.get(parser);
+			if (!instance) return CallbackReturn.ERROR;
+			instance[kBody] = Buffer.from(new Uint8Array((wasmInstance.exports as WASMExports).memory.buffer, at, length));
+			return instance.onBody(instance[kBody]);
+		},
+		wasm_on_message_complete: (parser: number) => {
+			const instance = instanceMap.get(parser);
+			if (!instance) return CallbackReturn.ERROR;
+			return instance.onMessageComplete();
+		},
+	},
+});
+
 export abstract class HTTPParser {
-	private static wasmInstance: WebAssembly.Instance;
-	private static exports: WASMExports;
-	private static initialized = false;
-
-	public static async initialize(): Promise<void> {
-		if (this.initialized) return;
-
-		const buf = Buffer.from(wasmBase64, 'base64');
-		const wasmModule = await WebAssembly.compile(buf);
-
-		this.wasmInstance = await WebAssembly.instantiate(wasmModule, {
-			env: {
-				wasm_on_message_begin: (parser: number) => {
-					const instance = instanceMap.get(parser);
-					if (!instance) return CallbackReturn.ERROR;
-					instance[kReset]();
-					return CallbackReturn.OK;
-				},
-				wasm_on_url: (parser: number, at: number, length: number) => {
-					const instance = instanceMap.get(parser);
-					if (!instance) return CallbackReturn.ERROR;
-					instance[kUrl] = ptrToString(HTTPParser.exports.memory, at, length);
-					return CallbackReturn.OK;
-				},
-				wasm_on_status: (parser: number, at: number, length: number) => {
-					const instance = instanceMap.get(parser);
-					if (!instance) return CallbackReturn.ERROR;
-					instance[kStatusMessage] = ptrToString(HTTPParser.exports.memory, at, length);
-					return CallbackReturn.OK;
-				},
-				wasm_on_header_field: (parser: number, at: number, length: number) => {
-					const instance = instanceMap.get(parser);
-					if (!instance) return CallbackReturn.ERROR;
-					instance[kHeaderFields].push(ptrToString(HTTPParser.exports.memory, at, length));
-					return CallbackReturn.OK;
-				},
-				wasm_on_header_value: (parser: number, at: number, length: number) => {
-					const instance = instanceMap.get(parser);
-					if (!instance) return CallbackReturn.ERROR;
-					instance[kHeaderValues].push(ptrToString(HTTPParser.exports.memory, at, length));
-					return CallbackReturn.OK;
-				},
-				wasm_on_headers_complete: (parser: number) => {
-					const instance = instanceMap.get(parser);
-					if (!instance) return CallbackReturn.ERROR;
-					return instance.onHeadersComplete();
-				},
-				wasm_on_body: (parser: number, at: number, length: number) => {
-					const instance = instanceMap.get(parser);
-					if (!instance) return CallbackReturn.ERROR;
-					instance[kBody] = Buffer.from(new Uint8Array(HTTPParser.exports.memory.buffer, at, length));
-					return instance.onBody(instance[kBody]);
-				},
-				wasm_on_message_complete: (parser: number) => {
-					const instance = instanceMap.get(parser);
-					if (!instance) return CallbackReturn.ERROR;
-					return instance.onMessageComplete();
-				},
-			},
-		});
-
-		this.exports = this.wasmInstance.exports as unknown as WASMExports;
-
-		// Initialize WASI reactor if needed
-		if (this.exports._initialize) {
-			this.exports._initialize();
-		}
-
-		this.initialized = true;
+	static {
+		(wasmInstance.exports._initialize as CallableFunction)();
 	}
 
 	private [kPtr]: number;
@@ -123,11 +109,7 @@ export abstract class HTTPParser {
 	private [kBody]: Buffer | null = null;
 
 	public constructor(type: ParserType) {
-		if (!HTTPParser.initialized) {
-			throw new Error('HTTPParser must be initialized before instantiation');
-		}
-
-		this[kPtr] = HTTPParser.exports.llhttp_alloc(type);
+		this[kPtr] = (wasmInstance.exports as WASMExports).llhttp_alloc(type);
 		instanceMap.set(this[kPtr], this);
 	}
 
@@ -140,32 +122,47 @@ export abstract class HTTPParser {
 	}
 
 	private [kCheckError](code: number): void {
-		if (code === 0) return;
+		if (code === 0) {
+			return;
+		}
 
-		const ptr = HTTPParser.exports.llhttp_get_error_reason(this[kPtr]);
-		const memory = new Uint8Array(HTTPParser.exports.memory.buffer);
+		const ptr = (wasmInstance.exports as WASMExports).llhttp_get_error_reason(this[kPtr]);
+		const memory = new Uint8Array((wasmInstance.exports as WASMExports).memory.buffer);
 		const length = memory.indexOf(0, ptr) - ptr;
-		throw new Error(ptrToString(HTTPParser.exports.memory, ptr, length));
+		throw new Error(ptrToString((wasmInstance.exports as WASMExports).memory, ptr, length));
 	}
 
 	public execute(data: Buffer): number {
-		const ptr = HTTPParser.exports.malloc(data.byteLength);
-		const memory = new Uint8Array(HTTPParser.exports.memory.buffer);
+		const ptr = (wasmInstance.exports as WASMExports).malloc(data.byteLength);
+		const memory = new Uint8Array((wasmInstance.exports as WASMExports).memory.buffer);
 		memory.set(data, ptr);
 
-		const result = HTTPParser.exports.llhttp_execute(this[kPtr], ptr, data.length);
-		HTTPParser.exports.free(ptr);
+		const result = (wasmInstance.exports as WASMExports).llhttp_execute(this[kPtr], ptr, data.length);
+		(wasmInstance.exports as WASMExports).free(ptr);
 
 		this[kCheckError](result);
 		return result;
 	}
 
-	protected onHeadersComplete(): number {
-		const type = HTTPParser.exports.llhttp_get_type(this[kPtr]);
-		const versionMajor = HTTPParser.exports.llhttp_get_http_major(this[kPtr]);
-		const versionMinor = HTTPParser.exports.llhttp_get_http_minor(this[kPtr]);
-		const upgrade = Boolean(HTTPParser.exports.llhttp_get_upgrade(this[kPtr]));
-		const shouldKeepAlive = Boolean(HTTPParser.exports.llhttp_should_keep_alive(this[kPtr]));
+	protected abstract onRequest(
+		versionMajor: number,
+		versionMinor: number,
+		headers: Record<string, string>,
+		// rawHeaders: string[],
+		method: number,
+		url: string,
+		// upgrade: boolean,
+		shouldKeepAlive: boolean,
+	): CallbackReturn;
+
+	public abstract onBody(chunk: Buffer): CallbackReturn;
+	public abstract onMessageComplete(): CallbackReturn;
+
+	public onHeadersComplete(): number {
+		const versionMajor = (wasmInstance.exports as WASMExports).llhttp_get_http_major(this[kPtr]);
+		const versionMinor = (wasmInstance.exports as WASMExports).llhttp_get_http_minor(this[kPtr]);
+		// const upgrade = Boolean((wasmInstance.exports as WASMExports).llhttp_get_upgrade(this[kPtr]));
+		const shouldKeepAlive = Boolean((wasmInstance.exports as WASMExports).llhttp_should_keep_alive(this[kPtr]));
 
 		const headers: Record<string, string> = {};
 		const rawHeaders: string[] = [];
@@ -177,62 +174,22 @@ export abstract class HTTPParser {
 			rawHeaders.push(field!, value!);
 		}
 
-		if (type === ParserType.REQUEST) {
-			const method = HTTPParser.exports.llhttp_get_method(this[kPtr]);
-			return this.onRequest(
-				versionMajor,
-				versionMinor,
-				headers,
-				rawHeaders,
-				method,
-				this[kUrl],
-				upgrade,
-				shouldKeepAlive,
-			);
-		} else {
-			const statusCode = HTTPParser.exports.llhttp_get_status_code(this[kPtr]);
-			return this.onResponse(
-				versionMajor,
-				versionMinor,
-				headers,
-				rawHeaders,
-				statusCode,
-				this[kStatusMessage] || '',
-				upgrade,
-				shouldKeepAlive,
-			);
-		}
+		const method = (wasmInstance.exports as WASMExports).llhttp_get_method(this[kPtr]);
+		return this.onRequest(
+			versionMajor,
+			versionMinor,
+			headers,
+			// rawHeaders,
+			method,
+			this[kUrl],
+			// upgrade,
+			shouldKeepAlive,
+		);
 	}
-
-	protected abstract onRequest(
-		versionMajor: number,
-		versionMinor: number,
-		headers: Record<string, string>,
-		rawHeaders: string[],
-		method: number,
-		url: string,
-		upgrade: boolean,
-		shouldKeepAlive: boolean,
-	): CallbackReturn;
-
-	abstract onResponse(
-		versionMajor: number,
-		versionMinor: number,
-		headers: Record<string, string>,
-		rawHeaders: string[],
-		statusCode: number,
-		statusMessage: string,
-		upgrade: boolean,
-		shouldKeepAlive: boolean,
-	): CallbackReturn;
-
-	protected abstract onBody(chunk: Buffer): CallbackReturn;
-
-	protected abstract onMessageComplete(): CallbackReturn;
 
 	public destroy(): void {
 		instanceMap.delete(this[kPtr]);
-		HTTPParser.exports.free(this[kPtr]);
+		(wasmInstance.exports as WASMExports).free(this[kPtr]);
 	}
 
 	public getURL(): string {

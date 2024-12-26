@@ -61,24 +61,29 @@ class BodyStream {
 	}
 }
 
+declare interface Request extends globalThis.Request {
+	_kaito_parsed_url: URL;
+}
+
+export interface ParseOptions {
+	secure: boolean;
+	hostname: string;
+}
+
 const invertedMethodMap = Object.fromEntries(
 	Object.entries(constants.METHODS).map(entry => [entry[1], entry[0]] as const),
 );
 
 class HTTPRequestParser extends HTTPParser {
-	private headers = new Headers();
+	private options: ParseOptions;
 	private bodyStream: BodyStream;
 
 	private resolve!: (value: Request) => void;
-	private reject!: (reason: Error) => void;
 
-	constructor() {
+	constructor(options: ParseOptions) {
 		super(ParserType.REQUEST);
+		this.options = options;
 		this.bodyStream = new BodyStream();
-	}
-
-	public override onResponse(): CallbackReturn {
-		throw new Error('onResponse() is not supported in the HTTPRequestParser');
 	}
 
 	private static headersObjectToHeaders(headers: Record<string, string>): Headers {
@@ -92,23 +97,40 @@ class HTTPRequestParser extends HTTPParser {
 	protected override onRequest(
 		versionMajor: number,
 		versionMinor: number,
-		headers: Record<string, string>,
-		rawHeaders: string[],
+		headersAsMap: Record<string, string>,
+		// rawHeaders: string[],
 		methodNum: number,
 		url: string,
-		upgrade: boolean,
+		// upgrade: boolean,
 		shouldKeepAlive: boolean,
 	): number {
 		const methodString = invertedMethodMap[methodNum];
 
-		const request = new Request(url, {
+		const protocol = this.options.secure ? 'https' : 'http';
+		const fullUrl = new URL(url, `${protocol}://${this.options.hostname}`);
+
+		const request = new Request(fullUrl, {
 			body: this.bodyStream.readable,
 			method: methodString,
-			headers: HTTPRequestParser.headersObjectToHeaders(headers),
+			headers: HTTPRequestParser.headersObjectToHeaders(headersAsMap),
 			keepalive: shouldKeepAlive,
 
 			// @ts-expect-error
 			duplex: 'half',
+		});
+
+		Object.defineProperties(request, {
+			httpVersion: {
+				value: `${versionMajor}.${versionMinor}`,
+				enumerable: true,
+				configurable: true,
+			},
+			_kaito_parsed_url: {
+				value: fullUrl,
+				enumerable: true,
+				configurable: true,
+				writable: false,
+			},
 		});
 
 		this.resolve(request);
@@ -140,7 +162,7 @@ class HTTPRequestParser extends HTTPParser {
 	public parse(data: Buffer): Promise<Request> {
 		return new Promise((resolve, reject) => {
 			this.resolve = resolve;
-			this.reject = reject;
+
 			try {
 				this.execute(data);
 			} catch (err) {
@@ -151,8 +173,8 @@ class HTTPRequestParser extends HTTPParser {
 		});
 	}
 
-	public static async parse(data: Buffer): Promise<Request> {
-		const parser = new HTTPRequestParser();
+	public static async parse(data: Buffer, options: ParseOptions): Promise<Request> {
+		const parser = new HTTPRequestParser(options);
 
 		try {
 			return await parser.parse(data);
@@ -164,10 +186,14 @@ class HTTPRequestParser extends HTTPParser {
 
 export {HTTPRequestParser};
 
-await HTTPParser.initialize();
+const text = JSON.stringify({alistair: true, landon: true});
 
 const r = await HTTPRequestParser.parse(
-	Buffer.from(['POST /owo HTTP/1.1', 'X: Y', 'Content-Length: 9', '', 'uh, meow?', ''].join('\r\n')),
+	Buffer.from(['POST /owo?name=true HTTP/1.1', 'X: Y', `Content-Length: ${text.length}`, '', text, ''].join('\r\n')),
+	{
+		secure: false,
+		hostname: '127.0.0.1',
+	},
 );
 
-console.log(r);
+console.log(await r.json());
