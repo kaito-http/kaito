@@ -27,5 +27,5 @@ jobs:
       - name: Install dependencies
         run: yarn
 
-      - name: Run Lint
-        run: yarn lint
+      - name: Run tsc
+        run: yarn tsc --noEmit
