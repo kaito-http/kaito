@@ -62,9 +62,3 @@ export function parsable<T>(parse: (value: unknown) => T): Parsable<T, T> {
 		parse,
 	} as Parsable<T, T>;
 }
-
-export type RemoveEndSlashes<T extends string> = T extends `${infer U}/` ? U : T;
-export type AddStartSlashes<T extends string> = T extends `/${infer U}` ? `/${U}` : `/${T}`;
-export type NormalizePath<T extends string> = AddStartSlashes<RemoveEndSlashes<T>>;
-export type Values<T> = T[keyof T];
-export type NoEmpty<T> = [keyof T] extends [never] ? never : T;
