@@ -1,4 +1,5 @@
-import {createServer, KaitoError} from '@kaito-http/core';
+import {createKaitoHandler, KaitoError} from '@kaito-http/core';
+import {KaitoServer} from '@kaito-http/llhttp-wasm';
 import {z} from 'zod';
 import {getContext, router} from './context.ts';
 
@@ -66,24 +67,6 @@ const exampleOfThrough = router()
 	}))
 	.get('/test', async ({ctx}) => ctx.lol.getTime());
 
-const exampleOfRaw = router()
-	.through(async old => ({
-		...old,
-		lol: new Date(),
-	}))
-	.get.raw('/', async ({req, res, ctx}) => {
-		ctx.lol;
-
-		if (Math) {
-			res.raw.end('hi');
-			return; // Function returns Promise<void> here
-		} else {
-			res.raw.end('handled by me');
-			return;
-			// return 'cool';
-		}
-	});
-
 const root = router()
 	// Basic inline access context
 	.get('/uptime', async ({ctx}) => ctx.uptime)
@@ -106,43 +89,18 @@ const root = router()
 	// Merge this router with another router (v1)
 	.merge('/v1', v1);
 
-const server = createServer({
+const handler = createKaitoHandler({
 	router: root,
 	getContext,
-
-	// Example of handling routes outside of Kaito.
-	// Raw routes are not typed, and you have to handle errors yourself.
-	// They are really a last resort! The use case is, for example, handling
-	// stripe webhooks, OAuth, etc. Things like that.
-	rawRoutes: {
-		GET: [
-			{
-				path: '/',
-				handler(request, response) {
-					// You can access body by using something like `raw-body` on NPM.
-					// This is not included in Kaito's raw routes because raw routes
-					// are just a wrapper around Node's `http` module.
-
-					response.end("welcome to kaito's raw routes");
-				},
-			},
-		],
-	},
 
 	// Before runs code before every request. This is helpful for setting things like CORS.
 	// You can return a value from before, and it will be passed to the after call.
 	// If you end the response in `before`, the router will not be called.
-	async before(req, res) {
-		res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
-		res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-		res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-		res.setHeader('Access-Control-Max-Age', '86400');
-		res.setHeader('Access-Control-Allow-Credentials', 'true');
-
+	async before(req) {
 		if (req.method === 'OPTIONS') {
-			res.statusCode = 204;
-			// This is safe, because the router will know that the response is ended.
-			res.end();
+			return new Response(null, {
+				status: 204,
+			});
 		}
 
 		// Return something from `before`, and it will be passed to `after`.
@@ -154,13 +112,17 @@ const server = createServer({
 	// Access the return value from `before` in `after`.
 	// If the before function ends the response, this *will* be called!
 	// So be careful about logging request durations etc
-	async after({timestamp}) {
+	async after({timestamp}, res) {
+		res.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+		res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+		res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+		res.headers.set('Access-Control-Max-Age', '86400');
+		res.headers.set('Access-Control-Allow-Credentials', 'true');
+
 		console.log(`Request took ${Date.now() - timestamp}ms`);
 	},
 
 	async onError({error}) {
-		console.log(error);
-
 		return {
 			status: 500,
 			message: error.message,
@@ -168,6 +130,12 @@ const server = createServer({
 	},
 });
 
-server.listen(8080);
+const server = new KaitoServer({
+	fetch: handler,
+});
+
+await server.listen(3000, '0.0.0.0');
+
+console.log('Server listening at', server.url);
 
 export type App = typeof root;

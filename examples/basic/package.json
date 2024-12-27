@@ -15,6 +15,7 @@
 	"dependencies": {
 		"@kaito-http/client": "workspace:^",
 		"@kaito-http/core": "workspace:^",
+		"@kaito-http/llhttp-wasm": "workspace:^",
 		"cookie": "^1.0.2",
 		"zod": "^3.24.1"
 	},

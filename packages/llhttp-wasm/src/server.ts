@@ -13,13 +13,13 @@ export interface KaitoServerOptions {
 	 * @param socket - The socket associated with the request.
 	 * @returns A promise that resolves to a response object.
 	 */
-	onRequest: (request: Request, socket: Socket) => Promise<Response>;
+	fetch: (request: Request, socket: Socket) => Promise<Response>;
 
 	/**
 	 * Optional callback function that is called when an error occurs.
 	 * @param error - The error object.
 	 */
-	onError?: (error: Error) => void;
+	error?: (error: Error) => void;
 
 	/**
 	 * Optional keep-alive settings.
@@ -144,7 +144,7 @@ export class KaitoServer {
 				}
 
 				if (!socket.destroyed) {
-					const response = await this.options.onRequest(request, socket);
+					const response = await this.options.fetch(request, socket);
 
 					// Set appropriate Connection header in response
 					if (!state.keepAlive) {
@@ -175,7 +175,7 @@ export class KaitoServer {
 	};
 
 	private readonly handleError = (error: Error): void => {
-		this.options.onError?.(error);
+		this.options.error?.(error);
 	};
 
 	private cleanupSocket(socket: Socket): void {
@@ -238,6 +238,12 @@ export class KaitoServer {
 		});
 	}
 
+	/**
+	 * Get the address of the server.
+	 * Throws if the server is not listening yet or has been closed.
+	 *
+	 * TIP: await the promise from `server.listen(port, hostname)` before calling this method.
+	 */
 	public get address(): string {
 		const addr = this.server.address();
 
@@ -246,5 +252,13 @@ export class KaitoServer {
 		}
 
 		return typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
+	}
+
+	/**
+	 * The URL of the server.
+	 * Just returns `http://${this.address}`.
+	 */
+	public get url() {
+		return `http://${this.address}`;
 	}
 }
