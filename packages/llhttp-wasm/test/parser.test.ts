@@ -13,7 +13,7 @@ async function parse(path: `/${string}`, init?: RequestInit) {
 	const request = new Request(url, init);
 	const httpString = await httpStringFromRequest(request);
 
-	return HTTPRequestParser.parse(Buffer.from(httpString), options);
+	return HTTPRequestParser.parse(Buffer.from(httpString), options).then(({request}) => request);
 }
 
 before(async () => {

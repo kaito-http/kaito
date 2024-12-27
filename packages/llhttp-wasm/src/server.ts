@@ -4,7 +4,7 @@ import {HTTPResponseWriter} from './writer/response.ts';
 
 export interface KaitoServerOptions {
 	onRequest: (request: Request, socket: Socket) => Promise<Response>;
-	onError: (error: Error) => void;
+	onError?: (error: Error) => void;
 	keepAlive?: {
 		timeout?: number; // Idle timeout in milliseconds (default: 5000)
 		maxRequests?: number; // Max requests per connection (default: 1000)
@@ -106,9 +106,7 @@ export class KaitoServer {
 				state.isProcessing = true;
 				const {request, metadata} = await HTTPRequestParser.parse(data, this.parseOptions);
 
-				// Update keep-alive state based on request headers
-				const connection = request.headers.get('connection')?.toLowerCase();
-				state.keepAlive = connection !== 'close' && (metadata.httpVersionStr === '1.1' || connection === 'keep-alive');
+				state.keepAlive = metadata.shouldKeepAlive;
 
 				// Check if we've exceeded max requests per connection
 				state.requestCount++;
@@ -122,7 +120,7 @@ export class KaitoServer {
 					// Set appropriate Connection header in response
 					if (!state.keepAlive) {
 						response.headers.set('Connection', 'close');
-					} else if (metadata.httpVersionStr === '1.0') {
+					} else if (metadata.shouldKeepAlive) {
 						response.headers.set('Connection', 'keep-alive');
 					}
 
@@ -148,7 +146,7 @@ export class KaitoServer {
 	};
 
 	private readonly handleError = (error: Error): void => {
-		this.options.onError(error);
+		this.options.onError?.(error);
 	};
 
 	private cleanupSocket(socket: Socket): void {

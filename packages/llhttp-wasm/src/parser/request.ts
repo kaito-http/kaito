@@ -89,9 +89,10 @@ class BodyStream {
 }
 
 export interface RequestMetadata {
-	httpVersionMajor: number;
-	httpVersionMinor: number;
-	httpVersionStr: string;
+	// httpVersionMajor: number;
+	// httpVersionMinor: number;
+	// httpVersionStr: string;
+	shouldKeepAlive: boolean;
 }
 
 class HTTPRequestParser extends HTTPParser {
@@ -117,14 +118,14 @@ class HTTPRequestParser extends HTTPParser {
 	}
 
 	override onRequest(
-		versionMajor: number,
-		versionMinor: number,
+		// versionMajor: number,
+		// versionMinor: number,
 		// headersAsMap: Record<string, string>,
 		headers: Headers,
 		methodNum: number,
 		path: string,
 		// upgrade: boolean,
-		// shouldKeepAlive: boolean,
+		shouldKeepAlive: boolean,
 	): number {
 		const methodString = invertedMethodMap[methodNum];
 
@@ -143,9 +144,7 @@ class HTTPRequestParser extends HTTPParser {
 		this.resolve({
 			request,
 			metadata: {
-				httpVersionMajor: versionMajor,
-				httpVersionMinor: versionMinor,
-				httpVersionStr: `${versionMajor}.${versionMinor}`,
+				shouldKeepAlive,
 			},
 		});
 
