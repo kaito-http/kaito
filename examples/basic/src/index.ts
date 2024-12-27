@@ -3,28 +3,34 @@ import {KaitoServer} from '@kaito-http/llhttp-wasm';
 import {z} from 'zod';
 import {getContext, router} from './context.ts';
 
-const users = router().post('/:id', {
-	body: z.object({
-		name: z.string(),
-	}),
+const users = router()
+	.post('/:id', {
+		body: z.object({
+			name: z.string(),
+		}),
 
-	query: {
-		limit: z
-			.string()
-			.transform(value => parseInt(value, 10))
-			.default('10'),
-		skip: z.string().transform(value => parseInt(value, 10)),
-	},
+		query: {
+			limit: z
+				.string()
+				.transform(value => parseInt(value, 10))
+				.default('10'),
+			skip: z.string().transform(value => parseInt(value, 10)),
+		},
 
-	async run({ctx, body, params, query}) {
-		return {
-			uptime: ctx.uptime,
-			body,
-			params,
-			query,
-		};
-	},
-});
+		async run({ctx, body, params, query}) {
+			return {
+				uptime: ctx.uptime,
+				body,
+				params,
+				query,
+			};
+		},
+	})
+	.post('/set-me-a-cookie', async ({ctx}) => {
+		ctx.cookie('ThisIsACookie', 'ThisIsAValue', {
+			expires: /* in a day */ new Date(Date.now() + 1000 * 60 * 60 * 24),
+		});
+	});
 
 const v1 = router()
 	// Basic inline route
@@ -50,10 +56,9 @@ const v1 = router()
 		query: {
 			name: z.string(),
 		},
-
-		async run({body}) {
+		async run({body, query}) {
 			// Body is typed as `Record<string, unknown>`
-			return body;
+			return {body, name: query.name};
 		},
 	})
 
@@ -105,7 +110,7 @@ const handler = createKaitoHandler({
 
 	// Before runs code before every request. This is helpful for setting things like CORS.
 	// You can return a value from before, and it will be passed to the after call.
-	// If you end the response in `before`, the router will not be called.
+	// If you return a response in `before`, the router will not be called.
 	before: async req => {
 		if (req.method === 'OPTIONS') {
 			return new Response(null, {
