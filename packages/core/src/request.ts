@@ -1,42 +1,31 @@
 export class KaitoRequest {
-	private readonly request: Request;
+	public readonly url: URL;
 
-	private _url: URL | undefined;
+	private readonly _request: Request;
 
-	public constructor(request: Request) {
-		this.request = request;
+	public constructor(url: URL, request: Request) {
+		this._request = request;
+		this.url = url;
 	}
 
 	public get headers() {
-		return this.request.headers;
+		return this._request.headers;
 	}
 
 	public get method() {
-		return this.request.method;
-	}
-
-	public get url() {
-		return this.request.url;
-	}
-
-	public parseURL() {
-		if (!this._url) {
-			this._url = new URL(this.url);
-		}
-
-		return this._url;
+		return this._request.method;
 	}
 
 	public async arrayBuffer(): Promise<ArrayBuffer> {
-		return this.request.arrayBuffer();
+		return this._request.arrayBuffer();
 	}
 
 	public async blob(): Promise<Blob> {
-		return this.request.blob();
+		return this._request.blob();
 	}
 
 	public async formData(): Promise<FormData> {
-		return this.request.formData();
+		return this._request.formData();
 	}
 
 	public async bytes(): Promise<Uint8Array> {
@@ -45,10 +34,14 @@ export class KaitoRequest {
 	}
 
 	public async json(): Promise<unknown> {
-		return this.request.json();
+		return this._request.json();
 	}
 
 	public async text(): Promise<string> {
-		return this.request.text();
+		return this._request.text();
+	}
+
+	public get request() {
+		return this._request;
 	}
 }

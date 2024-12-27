@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import {KaitoError, WrappedError} from '../error.ts';
 import {KaitoRequest} from '../request.ts';
+import {KaitoResponse} from '../response.ts';
 import type {AnyQueryDefinition, AnyRoute, Route} from '../route.ts';
 import type {ServerConfig} from '../server.ts';
-import {apiresponse, type Parsable} from '../util.ts';
+import {type Parsable} from '../util.ts';
 import type {KaitoMethod} from './types.ts';
 
 type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
@@ -158,17 +159,18 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 			const {route, params} = findRoute(method, url.pathname);
 
 			if (!route) {
-				return apiresponse(404, {
+				return KaitoResponse.json(404, {
 					success: false,
 					data: null,
 					message: `Cannot ${method} ${url.pathname}`,
 				});
 			}
 
-			const request = new KaitoRequest(req);
+			const request = new KaitoRequest(url, req);
+			const response = new KaitoResponse();
 
 			try {
-				const rootCtx = await server.getContext(request);
+				const rootCtx = await server.getContext(request, response);
 				const ctx = await route.through(rootCtx);
 				const body = route.body ? await route.body.parse(await req.json()) : undefined;
 				const query = Router.parseQuery(route.query, url);
@@ -180,7 +182,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 					params,
 				});
 
-				return apiresponse(200, {
+				return response.toResponse({
 					success: true,
 					data: result,
 					message: 'OK',
@@ -189,7 +191,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 				const error = WrappedError.maybe(e);
 
 				if (error instanceof KaitoError) {
-					return apiresponse(error.status, {
+					return KaitoResponse.json(error.status, {
 						success: false,
 						data: null,
 						message: error.message,
@@ -200,7 +202,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 					.onError({error, req: request})
 					.catch(() => ({status: 500, message: 'Internal Server Error'}));
 
-				return apiresponse(status, {
+				return response.status(status).toResponse({
 					success: false,
 					data: null,
 					message,

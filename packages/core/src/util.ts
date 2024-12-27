@@ -1,16 +1,11 @@
 import type {KaitoRequest} from './request.ts';
+import type {KaitoResponse} from './response.ts';
 import {Router} from './router/router.ts';
 
 export type ErroredAPIResponse = {success: false; data: null; message: string};
 export type SuccessfulAPIResponse<T> = {success: true; data: T; message: 'OK'};
 export type APIResponse<T> = ErroredAPIResponse | SuccessfulAPIResponse<T>;
 export type AnyResponse = APIResponse<unknown>;
-
-export function apiresponse<T>(status: number, response: APIResponse<T>): Response {
-	return Response.json(response, {
-		status,
-	});
-}
 
 export type ExtractRouteParams<T extends string> = string extends T
 	? Record<string, string>
@@ -20,7 +15,7 @@ export type ExtractRouteParams<T extends string> = string extends T
 			? {[k in Param]: string}
 			: {};
 
-export type GetContext<Result> = (req: KaitoRequest) => Promise<Result>;
+export type GetContext<Result> = (req: KaitoRequest, res: KaitoResponse) => Promise<Result>;
 
 /**
  * A helper function to create typed necessary functions
