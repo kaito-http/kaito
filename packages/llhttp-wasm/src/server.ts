@@ -7,145 +7,113 @@ export interface KaitoServerOptions {
 	onError: (error: Error) => void;
 }
 
-type SocketHandlers = {
-	onData: (data: Buffer) => Promise<void>;
-	onClose: () => void;
-	onError: (error: Error) => void;
+type SocketState = {
+	isProcessing: boolean;
+	handlers: {
+		onData: (data: Buffer) => Promise<void>;
+		onClose: () => void;
+		onError: (error: Error) => void;
+	};
 };
 
 export class KaitoServer {
 	private readonly writer = new HTTPResponseWriter();
 	private readonly server;
+	private readonly socketStates = new WeakMap<Socket, SocketState>();
+	private readonly connections = new Set<Socket>();
 
-	private readonly connections: Set<Socket>;
-	private socketHandlers: WeakMap<Socket, SocketHandlers>;
-	private boundServerError: (error: Error) => void;
-	private boundConnection: (socket: Socket) => void;
-	private isClosing: boolean = false;
-	private processingBuffers: WeakMap<Socket, boolean>;
-	private options: KaitoServerOptions;
+	private isClosing = false;
+	private parseOptions: ParseOptions | null = null;
 
-	private _parseOptions: ParseOptions | null = null;
-	private get parseOptions(): ParseOptions {
-		if (this._parseOptions) {
-			return this._parseOptions;
-		}
-
-		return {
-			secure: false,
-			host: this.address,
-		};
+	constructor(private readonly options: KaitoServerOptions) {
+		this.server = createServer()
+			.on('error', this.handleError)
+			.on('connection', this.handleConnection)
+			.once('listening', () => {
+				this.parseOptions = {
+					secure: false,
+					host: this.address,
+				};
+			});
 	}
 
-	constructor(options: KaitoServerOptions) {
-		this.server = createServer();
-		this.connections = new Set();
-		this.socketHandlers = new WeakMap();
-		this.processingBuffers = new WeakMap();
-		this.options = options;
-
-		this.boundServerError = this.handleError.bind(this);
-		this.boundConnection = this.handleConnection.bind(this);
-
-		this.server.on('error', this.boundServerError);
-		this.server.on('connection', this.boundConnection);
-	}
-
-	private createSocketHandlers(socket: Socket): SocketHandlers {
-		const handlers: SocketHandlers = {
-			onData: this.handleData.bind(this, socket),
-			onClose: () => this.handleClose(socket),
-			onError: (error: Error) => this.handleSocketError(socket, error),
-		};
-
-		this.socketHandlers.set(socket, handlers);
-		return handlers;
-	}
-
-	private handleConnection(socket: Socket): void {
+	private readonly handleConnection = (socket: Socket): void => {
 		if (this.isClosing) {
 			socket.destroy();
 			return;
 		}
 
 		this.connections.add(socket);
-		this.processingBuffers.set(socket, false);
 
-		const handlers = this.createSocketHandlers(socket);
-		socket.on('data', handlers.onData);
-		socket.on('close', handlers.onClose);
-		socket.on('error', handlers.onError);
-	}
+		// Create handlers once per socket and store state
+		const state: SocketState = {
+			isProcessing: false,
+			handlers: {
+				onData: this.createDataHandler(socket),
+				onClose: () => this.cleanupSocket(socket),
+				onError: (error: Error) => {
+					this.handleError(error);
+					this.cleanupSocket(socket);
+					socket.destroy();
+				},
+			},
+		};
 
-	private async handleData(socket: Socket, data: Buffer): Promise<void> {
-		const isProcessing = this.processingBuffers.get(socket);
+		this.socketStates.set(socket, state);
 
-		if (isProcessing) {
-			return;
-		}
+		socket.on('data', state.handlers.onData).on('close', state.handlers.onClose).on('error', state.handlers.onError);
+	};
 
-		try {
-			this.processingBuffers.set(socket, true);
+	private readonly createDataHandler = (socket: Socket) => {
+		return async (data: Buffer): Promise<void> => {
+			if (!this.parseOptions) return;
+			const state = this.socketStates.get(socket);
+			if (!state || state.isProcessing) return;
 
-			const request = await HTTPRequestParser.parse(data, this.parseOptions);
+			try {
+				state.isProcessing = true;
+				const request = await HTTPRequestParser.parse(data, this.parseOptions);
 
-			if (!socket.destroyed) {
-				const res = await this.options.onRequest(request, socket);
-				await this.writer.writeResponse(res, socket);
+				if (!socket.destroyed) {
+					const response = await this.options.onRequest(request, socket);
+					await this.writer.writeResponse(response, socket);
+				}
+			} catch (error) {
+				this.handleError(error instanceof Error ? error : new Error(String(error)));
+				this.cleanupSocket(socket);
+				socket.destroy();
+			} finally {
+				if (state) state.isProcessing = false;
 			}
-		} catch (error) {
-			this.handleError(error instanceof Error ? error : new Error(String(error)));
-			this.cleanupSocket(socket);
-			socket.destroy();
-		} finally {
-			if (this.processingBuffers.has(socket)) {
-				this.processingBuffers.set(socket, false);
-			}
-		}
-	}
+		};
+	};
+
+	private readonly handleError = (error: Error): void => {
+		this.options.onError(error);
+	};
 
 	private cleanupSocket(socket: Socket): void {
-		const handlers = this.socketHandlers.get(socket);
-		if (handlers) {
-			socket.removeListener('data', handlers.onData);
-			socket.removeListener('close', handlers.onClose);
-			socket.removeListener('error', handlers.onError);
-			this.socketHandlers.delete(socket);
-		}
+		const state = this.socketStates.get(socket);
+		if (!state) return;
 
+		socket
+			.removeListener('data', state.handlers.onData)
+			.removeListener('close', state.handlers.onClose)
+			.removeListener('error', state.handlers.onError);
+
+		this.socketStates.delete(socket);
 		this.connections.delete(socket);
-		this.processingBuffers.delete(socket);
 	}
 
-	private handleClose(socket: Socket): void {
-		this.cleanupSocket(socket);
-	}
-
-	private handleSocketError(socket: Socket, error: Error): void {
-		this.handleError(error);
-		this.cleanupSocket(socket);
-		socket.destroy();
-	}
-
-	private handleError(error: Error): void {
-		this.options.onError(error);
-	}
-
-	private cleanupServer(): void {
-		this.server.removeListener('error', this.boundServerError);
-		this.server.removeListener('connection', this.boundConnection);
-	}
-
-	public listen(port: number, hostname?: string): Promise<void> {
-		return new Promise((resolve, reject) => {
-			const errorHandler = (error: Error) => {
-				this.server.off('error', errorHandler);
+	public listen(port: number, hostname: string = '0.0.0.0'): Promise<void> {
+		return new Promise<void>((resolve, reject) => {
+			const onError = (error: Error) => {
+				this.server.off('error', onError);
 				reject(error);
 			};
 
-			this.server.once('error', errorHandler);
-			this.server.listen(port, hostname, () => {
-				this.server.off('error', errorHandler);
+			this.server.once('error', onError).listen(port, hostname, () => {
+				this.server.off('error', onError);
 				resolve();
 			});
 		});
@@ -154,52 +122,38 @@ export class KaitoServer {
 	public async close(): Promise<void> {
 		this.isClosing = true;
 
+		// Cleanup and destroy all sockets
 		for (const socket of this.connections) {
 			this.cleanupSocket(socket);
 			socket.destroy();
 		}
 
-		this.cleanupServer();
+		// Remove server listeners
+		this.server.removeAllListeners('error').removeAllListeners('connection');
 
-		return new Promise((resolve, reject) => {
-			this.server.close(error => {
-				if (error) {
-					reject(error);
-				} else {
-					resolve();
-				}
+		return new Promise<void>((resolve, reject) => {
+			this.server.close((error?: Error) => {
+				if (error) reject(error);
+				else resolve();
 			});
 		});
 	}
 
-	/**
-	 * Asynchronously get the number of concurrent connections on the server. Works
-	 * when sockets were sent to forks.
-	 * @returns A promise resolving with the number of connections
-	 */
 	public getConnections(): Promise<number> {
-		return new Promise((resolve, reject) => {
+		return new Promise<number>((resolve, reject) => {
 			this.server.getConnections((error, count) => {
-				if (error) {
-					reject(error);
-				} else {
-					resolve(count);
-				}
+				if (error) reject(error);
+				else resolve(count);
 			});
 		});
 	}
 
 	public get address(): string {
 		const addr = this.server.address();
-
-		if (addr === null) {
-			throw new Error('Cannot read HTTPServer address, beacuse it has not started listening or it has been closed');
+		if (!addr) {
+			throw new Error('Server address unavailable: not listening or closed');
 		}
 
-		if (typeof addr === 'string') {
-			return addr;
-		} else {
-			return `${addr.address}:${addr.port}`;
-		}
+		return typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
 	}
 }
