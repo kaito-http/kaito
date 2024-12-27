@@ -1,5 +1,5 @@
 import {createServer, Server, Socket} from 'node:net';
-import {HTTPRequestParser, type ParseOptions} from './parser/request.ts';
+import {HTTPRequestParser, type ParseOptions} from './parser/http-parser.ts';
 import {HTTPResponseWriter} from './writer/response.ts';
 
 export interface KaitoServerOptions {

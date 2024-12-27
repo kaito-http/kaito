@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {before, describe, test} from 'node:test';
-import {HTTPRequestParser, type ParseOptions} from '../src/parser/request.ts';
+import {HTTPRequestParser, type ParseOptions} from '../src/parser/http-parser.ts';
 import {httpStringFromRequest} from './utils.ts';
 
 const options: ParseOptions = {
