@@ -1,8 +1,7 @@
-export type {HTTPMethod} from 'find-my-way';
 export * from './error.ts';
-export * from './req.ts';
-export * from './res.ts';
+export * from './request.ts';
 export * from './route.ts';
-export * from './router.ts';
+export * from './router/router.ts';
+export type {KaitoMethod} from './router/types.ts';
 export * from './server.ts';
 export * from './util.ts';

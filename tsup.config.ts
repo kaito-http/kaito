@@ -1,7 +1,7 @@
-import {defineConfig} from 'tsup';
+import {type Options} from 'tsup';
 
-export const config = defineConfig({
+export const config: Options = {
 	entry: ['./src/index.ts'],
 	dts: true,
 	format: ['esm', 'cjs'],
-});
+};

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type {ExtractRouteParams, InferParsable, KaitoMethod, Parsable} from './util.ts';
+import type {KaitoMethod} from './router/types.ts';
+import type {ExtractRouteParams, InferParsable, Parsable} from './util.ts';
 
 export type RouteArgument<Path extends string, Context, QueryOutput, BodyOutput> = {
 	ctx: Context;
@@ -10,9 +11,7 @@ export type RouteArgument<Path extends string, Context, QueryOutput, BodyOutput>
 
 export type AnyQueryDefinition = Record<string, Parsable<any, string | undefined>>;
 
-export type RouteRunner<Result, Path extends string, Context, QueryOutput, BodyOutput> = (
-	args: RouteArgument<Path, Context, QueryOutput, BodyOutput>,
-) => Promise<Result>;
+export type Through<From, To> = (context: From) => Promise<To>;
 
 export type Route<
 	// Router context
@@ -26,7 +25,7 @@ export type Route<
 	Query extends AnyQueryDefinition,
 	Body extends Parsable,
 > = {
-	through: (context: ContextFrom) => Promise<ContextTo>;
+	through: Through<ContextFrom, ContextTo>;
 	body?: Body;
 	query?: Query;
 	path: Path;
@@ -43,9 +42,9 @@ export type Route<
 	): Promise<Result>;
 };
 
-export type AnyRoute<FromContext = any, ToContext = any> = Route<
-	FromContext,
-	ToContext,
+export type AnyRoute<ContextFrom = any, ContextTo = any> = Route<
+	ContextFrom,
+	ContextTo,
 	any,
 	any,
 	any,

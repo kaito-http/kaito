@@ -1,11 +1,11 @@
 {
-	"name": "@kaito-http/client",
-	"version": "3.0.0-beta.10",
+	"name": "@kaito-http/llhttp-wasm",
 	"type": "module",
-	"author": "Alistair Smith <hi@alistair.sh>",
+	"version": "3.0.0-beta.10",
 	"description": "Functional HTTP Framework for TypeScript",
 	"scripts": {
-		"build": "tsup"
+		"build-wasm": "node --import=tsx scripts/build-wasm.ts",
+		"build": "yarn build-wasm && tsup"
 	},
 	"exports": {
 		"./package.json": "./package.json",
@@ -14,23 +14,18 @@
 			"require": "./dist/index.cjs"
 		}
 	},
+	"files": [
+		"./package.json",
+		"dist",
+		"README.md"
+	],
+	"author": "Alistair Smith <hi@alistair.sh>",
 	"homepage": "https://github.com/kaito-http/kaito",
-	"repository": "https://github.com/kaito-http/kaito",
 	"keywords": [
 		"typescript",
 		"http",
 		"framework"
 	],
-	"license": "MIT",
-	"files": [
-		"package.json",
-		"README.md",
-		"dist"
-	],
-	"devDependencies": {
-		"tsup": "^8.3.5"
-	},
-	"dependencies": {
-		"pathcat": "^1.4.0"
-	}
+	"repository": "https://github.com/kaito-http/kaito",
+	"license": "MIT"
 }

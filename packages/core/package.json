@@ -1,6 +1,6 @@
 {
 	"name": "@kaito-http/core",
-	"version": "3.0.0",
+	"version": "3.0.0-beta.10",
 	"type": "module",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"description": "Functional HTTP Framework for TypeScript",
@@ -23,7 +23,6 @@
 	],
 	"license": "MIT",
 	"devDependencies": {
-		"@types/content-type": "^1.1.8",
 		"@types/node": "^22.10.2",
 		"tsup": "^8.3.5",
 		"typescript": "^5.7.2"
@@ -35,10 +34,5 @@
 	],
 	"bugs": {
 		"url": "https://github.com/kaito-http/kaito/issues"
-	},
-	"dependencies": {
-		"content-type": "^1.0.5",
-		"find-my-way": "^9.1.0",
-		"raw-body": "^3.0.0"
 	}
 }
