@@ -109,7 +109,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		});
 	};
 
-	public freeze = (server: ServerConfig<ContextFrom, any>) => {
+	public freeze = (server: Omit<ServerConfig<ContextFrom, any>, 'router'>) => {
 		const routes = new Map<string, Map<KaitoMethod, AnyRoute>>();
 
 		for (const route of this.state.routes) {
