@@ -8,9 +8,9 @@
 	"type": "module",
 	"workspaces": {
 		"packages": [
-			"packages/*",
-			"apps/*",
-			"examples/*",
+			"./packages/*",
+			"./apps/*",
+			"./examples/*",
 			"./deps/llhttp"
 		]
 	},
