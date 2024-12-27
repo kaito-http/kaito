@@ -1,5 +1,3 @@
-Okay, here's a friendly, practical, and unpretentious guide to using the `@kaito-http/client` npm package, designed to match the style of the previous documentation for `@kaito-http/core`.
-
 # Kaito Client: Your Type-Safe HTTP Companion
 
 The `@kaito-http/client` package is a companion library for `@kaito-http/core`. It provides a type-safe way to interact with your Kaito-powered APIs. Think of it as a strongly typed, convenient wrapper around the standard `fetch` API. It makes it easier to make requests to your API with strong types and predictable results.
