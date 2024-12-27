@@ -1,6 +1,6 @@
 import {createServer, Server, Socket} from 'node:net';
-import {HTTPRequestParser, type ParseOptions} from './parser/http-parser.ts';
-import {HTTPResponseWriter} from './writer/response.ts';
+import {HTTPRequestParser, type ParseOptions} from './protocol/parser.ts';
+import {HTTPResponseWriter} from './protocol/response.ts';
 
 export interface KaitoServerOptions {
 	onRequest: (request: Request, socket: Socket) => Promise<Response>;
