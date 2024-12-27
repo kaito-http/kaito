@@ -82,14 +82,6 @@ class HTTPRequestParser extends HTTPParser {
 		this.bodyStream = null;
 	}
 
-	private static headersObjectToHeaders(headers: Record<string, string>): Headers {
-		const headersInstance = new Headers();
-		for (const [key, value] of Object.entries(headers)) {
-			headersInstance.append(key, value);
-		}
-		return headersInstance;
-	}
-
 	private getBodyStream() {
 		if (this.bodyStream) {
 			return this.bodyStream;
@@ -100,10 +92,10 @@ class HTTPRequestParser extends HTTPParser {
 	}
 
 	override onRequest(
-		versionMajor: number,
-		versionMinor: number,
-		headersAsMap: Record<string, string>,
-		// rawHeaders: string[],
+		// versionMajor: number,
+		// versionMinor: number,
+		// headersAsMap: Record<string, string>,
+		headers: Headers,
 		methodNum: number,
 		url: string,
 		// upgrade: boolean,
@@ -111,31 +103,16 @@ class HTTPRequestParser extends HTTPParser {
 	): number {
 		const methodString = invertedMethodMap[methodNum];
 
-		const protocol = this.options.secure ? 'https' : 'http';
-		const fullUrl = new URL(url, `${protocol}://${this.options.hostname}`);
+		const full = URL.canParse(url) ? url : `${this.options.secure ? 'https' : 'http'}://${this.options.hostname}${url}`;
 
-		const request = new Request(fullUrl, {
+		const request = new Request(full, {
 			body: methodString === 'HEAD' || methodString === 'GET' ? null : this.getBodyStream().readable,
 			method: methodString,
-			headers: HTTPRequestParser.headersObjectToHeaders(headersAsMap),
+			headers,
 			// keepalive: shouldKeepAlive,
 
 			// @ts-expect-error
 			duplex: 'half',
-		});
-
-		Object.defineProperties(request, {
-			httpVersion: {
-				value: `${versionMajor}.${versionMinor}`,
-				enumerable: true,
-				configurable: true,
-			},
-			_kaito_parsed_url: {
-				value: fullUrl,
-				enumerable: true,
-				configurable: true,
-				writable: false,
-			},
 		});
 
 		this.resolve(request);

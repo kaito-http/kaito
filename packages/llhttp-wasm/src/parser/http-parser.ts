@@ -145,39 +145,36 @@ export abstract class HTTPParser {
 	}
 
 	protected abstract onRequest(
-		versionMajor: number,
-		versionMinor: number,
-		headers: Record<string, string>,
+		// versionMajor: number,
+		// versionMinor: number,
+		headers: Headers,
 		// rawHeaders: string[],
 		method: number,
-		url: string,
-	) // upgrade: boolean,
-	// shouldKeepAlive: boolean,
+		url: string, // upgrade: boolean,
+	) // shouldKeepAlive: boolean,
 	: CallbackReturn;
 
 	public abstract onBody(chunk: Buffer): CallbackReturn;
 	public abstract onMessageComplete(): CallbackReturn;
 
 	public onHeadersComplete(): number {
-		const versionMajor = (wasmInstance.exports as WASMExports).llhttp_get_http_major(this[kPtr]);
-		const versionMinor = (wasmInstance.exports as WASMExports).llhttp_get_http_minor(this[kPtr]);
+		// const versionMajor = (wasmInstance.exports as WASMExports).llhttp_get_http_major(this[kPtr]);
+		// const versionMinor = (wasmInstance.exports as WASMExports).llhttp_get_http_minor(this[kPtr]);
 		// const upgrade = Boolean((wasmInstance.exports as WASMExports).llhttp_get_upgrade(this[kPtr]));
-		const shouldKeepAlive = Boolean((wasmInstance.exports as WASMExports).llhttp_should_keep_alive(this[kPtr]));
+		// const shouldKeepAlive = Boolean((wasmInstance.exports as WASMExports).llhttp_should_keep_alive(this[kPtr]));
 
-		const headers: Record<string, string> = {};
-		const rawHeaders: string[] = [];
+		const headers = new Headers();
 
 		for (let i = 0; i < this[kHeaderFields].length; i++) {
 			const field = this[kHeaderFields][i];
 			const value = this[kHeaderValues][i];
-			headers[field!.toLowerCase()] = value!;
-			rawHeaders.push(field!, value!);
+			headers.append(field!, value!);
 		}
 
 		const method = (wasmInstance.exports as WASMExports).llhttp_get_method(this[kPtr]);
 		return this.onRequest(
-			versionMajor,
-			versionMinor,
+			// versionMajor,
+			// versionMinor,
 			headers,
 			// rawHeaders,
 			method,
