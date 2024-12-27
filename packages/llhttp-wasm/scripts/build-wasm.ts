@@ -1,13 +1,13 @@
 import {execSync} from 'child_process';
 import {readFileSync, writeFileSync} from 'fs';
-import {resolve, join, dirname} from 'path';
+import {dirname, join, resolve} from 'path';
 import {fileURLToPath} from 'url';
 
 async function buildLLHTTPWasm() {
 	try {
 		const scriptDir = dirname(fileURLToPath(import.meta.url));
 		const dockerfilePath = resolve(scriptDir, './Build.dockerfile');
-		const buildDir = resolve(scriptDir, './wasm');
+		const buildDir = resolve(scriptDir, '../src/llhttp/build/wasm');
 
 		console.log('Building Docker image...');
 		execSync(`docker build -t llhttp -f ${dockerfilePath} .`, {
