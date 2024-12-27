@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {describe, test} from 'node:test';
+import {before, describe, test} from 'node:test';
 import {HTTPRequestParser, type ParseOptions} from '../src/parser/request.ts';
 import {httpStringFromRequest} from './utils.ts';
 
@@ -15,6 +15,10 @@ async function parse(path: `/${string}`, init?: RequestInit) {
 
 	return HTTPRequestParser.parse(Buffer.from(httpString), options);
 }
+
+before(async () => {
+	await parse('/warmup');
+});
 
 describe('HTTPRequestParser', async () => {
 	test('did parse bare GET', async () => {
