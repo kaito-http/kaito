@@ -82,7 +82,7 @@ class HTTPRequestParser extends HTTPParser {
 		this.bodyStream = null;
 	}
 
-	private getBodyStream() {
+	private getOrCreateStream() {
 		if (this.bodyStream) {
 			return this.bodyStream;
 		}
@@ -106,7 +106,7 @@ class HTTPRequestParser extends HTTPParser {
 		const full = `${this.options.secure ? 'https' : 'http'}://${this.options.host}${path}`;
 
 		const request = new Request(full, {
-			body: methodString === 'HEAD' || methodString === 'GET' ? null : this.getBodyStream().readable,
+			body: methodString === 'HEAD' || methodString === 'GET' ? null : this.getOrCreateStream().readable,
 			method: methodString,
 			headers,
 			// keepalive: shouldKeepAlive,
@@ -122,20 +122,20 @@ class HTTPRequestParser extends HTTPParser {
 
 	override onBody(chunk: Buffer): number {
 		try {
-			this.getBodyStream().pushChunk(new Uint8Array(chunk));
+			this.getOrCreateStream().pushChunk(new Uint8Array(chunk));
 			return CallbackReturn.OK;
 		} catch (err) {
-			this.getBodyStream().error(err instanceof Error ? err : new Error(String(err)));
+			this.getOrCreateStream().error(err instanceof Error ? err : new Error(String(err)));
 			return CallbackReturn.ERROR;
 		}
 	}
 
 	public override onMessageComplete(): number {
 		try {
-			this.getBodyStream().complete();
+			this.bodyStream?.complete();
 		} catch (err) {
 			const error = err instanceof Error ? err : new Error(String(err));
-			this.getBodyStream().error(error);
+			this.bodyStream?.error(error);
 		}
 
 		return CallbackReturn.OK;
@@ -149,7 +149,7 @@ class HTTPRequestParser extends HTTPParser {
 				this.execute(data);
 			} catch (err) {
 				const error = err instanceof Error ? err : new Error(String(err));
-				this.getBodyStream().error(error);
+				this.bodyStream?.error(error);
 				reject(error);
 			}
 		});
