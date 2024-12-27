@@ -7,7 +7,7 @@ class BodyStream {
 	private chunks: Uint8Array[] = [];
 	private closed = false;
 
-	constructor() {
+	public constructor() {
 		this.stream = new ReadableStream<Uint8Array>(
 			{
 				start: controller => {
@@ -63,7 +63,7 @@ class BodyStream {
 
 export interface ParseOptions {
 	secure: boolean;
-	hostname: string;
+	host: string;
 }
 
 const invertedMethodMap = Object.fromEntries(
@@ -97,13 +97,13 @@ class HTTPRequestParser extends HTTPParser {
 		// headersAsMap: Record<string, string>,
 		headers: Headers,
 		methodNum: number,
-		url: string,
+		path: string,
 		// upgrade: boolean,
 		// shouldKeepAlive: boolean,
 	): number {
 		const methodString = invertedMethodMap[methodNum];
 
-		const full = URL.canParse(url) ? url : `${this.options.secure ? 'https' : 'http'}://${this.options.hostname}${url}`;
+		const full = `${this.options.secure ? 'https' : 'http'}://${this.options.host}${path}`;
 
 		const request = new Request(full, {
 			body: methodString === 'HEAD' || methodString === 'GET' ? null : this.getBodyStream().readable,

@@ -2,32 +2,21 @@ type HTTPVersion = '1.0' | '1.1' | '2.0';
 
 interface RequestToHttpOptions {
 	version?: HTTPVersion;
-	includeHost?: boolean;
 }
 
-async function requestInitToHttp(
-	input: RequestInfo | URL,
-	init?: RequestInit,
-	options: RequestToHttpOptions = {},
-): Promise<string> {
-	const {version = '1.1', includeHost = true} = options;
-	const request = new Request(input, init);
-	const method = request.method;
+async function httpStringFromRequest(request: Request, options: RequestToHttpOptions = {}): Promise<string> {
+	const {version = '1.1'} = options;
+
 	const url = new URL(request.url);
+
 	const headers = Array.from(request.headers.entries());
 
-	// Build the request line
-	let httpString = `${method} `;
-	httpString += includeHost ? request.url : `${url.pathname}${url.search}${url.hash}`;
+	let httpString = `${request.method} `;
+	httpString += `${url.pathname}${url.search}${url.hash}`;
 	httpString += ` HTTP/${version}\r\n`;
 
-	// Add host header if not present and includeHost is true
-	if (includeHost && !request.headers.has('host')) {
-		headers.push(['Host', url.host]);
-	}
-
 	// Add content-length if body exists and not already set
-	const bodyText = await getRequestBody(request.clone());
+	const bodyText = await getRequestBody(request);
 	if (bodyText && !request.headers.has('content-length')) {
 		headers.push(['Content-Length', Buffer.from(bodyText).length.toString()]);
 	}
@@ -90,4 +79,4 @@ async function getRequestBody(request: Request): Promise<string | null> {
 	return bodyText;
 }
 
-export {requestInitToHttp, type HTTPVersion, type RequestToHttpOptions};
+export {httpStringFromRequest, type HTTPVersion, type RequestToHttpOptions};
