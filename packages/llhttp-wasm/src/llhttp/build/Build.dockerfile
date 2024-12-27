@@ -11,7 +11,7 @@ RUN apk add --no-cache \
 
 WORKDIR /build
 
-RUN git clone https://github.com/TheLDB/llhttp.git .
+RUN git clone https://github.com/kaito-http/llhttp.git .
 
 # Install dependencies
 RUN npm ci
