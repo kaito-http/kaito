@@ -10,7 +10,8 @@
 		"packages": [
 			"packages/*",
 			"apps/*",
-			"examples/*"
+			"examples/*",
+			"./deps/llhttp"
 		]
 	},
 	"scripts": {
@@ -32,6 +33,7 @@
 		"eslint-config-next": "^15.1.2",
 		"eslint-config-xo": "^0.46.0",
 		"eslint-config-xo-typescript": "^7.0.0",
+		"node-api-headers": "^1.4.0",
 		"prettier": "^3.4.2",
 		"tsup": "^8.3.5",
 		"typescript": "^5.7.2"
