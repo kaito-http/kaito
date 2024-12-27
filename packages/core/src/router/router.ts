@@ -5,6 +5,7 @@ import type {AnyQueryDefinition, AnyRoute, Route} from '../route.ts';
 import type {ServerConfig} from '../server.ts';
 import type {Parsable} from '../util.ts';
 import type {KaitoMethod} from './types.ts';
+
 type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 	R extends Route<
 		infer ContextFrom,
@@ -56,6 +57,10 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 
 	public constructor(options: RouterState<R, ContextFrom, ContextTo>) {
 		this.state = options;
+	}
+
+	public get routes() {
+		return this.state.routes;
 	}
 
 	public add = <

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type {ExtractRouteParams, InferParsable, KaitoMethod, Parsable} from './util.ts';
+import type {KaitoMethod} from './router/types.ts';
+import type {ExtractRouteParams, InferParsable, Parsable} from './util.ts';
 
 export type RouteArgument<Path extends string, Context, QueryOutput, BodyOutput> = {
 	ctx: Context;

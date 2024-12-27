@@ -3,9 +3,8 @@ import type {KaitoRequest} from './request.ts';
 import type {Router} from './router/router.ts';
 import type {GetContext} from './util.ts';
 
-export type After<BeforeAfterContext> = (ctx: BeforeAfterContext) => Promise<void>;
-
-type Before<BeforeAfterContext> = (req: KaitoRequest) => Promise<BeforeAfterContext | Response>;
+export type Before<BeforeAfterContext> = (req: Request) => Promise<BeforeAfterContext | Response>;
+export type After<BeforeAfterContext> = (ctx: BeforeAfterContext, response: Response) => Promise<void>;
 
 export type ServerConfigWithBefore<BeforeAfterContext> =
 	| {before: Before<BeforeAfterContext>; after?: After<BeforeAfterContext>}
@@ -23,7 +22,7 @@ export type ServerConfig<ContextFrom, BeforeAfterContext> = ServerConfigWithBefo
 export function createKaitoHandler<Context, BeforeAfterContext = null>(
 	config: ServerConfig<Context, BeforeAfterContext>,
 ) {
-	const router = config.router.freeze(config);
+	const match = config.router.freeze(config);
 
 	return async (request: Request): Promise<Response> => {
 		let before: BeforeAfterContext = undefined as never;
@@ -38,7 +37,7 @@ export function createKaitoHandler<Context, BeforeAfterContext = null>(
 			before = result;
 		}
 
-		const response = await router.match(request);
+		const response = await match(request);
 
 		if ('after' in config && config.after) {
 			await config.after(before, response);

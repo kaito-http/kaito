@@ -17,13 +17,6 @@ export type ExtractRouteParams<T extends string> = string extends T
 export type GetContext<Result> = (req: KaitoRequest) => Promise<Result>;
 
 /**
- * @deprecated use `createUtilities` instead
- */
-export function createGetContext<Context>(callback: GetContext<Context>): GetContext<Context> {
-	return callback;
-}
-
-/**
  * A helper function to create typed necessary functions
  *
  * @example
@@ -50,8 +43,6 @@ export function createUtilities<Context>(getContext: GetContext<Context>): {
 		router: () => Router.create<Context>(),
 	};
 }
-
-export type InferContext<T> = T extends (req: KaitoRequest, res: KaitoResponse) => Promise<infer U> ? U : never;
 
 export interface Parsable<Output = any, Input = Output> {
 	_input: Input;
