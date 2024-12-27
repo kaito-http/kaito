@@ -1,7 +1,6 @@
 import {KaitoServer} from './src/server.ts';
 
 const s = new KaitoServer({
-	onError: console.log,
 	onRequest: async req => Response.json(req.url),
 });
 

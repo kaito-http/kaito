@@ -30,11 +30,14 @@ export class KaitoServer {
 	private readonly connections = new Set<Socket>();
 	private readonly keepAliveTimeout: number;
 	private readonly maxRequestsPerConnection: number;
+	private readonly options: KaitoServerOptions;
 
 	private isClosing = false;
 	private parseOptions: ParseOptions | null = null;
 
-	constructor(private readonly options: KaitoServerOptions) {
+	constructor(options: KaitoServerOptions) {
+		this.options = options;
+
 		this.keepAliveTimeout = options.keepAlive?.timeout ?? 5000;
 		this.maxRequestsPerConnection = options.keepAlive?.maxRequests ?? 1000;
 		this.writer = new HTTPResponseWriter();
