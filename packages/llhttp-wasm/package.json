@@ -1,4 +1,15 @@
 {
 	"name": "@kaito-http/llhttp-wasm",
-	"type": "module"
+	"type": "module",
+	"author": "Alistair Smith <hi@alistair.sh>",
+	"description": "Functional HTTP Framework for TypeScript",
+	"homepage": "https://github.com/kaito-http/kaito",
+	"keywords": [
+		"typescript",
+		"http",
+		"framework"
+	],
+	"license": "MIT",
+	"repository": "https://github.com/kaito-http/kaito",
+	"version": "3.0.0"
 }
