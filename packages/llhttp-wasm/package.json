@@ -13,6 +13,7 @@
 	"repository": "https://github.com/kaito-http/kaito",
 	"version": "3.0.0-beta.9",
 	"scripts": {
-		"build": "node --import=tsx scripts/build-wasm.ts"
+		"build-wasm": "node --import=tsx scripts/build-wasm.ts",
+		"build": "yarn build-wasm && tsup"
 	}
 }
