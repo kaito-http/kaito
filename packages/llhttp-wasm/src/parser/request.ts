@@ -72,23 +72,23 @@ const invertedMethodMap = Object.fromEntries(
 
 class HTTPRequestParser extends HTTPParser {
 	private options: ParseOptions;
-	private bodyStream: BodyStream | null;
+	private stream: BodyStream | null;
 
 	private resolve!: (value: Request) => void;
 
 	constructor(options: ParseOptions) {
 		super(ParserType.REQUEST);
 		this.options = options;
-		this.bodyStream = null;
+		this.stream = null;
 	}
 
 	private getOrCreateStream() {
-		if (this.bodyStream) {
-			return this.bodyStream;
+		if (this.stream) {
+			return this.stream;
 		}
 
-		this.bodyStream = new BodyStream();
-		return this.bodyStream;
+		this.stream = new BodyStream();
+		return this.stream;
 	}
 
 	override onRequest(
@@ -132,16 +132,16 @@ class HTTPRequestParser extends HTTPParser {
 
 	public override onMessageComplete(): number {
 		try {
-			this.bodyStream?.complete();
+			this.stream?.complete();
 		} catch (err) {
 			const error = err instanceof Error ? err : new Error(String(err));
-			this.bodyStream?.error(error);
+			this.stream?.error(error);
 		}
 
 		return CallbackReturn.OK;
 	}
 
-	public parse(data: Buffer): Promise<Request> {
+	private parse(data: Buffer): Promise<Request> {
 		return new Promise((resolve, reject) => {
 			this.resolve = resolve;
 
@@ -149,7 +149,7 @@ class HTTPRequestParser extends HTTPParser {
 				this.execute(data);
 			} catch (err) {
 				const error = err instanceof Error ? err : new Error(String(err));
-				this.bodyStream?.error(error);
+				this.stream?.error(error);
 				reject(error);
 			}
 		});
