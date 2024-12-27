@@ -41,7 +41,8 @@ async function buildLLHTTPWasm() {
 			}
 		}
 		console.log('Build completed successfully!');
-		console.log(`Base64 file: ${join(scriptDir, './base64.ts')}`);
+		console.log(`Base64 file: ${join(scriptDir, '../base64.ts')}`);
+		console.log(`Artifacts: ${buildDir}`);
 	} catch (error) {
 		console.error('Build failed:', error);
 		process.exit(1);
