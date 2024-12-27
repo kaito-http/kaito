@@ -942,6 +942,8 @@ __metadata:
 "@kaito-http/llhttp-wasm@workspace:packages/llhttp-wasm":
   version: 0.0.0-use.local
   resolution: "@kaito-http/llhttp-wasm@workspace:packages/llhttp-wasm"
+  dependencies:
+    "@types/node": "npm:^22.10.2"
   languageName: unknown
   linkType: soft
 
