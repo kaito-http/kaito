@@ -139,13 +139,13 @@ export class KaitoServer {
 	public listen(port: number, hostname?: string): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const errorHandler = (error: Error) => {
-				this.server.removeListener('error', errorHandler);
+				this.server.off('error', errorHandler);
 				reject(error);
 			};
 
 			this.server.once('error', errorHandler);
 			this.server.listen(port, hostname, () => {
-				this.server.removeListener('error', errorHandler);
+				this.server.off('error', errorHandler);
 				resolve();
 			});
 		});
