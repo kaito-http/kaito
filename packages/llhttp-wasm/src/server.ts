@@ -35,7 +35,7 @@ export class KaitoServer {
 	private isClosing = false;
 	private parseOptions: ParseOptions | null = null;
 
-	constructor(options: KaitoServerOptions) {
+	public constructor(options: KaitoServerOptions) {
 		this.options = options;
 
 		this.keepAliveTimeout = options.keepAlive?.timeout ?? 5000;
@@ -214,6 +214,7 @@ export class KaitoServer {
 
 	public get address(): string {
 		const addr = this.server.address();
+
 		if (!addr) {
 			throw new Error('Server address unavailable: not listening or closed');
 		}
