@@ -1,6 +1,7 @@
-import {createServer, Server, Socket} from 'node:net';
+import {createServer, type Server, type Socket} from 'node:net';
+
 import {HTTPRequestParser, type ParseOptions} from './protocol/parser.ts';
-import {HTTPResponseWriter} from './protocol/response.ts';
+import {HTTPResponseWriter} from './protocol/writer.ts';
 
 /**
  * Options for configuring the Kaito server.
