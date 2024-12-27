@@ -17,4 +17,4 @@ const result = await api.post('/v1/users/:id', {
 	},
 });
 
-console.log(result);
+console.log(result.body.name);

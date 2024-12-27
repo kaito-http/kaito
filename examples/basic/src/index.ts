@@ -1,5 +1,6 @@
 import {createKaitoHandler, KaitoError} from '@kaito-http/core';
 import {KaitoServer} from '@kaito-http/llhttp-wasm';
+import {default as Stripe, default as stripe} from 'stripe';
 import {z} from 'zod';
 import {getContext, router} from './context.ts';
 
@@ -32,9 +33,32 @@ const users = router()
 		});
 	});
 
+const webCrypto = Stripe.createSubtleCryptoProvider();
+const exampleHandlingStripe = router().post('/webhook', async ({ctx}) => {
+	const body = await ctx.req.text();
+
+	const sig = ctx.req.headers.get('stripe-signature');
+
+	if (!sig) {
+		throw new KaitoError(400, 'No signature provided');
+	}
+
+	const event = await stripe.webhooks.constructEventAsync(
+		body,
+		sig,
+		process.env.STRIPE_ENDPOINT_SECRET!, // You should validate this exists, and not use the `!` operator
+		undefined,
+		webCrypto,
+	);
+
+	console.log('Stripe event:', event);
+});
+
 const v1 = router()
 	// Basic inline route
 	.get('/time', async () => Date.now())
+
+	.merge('/stripe', exampleHandlingStripe)
 
 	// Basic object route
 	.post('/time', {

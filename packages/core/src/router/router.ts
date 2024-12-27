@@ -81,9 +81,22 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 						>
 					: Omit<Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>, 'path' | 'method' | 'through'>)
 			| Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>['run'],
-	): Router<ContextFrom, ContextTo, R | Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>> => {
-		const merged: Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body> = {
-			...(typeof route === 'object' ? route : {run: route}),
+	): Router<
+		ContextFrom,
+		ContextTo,
+		R | Route<ContextFrom, ContextTo, Result extends Response ? unknown : Result, Path, Method, Query, Body>
+	> => {
+		const merged: Route<
+			ContextFrom,
+			ContextTo,
+			Result extends Response ? unknown : Result,
+			Path,
+			Method,
+			Query,
+			Body
+		> = {
+			// TODO: Ideally fix the typing here, but this will be replaced in Kaito v4 where all routes must return a Response (which we can type)
+			...((typeof route === 'object' ? route : {run: route}) as {run: never}),
 			method,
 			path,
 			through: this.state.through,
