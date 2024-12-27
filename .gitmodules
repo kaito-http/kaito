@@ -1,0 +1,3 @@
+[submodule "deps/llhttp"]
+	path = deps/llhttp
+	url = https://github.com/kaito-http/llhttp
