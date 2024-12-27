@@ -4,7 +4,7 @@ import {KaitoRequest} from '../request.ts';
 import {KaitoResponse} from '../response.ts';
 import type {AnyQueryDefinition, AnyRoute, Route} from '../route.ts';
 import type {ServerConfig} from '../server.ts';
-import {type Parsable} from '../util.ts';
+import {type ErroredAPIResponse, type Parsable} from '../util.ts';
 import type {KaitoMethod} from './types.ts';
 
 type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
@@ -159,11 +159,13 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 			const {route, params} = findRoute(method, url.pathname);
 
 			if (!route) {
-				return KaitoResponse.json(404, {
+				const body: ErroredAPIResponse = {
 					success: false,
 					data: null,
 					message: `Cannot ${method} ${url.pathname}`,
-				});
+				};
+
+				return Response.json(body, {status: 404});
 			}
 
 			const request = new KaitoRequest(url, req);
@@ -191,7 +193,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 				const error = WrappedError.maybe(e);
 
 				if (error instanceof KaitoError) {
-					return KaitoResponse.json(error.status, {
+					return response.status(error.status).toResponse({
 						success: false,
 						data: null,
 						message: error.message,

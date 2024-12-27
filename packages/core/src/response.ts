@@ -15,16 +15,6 @@ import type {APIResponse} from './util.ts';
  * ```
  */
 export class KaitoResponse {
-	/**
-	 * Create a new Response object with JSON body, typed to the standard Kaito JSON format
-	 * @param status The status code
-	 * @param data The body data
-	 * @returns A Response object with JSON body
-	 */
-	public static json<T>(status: number, data: APIResponse<T>): Response {
-		return Response.json(data, {status});
-	}
-
 	private _headers: Headers | null;
 	private _status: number;
 
