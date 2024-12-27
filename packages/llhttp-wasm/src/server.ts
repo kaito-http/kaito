@@ -5,27 +5,40 @@ import {HTTPResponseWriter} from './writer/response.ts';
 export interface KaitoServerOptions {
 	onRequest: (request: Request, socket: Socket) => Promise<Response>;
 	onError: (error: Error) => void;
+	keepAlive?: {
+		timeout?: number; // Idle timeout in milliseconds (default: 5000)
+		maxRequests?: number; // Max requests per connection (default: 1000)
+	};
 }
 
-type SocketState = {
+interface SocketState {
 	isProcessing: boolean;
+	requestCount: number;
+	keepAlive: boolean;
+	idleTimeout: NodeJS.Timeout | null;
 	handlers: {
 		onData: (data: Buffer) => Promise<void>;
 		onClose: () => void;
 		onError: (error: Error) => void;
 	};
-};
+}
 
 export class KaitoServer {
 	private readonly server: Server;
-	private readonly writer = new HTTPResponseWriter();
+	private readonly writer: HTTPResponseWriter;
 	private readonly socketStates = new WeakMap<Socket, SocketState>();
 	private readonly connections = new Set<Socket>();
+	private readonly keepAliveTimeout: number;
+	private readonly maxRequestsPerConnection: number;
 
 	private isClosing = false;
 	private parseOptions: ParseOptions | null = null;
 
 	constructor(private readonly options: KaitoServerOptions) {
+		this.keepAliveTimeout = options.keepAlive?.timeout ?? 5000;
+		this.maxRequestsPerConnection = options.keepAlive?.maxRequests ?? 1000;
+		this.writer = new HTTPResponseWriter();
+
 		this.server = createServer()
 			.on('error', this.handleError)
 			.on('connection', this.handleConnection)
@@ -45,9 +58,11 @@ export class KaitoServer {
 
 		this.connections.add(socket);
 
-		// Create handlers once per socket and store state
 		const state: SocketState = {
 			isProcessing: false,
+			requestCount: 0,
+			keepAlive: true, // Default to true for HTTP/1.1
+			idleTimeout: null,
 			handlers: {
 				onData: this.createDataHandler(socket),
 				onClose: () => this.cleanupSocket(socket),
@@ -62,21 +77,65 @@ export class KaitoServer {
 		this.socketStates.set(socket, state);
 
 		socket.on('data', state.handlers.onData).on('close', state.handlers.onClose).on('error', state.handlers.onError);
+
+		// Set initial idle timeout
+		this.resetIdleTimeout(socket, state);
 	};
+
+	private resetIdleTimeout(socket: Socket, state: SocketState): void {
+		if (state.idleTimeout) {
+			clearTimeout(state.idleTimeout);
+		}
+
+		if (state.keepAlive && !socket.destroyed) {
+			state.idleTimeout = setTimeout(() => {
+				this.cleanupSocket(socket);
+				socket.destroy();
+			}, this.keepAliveTimeout);
+		}
+	}
 
 	private readonly createDataHandler = (socket: Socket) => {
 		return async (data: Buffer): Promise<void> => {
 			if (!this.parseOptions) return;
+
 			const state = this.socketStates.get(socket);
 			if (!state || state.isProcessing) return;
 
 			try {
 				state.isProcessing = true;
-				const request = await HTTPRequestParser.parse(data, this.parseOptions);
+				const {request, metadata} = await HTTPRequestParser.parse(data, this.parseOptions);
+
+				// Update keep-alive state based on request headers
+				const connection = request.headers.get('connection')?.toLowerCase();
+				state.keepAlive = connection !== 'close' && (metadata.httpVersionStr === '1.1' || connection === 'keep-alive');
+
+				// Check if we've exceeded max requests per connection
+				state.requestCount++;
+				if (state.requestCount >= this.maxRequestsPerConnection) {
+					state.keepAlive = false;
+				}
 
 				if (!socket.destroyed) {
 					const response = await this.options.onRequest(request, socket);
+
+					// Set appropriate Connection header in response
+					if (!state.keepAlive) {
+						response.headers.set('Connection', 'close');
+					} else if (metadata.httpVersionStr === '1.0') {
+						response.headers.set('Connection', 'keep-alive');
+					}
+
 					await this.writer.writeResponse(response, socket);
+
+					// Close connection if keep-alive is disabled
+					if (!state.keepAlive) {
+						this.cleanupSocket(socket);
+						socket.destroy();
+					} else {
+						// Reset idle timeout for keep-alive connections
+						this.resetIdleTimeout(socket, state);
+					}
 				}
 			} catch (error) {
 				this.handleError(error instanceof Error ? error : new Error(String(error)));
@@ -95,6 +154,10 @@ export class KaitoServer {
 	private cleanupSocket(socket: Socket): void {
 		const state = this.socketStates.get(socket);
 		if (!state) return;
+
+		if (state.idleTimeout) {
+			clearTimeout(state.idleTimeout);
+		}
 
 		socket
 			.removeListener('data', state.handlers.onData)

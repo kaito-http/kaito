@@ -88,11 +88,17 @@ class BodyStream {
 	}
 }
 
+export interface RequestMetadata {
+	httpVersionMajor: number;
+	httpVersionMinor: number;
+	httpVersionStr: string;
+}
+
 class HTTPRequestParser extends HTTPParser {
 	private options: ParseOptions;
 	private stream: BodyStream | null;
 
-	private resolve!: (value: Request) => void;
+	private resolve!: (value: {request: Request; metadata: RequestMetadata}) => void;
 
 	constructor(options: ParseOptions) {
 		super(ParserType.REQUEST);
@@ -111,8 +117,8 @@ class HTTPRequestParser extends HTTPParser {
 	}
 
 	override onRequest(
-		// versionMajor: number,
-		// versionMinor: number,
+		versionMajor: number,
+		versionMinor: number,
 		// headersAsMap: Record<string, string>,
 		headers: Headers,
 		methodNum: number,
@@ -134,7 +140,14 @@ class HTTPRequestParser extends HTTPParser {
 			duplex: 'half',
 		});
 
-		this.resolve(request);
+		this.resolve({
+			request,
+			metadata: {
+				httpVersionMajor: versionMajor,
+				httpVersionMinor: versionMinor,
+				httpVersionStr: `${versionMajor}.${versionMinor}`,
+			},
+		});
 
 		return CallbackReturn.OK;
 	}
@@ -160,7 +173,10 @@ class HTTPRequestParser extends HTTPParser {
 		return CallbackReturn.OK;
 	}
 
-	private parse(data: Buffer): Promise<Request> {
+	private parse(data: Buffer): Promise<{
+		request: Request;
+		metadata: RequestMetadata;
+	}> {
 		return new Promise((resolve, reject) => {
 			this.resolve = resolve;
 
@@ -174,7 +190,10 @@ class HTTPRequestParser extends HTTPParser {
 		});
 	}
 
-	public static async parse(data: Buffer, options: ParseOptions): Promise<Request> {
+	public static async parse(
+		data: Buffer,
+		options: ParseOptions,
+	): Promise<{request: Request; metadata: RequestMetadata}> {
 		const parser = new HTTPRequestParser(options);
 
 		try {
