@@ -18,3 +18,7 @@ const result = await api.post('/v1/users/:id', {
 });
 
 console.log(result.body.name);
+
+// Since the run function on the server returns `Response`, we have to only assume this is `unknown`
+const valueOfAResponse = await api.get('/v1/response/');
+console.log(valueOfAResponse);

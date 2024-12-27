@@ -54,11 +54,21 @@ const exampleHandlingStripe = router().post('/webhook', async ({ctx}) => {
 	console.log('Stripe event:', event);
 });
 
+const exampleReturningResponse = router().get('/', async () => {
+	return new Response('Hello world', {
+		status: 200,
+		headers: {
+			'Content-Type': 'text/plain',
+		},
+	});
+});
+
 const v1 = router()
 	// Basic inline route
 	.get('/time', async () => Date.now())
 
 	.merge('/stripe', exampleHandlingStripe)
+	.merge('/response', exampleReturningResponse)
 
 	// Basic object route
 	.post('/time', {
