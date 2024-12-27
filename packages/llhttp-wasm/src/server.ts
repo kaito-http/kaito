@@ -2,12 +2,37 @@ import {createServer, Server, Socket} from 'node:net';
 import {HTTPRequestParser, type ParseOptions} from './protocol/parser.ts';
 import {HTTPResponseWriter} from './protocol/response.ts';
 
+/**
+ * Options for configuring the Kaito server.
+ */
 export interface KaitoServerOptions {
+	/**
+	 * Callback function that is called when a request is received.
+	 * @param request - The incoming request object.
+	 * @param socket - The socket associated with the request.
+	 * @returns A promise that resolves to a response object.
+	 */
 	onRequest: (request: Request, socket: Socket) => Promise<Response>;
+
+	/**
+	 * Optional callback function that is called when an error occurs.
+	 * @param error - The error object.
+	 */
 	onError?: (error: Error) => void;
+
+	/**
+	 * Optional keep-alive settings.
+	 */
 	keepAlive?: {
-		timeout?: number; // Idle timeout in milliseconds (default: 5000)
-		maxRequests?: number; // Max requests per connection (default: 1000)
+		/**
+		 * Idle timeout in milliseconds. Default is 5000.
+		 */
+		timeout?: number;
+
+		/**
+		 * Maximum number of requests per connection. Default is 1000.
+		 */
+		maxRequests?: number;
 	};
 }
 
