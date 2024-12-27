@@ -1,6 +1,6 @@
-#include "../../../node_modules/node-api-headers/include/node_api.h"
+#include <node_api.h>
 #include "../../../deps/llhttp/build/llhttp.h"
-#include "../libuv/include/uv.h"
+#include "../libuv/include/uv.h"  // Using the exact path from your monorepo
 #include <string.h>
 #include <stdlib.h>
 
