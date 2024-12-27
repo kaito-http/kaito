@@ -1,4 +1,4 @@
-import {createServer, Socket} from 'node:net';
+import {createServer, Server, Socket} from 'node:net';
 import {HTTPRequestParser, type ParseOptions} from './parser/request.ts';
 import {HTTPResponseWriter} from './writer/response.ts';
 
@@ -17,8 +17,8 @@ type SocketState = {
 };
 
 export class KaitoServer {
+	private readonly server: Server;
 	private readonly writer = new HTTPResponseWriter();
-	private readonly server;
 	private readonly socketStates = new WeakMap<Socket, SocketState>();
 	private readonly connections = new Set<Socket>();
 
