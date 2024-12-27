@@ -1,11 +1,10 @@
-import {parse as parseContentType} from 'content-type';
-import type {HTTPMethod} from 'find-my-way';
-import {Readable} from 'node:stream';
-import {json} from 'node:stream/consumers';
-import getRawBody from 'raw-body';
-import type {KaitoRequest} from './req.ts';
-import type {KaitoResponse} from './res.ts';
-import {Router} from './router.ts';
+import type {KaitoRequest} from './request.ts';
+import {Router} from './router/router.ts';
+
+export type ErroredAPIResponse = {success: false; data: null; message: string};
+export type SuccessfulAPIResponse<T> = {success: true; data: T; message: 'OK'};
+export type APIResponse<T> = ErroredAPIResponse | SuccessfulAPIResponse<T>;
+export type AnyResponse = APIResponse<unknown>;
 
 export type ExtractRouteParams<T extends string> = string extends T
 	? Record<string, string>
@@ -15,9 +14,7 @@ export type ExtractRouteParams<T extends string> = string extends T
 			? {[k in Param]: string}
 			: {};
 
-export type KaitoMethod = HTTPMethod | '*';
-
-export type GetContext<Result> = (req: KaitoRequest, res: KaitoResponse) => Promise<Result>;
+export type GetContext<Result> = (req: KaitoRequest) => Promise<Result>;
 
 /**
  * @deprecated use `createUtilities` instead
@@ -56,13 +53,6 @@ export function createUtilities<Context>(getContext: GetContext<Context>): {
 
 export type InferContext<T> = T extends (req: KaitoRequest, res: KaitoResponse) => Promise<infer U> ? U : never;
 
-export function getLastEntryInMultiHeaderValue(headerValue: string | string[]): string {
-	const normalized = Array.isArray(headerValue) ? headerValue.join(',') : headerValue;
-	const lastIndex = normalized.lastIndexOf(',');
-
-	return lastIndex === -1 ? normalized.trim() : normalized.slice(lastIndex + 1).trim();
-}
-
 export interface Parsable<Output = any, Input = Output> {
 	_input: Input;
 	parse: (value: unknown) => Output;
@@ -87,28 +77,3 @@ export type AddStartSlashes<T extends string> = T extends `/${infer U}` ? `/${U}
 export type NormalizePath<T extends string> = AddStartSlashes<RemoveEndSlashes<T>>;
 export type Values<T> = T[keyof T];
 export type NoEmpty<T> = [keyof T] extends [never] ? never : T;
-
-export async function getBody(req: KaitoRequest): Promise<unknown> {
-	if (!req.headers['content-type']) {
-		return null;
-	}
-
-	const buffer = await getRawBody(req.raw);
-
-	const {type} = parseContentType(req.headers['content-type']);
-
-	switch (type) {
-		case 'application/json': {
-			return json(Readable.from(buffer));
-		}
-
-		default: {
-			if (process.env.NODE_ENV === 'development') {
-				console.warn('[kaito] Unsupported content type:', type);
-				console.warn('[kaito] This message is only shown in development mode.');
-			}
-
-			return null;
-		}
-	}
-}

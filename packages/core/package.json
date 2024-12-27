@@ -38,7 +38,6 @@
 	},
 	"dependencies": {
 		"content-type": "^1.0.5",
-		"find-my-way": "^9.1.0",
 		"raw-body": "^3.0.0"
 	}
 }

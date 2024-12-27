@@ -1,18 +1,11 @@
-import * as http from 'node:http';
 import type {KaitoError} from './error.ts';
-import type {KaitoRequest} from './req.ts';
-import type {KaitoResponse} from './res.ts';
-import type {Router} from './router.ts';
-import type {GetContext, KaitoMethod} from './util.ts';
+import type {KaitoRequest} from './request.ts';
+import type {Router} from './router/router.ts';
+import type {GetContext} from './util.ts';
 
-export type Before<BeforeAfterContext> = (
-	req: http.IncomingMessage,
-	res: http.ServerResponse,
-) => Promise<BeforeAfterContext>;
+export type After<BeforeAfterContext> = (ctx: BeforeAfterContext) => Promise<void>;
 
-export type HandlerResult = {success: true; data: unknown} | {success: false; data: {status: number; message: string}};
-
-export type After<BeforeAfterContext> = (ctx: BeforeAfterContext, result: HandlerResult) => Promise<void>;
+type Before<BeforeAfterContext> = (req: KaitoRequest) => Promise<BeforeAfterContext | Response>;
 
 export type ServerConfigWithBefore<BeforeAfterContext> =
 	| {before: Before<BeforeAfterContext>; after?: After<BeforeAfterContext>}
@@ -24,76 +17,33 @@ export type ServerConfig<ContextFrom, BeforeAfterContext> = ServerConfigWithBefo
 	router: Router<ContextFrom, unknown, any>;
 	getContext: GetContext<ContextFrom>;
 
-	// Escape hatch for routes that will be loaded to fmw
-	// but are not in the router.
-	// Useful for things like OAuth callbacks or webhook endpoints.
-	rawRoutes?: Partial<
-		Record<
-			KaitoMethod,
-			Array<{
-				path: string;
-				handler: (request: http.IncomingMessage, response: http.ServerResponse) => unknown;
-			}>
-		>
-	>;
-
-	onError(arg: {
-		error: Error;
-		req: KaitoRequest;
-		res: KaitoResponse;
-	}): Promise<KaitoError | {status: number; message: string}>;
+	onError(arg: {error: Error; req: KaitoRequest}): Promise<KaitoError | {status: number; message: string}>;
 };
 
-export function createFMWServer<Context, BeforeAfterContext = null>(config: ServerConfig<Context, BeforeAfterContext>) {
+export function createKaitoHandler<Context, BeforeAfterContext = null>(
+	config: ServerConfig<Context, BeforeAfterContext>,
+) {
 	const router = config.router.freeze(config);
 
-	const rawRoutes = config.rawRoutes ?? {};
-
-	for (const method in rawRoutes) {
-		if (!Object.prototype.hasOwnProperty.call(rawRoutes, method)) {
-			continue;
-		}
-
-		const routes = rawRoutes[method as keyof typeof rawRoutes];
-
-		if (!routes || routes.length === 0) {
-			continue;
-		}
-
-		for (const route of routes) {
-			if (method === '*') {
-				router.all(route.path, route.handler);
-				continue;
-			}
-
-			router[method.toLowerCase() as Lowercase<Exclude<KaitoMethod, '*'>>](route.path, route.handler);
-		}
-	}
-
-	const server = http.createServer(async (req, res) => {
-		let before: BeforeAfterContext;
+	return async (request: Request): Promise<Response> => {
+		let before: BeforeAfterContext = undefined as never;
 
 		if (config.before) {
-			before = await config.before(req, res);
-		} else {
-			before = undefined as never;
+			const result = await config.before(request);
+
+			if (result instanceof Response) {
+				return result;
+			}
+
+			before = result;
 		}
 
-		// If the user has sent a response (e.g. replying to CORS), we don't want to do anything else.
-		if (res.headersSent) {
-			return;
-		}
-
-		const result = (await router.lookup(req, res)) as HandlerResult;
+		const response = await router.match(request);
 
 		if ('after' in config && config.after) {
-			await config.after(before, result);
+			await config.after(before, response);
 		}
-	});
 
-	return {server, fmw: router} as const;
-}
-
-export function createServer<Context, BeforeAfterContext = null>(config: ServerConfig<Context, BeforeAfterContext>) {
-	return createFMWServer(config).server;
+		return response;
+	};
 }

@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type {KaitoRequest} from './req.ts';
-import type {KaitoResponse} from './res.ts';
 import type {ExtractRouteParams, InferParsable, KaitoMethod, Parsable} from './util.ts';
 
 export type RouteArgument<Path extends string, Context, QueryOutput, BodyOutput> = {
@@ -52,20 +50,3 @@ export type AnyRoute<ContextFrom = any, ContextTo = any> = Route<
 	AnyQueryDefinition,
 	any
 >;
-
-interface RawRouteExecutionArgument<Ctx> {
-	ctx: Ctx;
-	req: KaitoRequest;
-	res: KaitoResponse;
-}
-
-export type RawRouteRunner<Ctx> = (arg: RawRouteExecutionArgument<Ctx>) => Promise<undefined> | Promise<void>;
-
-export interface RawRouteDefinition<ContextFrom, ContextTo> {
-	through: Through<ContextFrom, ContextTo>;
-	run: RawRouteRunner<ContextTo>;
-	method: KaitoMethod;
-	path: string;
-}
-
-export type AnyRawRoute<ContextFrom = any, ContextTo = any> = RawRouteDefinition<ContextFrom, ContextTo>;
