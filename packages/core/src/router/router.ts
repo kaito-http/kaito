@@ -3,7 +3,7 @@ import {KaitoError, WrappedError} from '../error.ts';
 import {KaitoRequest} from '../request.ts';
 import type {AnyQueryDefinition, AnyRoute, Route} from '../route.ts';
 import type {ServerConfig} from '../server.ts';
-import type {Parsable} from '../util.ts';
+import {apiresponse, type Parsable} from '../util.ts';
 import type {KaitoMethod} from './types.ts';
 
 type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
@@ -116,6 +116,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 			if (!routes.has(route.path)) {
 				routes.set(route.path, new Map());
 			}
+
 			routes.get(route.path)!.set(route.method, route);
 		}
 
@@ -153,17 +154,15 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		return async (req: Request): Promise<Response> => {
 			const url = new URL(req.url);
 			const method = req.method as KaitoMethod;
+
 			const {route, params} = findRoute(method, url.pathname);
 
 			if (!route) {
-				return Response.json(
-					{
-						success: false,
-						data: null,
-						message: `Cannot ${method} ${url.pathname}`,
-					},
-					{status: 404},
-				);
+				return apiresponse(404, {
+					success: false,
+					data: null,
+					message: `Cannot ${method} ${url.pathname}`,
+				});
 			}
 
 			const request = new KaitoRequest(req);
@@ -181,7 +180,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 					params,
 				});
 
-				return Response.json({
+				return apiresponse(200, {
 					success: true,
 					data: result,
 					message: 'OK',
@@ -190,28 +189,22 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 				const error = WrappedError.maybe(e);
 
 				if (error instanceof KaitoError) {
-					return Response.json(
-						{
-							success: false,
-							data: null,
-							message: error.message,
-						},
-						{status: error.status},
-					);
+					return apiresponse(error.status, {
+						success: false,
+						data: null,
+						message: error.message,
+					});
 				}
 
 				const {status, message} = await server
 					.onError({error, req: request})
 					.catch(() => ({status: 500, message: 'Internal Server Error'}));
 
-				return Response.json(
-					{
-						success: false,
-						data: null,
-						message,
-					},
-					{status},
-				);
+				return apiresponse(status, {
+					success: false,
+					data: null,
+					message,
+				});
 			}
 		};
 	};

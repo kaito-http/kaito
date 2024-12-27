@@ -96,7 +96,7 @@ const handler = createKaitoHandler({
 	// Before runs code before every request. This is helpful for setting things like CORS.
 	// You can return a value from before, and it will be passed to the after call.
 	// If you end the response in `before`, the router will not be called.
-	async before(req) {
+	before: async req => {
 		if (req.method === 'OPTIONS') {
 			return new Response(null, {
 				status: 204,
@@ -112,7 +112,7 @@ const handler = createKaitoHandler({
 	// Access the return value from `before` in `after`.
 	// If the before function ends the response, this *will* be called!
 	// So be careful about logging request durations etc
-	async after({timestamp}, res) {
+	after: async ({timestamp}, res) => {
 		res.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
 		res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
 		res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');

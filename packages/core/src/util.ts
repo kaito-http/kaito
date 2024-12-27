@@ -6,6 +6,12 @@ export type SuccessfulAPIResponse<T> = {success: true; data: T; message: 'OK'};
 export type APIResponse<T> = ErroredAPIResponse | SuccessfulAPIResponse<T>;
 export type AnyResponse = APIResponse<unknown>;
 
+export function apiresponse<T>(status: number, response: APIResponse<T>): Response {
+	return Response.json(response, {
+		status,
+	});
+}
+
 export type ExtractRouteParams<T extends string> = string extends T
 	? Record<string, string>
 	: T extends `${string}:${infer Param}/${infer Rest}`
