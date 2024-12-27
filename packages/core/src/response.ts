@@ -31,11 +31,6 @@ export class KaitoResponse {
 		return this._headers;
 	}
 
-	public header(key: string, value: string) {
-		this.headers.set(key, value);
-		return this;
-	}
-
 	public status(status: number) {
 		this._status = status;
 		return this;

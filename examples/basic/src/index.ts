@@ -89,6 +89,16 @@ const root = router()
 	// Merge this router with another router (v1)
 	.merge('/v1', v1);
 
+const CORS_HEADERS_ITERABLE = [
+	['Access-Control-Allow-Origin', 'http://localhost:3000'],
+	['Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'],
+	['Access-Control-Allow-Headers', 'Content-Type, Authorization'],
+	['Access-Control-Max-Age', '86400'],
+	['Access-Control-Allow-Credentials', 'true'],
+] satisfies Iterable<[string, string]>;
+
+const CORS_HEADERS = new Headers(CORS_HEADERS_ITERABLE);
+
 const handler = createKaitoHandler({
 	router: root,
 	getContext,
@@ -100,6 +110,7 @@ const handler = createKaitoHandler({
 		if (req.method === 'OPTIONS') {
 			return new Response(null, {
 				status: 204,
+				headers: CORS_HEADERS,
 			});
 		}
 
@@ -113,11 +124,9 @@ const handler = createKaitoHandler({
 	// If the before function ends the response, this *will* be called!
 	// So be careful about logging request durations etc
 	after: async ({timestamp}, res) => {
-		res.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
-		res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-		res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-		res.headers.set('Access-Control-Max-Age', '86400');
-		res.headers.set('Access-Control-Allow-Credentials', 'true');
+		for (const [key, value] of CORS_HEADERS_ITERABLE) {
+			res.headers.set(key, value);
+		}
 
 		console.log(`Request took ${Date.now() - timestamp}ms`);
 	},

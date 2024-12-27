@@ -184,6 +184,10 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 					params,
 				});
 
+				if (result instanceof Response) {
+					return result;
+				}
+
 				return response.toResponse({
 					success: true,
 					data: result,
