@@ -160,8 +160,7 @@ const handler = createKaitoHandler({
 	},
 
 	// Access the return value from `before` in `after`.
-	// If the before function ends the response, this *will* be called!
-	// So be careful about logging request durations etc
+	// This does NOT get called if `before` returns a response.
 	after: async ({timestamp}, res) => {
 		for (const [key, value] of CORS_HEADERS_ITERABLE) {
 			res.headers.set(key, value);
