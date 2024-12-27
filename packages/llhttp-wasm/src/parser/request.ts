@@ -1,6 +1,15 @@
 import * as constants from '../llhttp/build/wasm/constants.js';
 import {CallbackReturn, HTTPParser, ParserType} from './http-parser.ts';
 
+export interface ParseOptions {
+	secure: boolean;
+	host: string;
+}
+
+const invertedMethodMap = Object.fromEntries(
+	Object.entries(constants.METHODS).map(entry => [entry[1], entry[0]] as const),
+);
+
 class BodyStream {
 	private stream: ReadableStream<Uint8Array>;
 	private controller: ReadableStreamDefaultController<Uint8Array> | null = null;
@@ -12,11 +21,18 @@ class BodyStream {
 			{
 				start: controller => {
 					this.controller = controller;
+
 					while (this.chunks.length > 0) {
 						const chunk = this.chunks.shift();
-						if (chunk) controller.enqueue(chunk);
+
+						if (chunk) {
+							controller.enqueue(chunk);
+						}
 					}
-					if (this.closed) controller.close();
+
+					if (this.closed) {
+						controller.close();
+					}
 				},
 				cancel: () => {
 					this.chunks = [];
@@ -26,7 +42,7 @@ class BodyStream {
 			},
 			{
 				highWaterMark: 1,
-				size: (chunk: Uint8Array) => chunk.byteLength,
+				size: chunk => chunk.byteLength,
 			},
 		);
 	}
@@ -36,7 +52,10 @@ class BodyStream {
 	}
 
 	public pushChunk(chunk: Uint8Array): void {
-		if (this.closed) return;
+		if (this.closed) {
+			return;
+		}
+
 		if (this.controller) {
 			this.controller.enqueue(chunk);
 		} else {
@@ -45,30 +64,29 @@ class BodyStream {
 	}
 
 	public complete(): void {
-		if (this.closed) return;
+		if (this.closed) {
+			return;
+		}
+
 		this.closed = true;
+
 		if (this.controller) {
 			this.controller.close();
 		}
 	}
 
 	public error(err: Error): void {
-		if (this.closed) return;
+		if (this.closed) {
+			return;
+		}
+
 		this.closed = true;
+
 		if (this.controller) {
 			this.controller.error(err);
 		}
 	}
 }
-
-export interface ParseOptions {
-	secure: boolean;
-	host: string;
-}
-
-const invertedMethodMap = Object.fromEntries(
-	Object.entries(constants.METHODS).map(entry => [entry[1], entry[0]] as const),
-);
 
 class HTTPRequestParser extends HTTPParser {
 	private options: ParseOptions;
@@ -78,6 +96,7 @@ class HTTPRequestParser extends HTTPParser {
 
 	constructor(options: ParseOptions) {
 		super(ParserType.REQUEST);
+
 		this.options = options;
 		this.stream = null;
 	}
@@ -167,15 +186,3 @@ class HTTPRequestParser extends HTTPParser {
 }
 
 export {HTTPRequestParser};
-
-// const text = JSON.stringify({alistair: true, landon: true});
-
-// const r = await HTTPRequestParser.parse(
-// 	Buffer.from(['POST /owo?name=true HTTP/1.1', 'X: Y', `Content-Length: ${text.length}`, '', text, ''].join('\r\n')),
-// 	{
-// 		secure: false,
-// 		hostname: '127.0.0.1',
-// 	},
-// );
-
-// console.log(await r.json());

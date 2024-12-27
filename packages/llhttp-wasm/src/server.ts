@@ -2,10 +2,10 @@ import {createServer, Socket} from 'node:net';
 import {HTTPRequestParser, type ParseOptions} from './parser/request.ts';
 import {HTTPResponseWriter} from './writer/response.ts';
 
-type HTTPServerOptions = {
+export interface KaitoServerOptions {
 	onRequest: (request: Request, socket: Socket) => Promise<Response>;
 	onError: (error: Error) => void;
-};
+}
 
 type SocketHandlers = {
 	onData: (data: Buffer) => Promise<void>;
@@ -13,7 +13,7 @@ type SocketHandlers = {
 	onError: (error: Error) => void;
 };
 
-class HTTPSocketServer {
+export class KaitoServer {
 	private readonly writer = new HTTPResponseWriter();
 	private readonly server;
 
@@ -23,7 +23,7 @@ class HTTPSocketServer {
 	private boundConnection: (socket: Socket) => void;
 	private isClosing: boolean = false;
 	private processingBuffers: WeakMap<Socket, boolean>;
-	private options: HTTPServerOptions;
+	private options: KaitoServerOptions;
 
 	private _parseOptions: ParseOptions | null = null;
 	private get parseOptions(): ParseOptions {
@@ -37,7 +37,7 @@ class HTTPSocketServer {
 		};
 	}
 
-	constructor(options: HTTPServerOptions) {
+	constructor(options: KaitoServerOptions) {
 		this.server = createServer();
 		this.connections = new Set();
 		this.socketHandlers = new WeakMap();
@@ -203,5 +203,3 @@ class HTTPSocketServer {
 		}
 	}
 }
-
-export {HTTPSocketServer, type HTTPServerOptions};

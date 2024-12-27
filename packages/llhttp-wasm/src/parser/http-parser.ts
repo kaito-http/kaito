@@ -1,6 +1,5 @@
-import {wasmBase64} from '../llhttp/troll.ts';
+import {wasmBase64} from '../llhttp/base64.ts';
 
-// We'll export these for users of the parser
 export const enum ParserType {
 	REQUEST = 1,
 	RESPONSE = 2,
@@ -151,8 +150,8 @@ export abstract class HTTPParser {
 		// rawHeaders: string[],
 		method: number,
 		url: string, // upgrade: boolean,
-	) // shouldKeepAlive: boolean,
-	: CallbackReturn;
+		// shouldKeepAlive: boolean,
+	): CallbackReturn;
 
 	public abstract onBody(chunk: Buffer): CallbackReturn;
 	public abstract onMessageComplete(): CallbackReturn;

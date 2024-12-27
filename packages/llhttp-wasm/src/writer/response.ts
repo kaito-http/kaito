@@ -81,7 +81,9 @@ export class HTTPResponseWriter {
 	}
 
 	private async writeBody(body: BodyInit | null, socket: Socket, useChunkedEncoding: boolean): Promise<void> {
-		if (!body) return;
+		if (!body) {
+			return;
+		}
 
 		if (body instanceof ReadableStream) {
 			await this.writeStreamBody(body, socket, useChunkedEncoding);
