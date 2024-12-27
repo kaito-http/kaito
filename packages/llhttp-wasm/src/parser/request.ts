@@ -135,7 +135,6 @@ class HTTPRequestParser extends HTTPParser {
 			body: methodString === 'HEAD' || methodString === 'GET' ? null : this.getOrCreateStream().readable,
 			method: methodString,
 			headers,
-			// keepalive: shouldKeepAlive,
 
 			// @ts-expect-error
 			duplex: 'half',
