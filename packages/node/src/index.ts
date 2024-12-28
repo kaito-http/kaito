@@ -8,14 +8,11 @@ interface HttpRequest {
 	method: string;
 }
 
-type RequestHandler = (req: HttpRequest) => string;
-
 const addon = require('./http.node');
-const {create} = addon;
+const server = addon.create();
 
 // Create and start the server
 const port = 8080;
-const server = create();
 
 server.listen(port, (req: HttpRequest) => {
 	console.log(`${req.method} ${req.url}`);
@@ -40,11 +37,13 @@ console.log(`Server listening on http://localhost:${port}`);
 // Clean shutdown
 process.on('SIGINT', () => {
 	console.log('\nShutting down server...');
+	server.close();
 	process.exit(0);
 });
 
 // Also handle SIGTERM for the test script
 process.on('SIGTERM', () => {
 	console.log('\nShutting down server...');
+	server.close();
 	process.exit(0);
 });
