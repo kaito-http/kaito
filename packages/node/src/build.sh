@@ -1,109 +1,78 @@
 #!/bin/bash
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$DIR/../../../" && pwd)"
-NODE_INCLUDE=$(node --no-warnings -p "require('node:os').type() === 'Windows_NT' ? process.execPath + '/../include/node' : process.execPath + '/../../include/node'")
-LIBUV_DIR="$DIR/../libuv/.libs"
+# Exit on error
+set -e
 
-# Compile llhttp with LLHTTP_IMPLEMENTATION
-clang -c -fPIC -DLLHTTP_IMPLEMENTATION \
-  "$ROOT_DIR/deps/llhttp/build/c/llhttp.c" \
-  -I"$ROOT_DIR/deps/llhttp/build"
+# Get directory of script
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+WORKSPACE_ROOT="$DIR/../../../"
+LIBUV_DIR="$DIR/../libuv"
+LLHTTP_DIR="$WORKSPACE_ROOT/deps/llhttp"
 
-# Compile llhttp API
-cat > llhttp_api.c << 'EOL'
-#include "llhttp.h"
-#include <stdio.h>
-#include <string.h>
+# Build libuv if needed
+if [ ! -f "$LIBUV_DIR/.libs/libuv.a" ]; then
+    echo "Building libuv..."
+    cd "$LIBUV_DIR"
+    ./autogen.sh
+    ./configure
+    make -j$(nproc)
+    cd "$DIR"
+fi
 
-// Required llhttp callbacks
-int llhttp__on_message_begin(llhttp__internal_t* s) {
-    printf("llhttp__on_message_begin called\n");
-    return 0;
-}
+# Build llhttp if needed
+if [ ! -f "$LLHTTP_DIR/build/libllhttp.a" ]; then
+    echo "Building llhttp..."
+    cd "$LLHTTP_DIR"
+    make
+    cd "$DIR"
+fi
 
-int llhttp__on_url(llhttp__internal_t* s, const unsigned char* at, size_t length) {
-    printf("llhttp__on_url called\n");
-    return 0;
-}
+# Ensure we're in the right directory
+cd "$DIR"
 
-int llhttp__on_status(llhttp__internal_t* s, const unsigned char* at, size_t length) {
-    printf("llhttp__on_status called\n");
-    return 0;
-}
+# Get node paths
+NODE_PREFIX=$(node -e "console.log(process.execPath)")
+NODE_INCLUDE_DIR=$(node -e "console.log(require('node-api-headers').include_dir)")
 
-int llhttp__on_header_field(llhttp__internal_t* s, const unsigned char* at, size_t length) {
-    printf("llhttp__on_header_field called\n");
-    return 0;
-}
+# Compiler and flags
+CXX="clang++"
+CXXFLAGS="-std=c++17 -fPIC -O3"
 
-int llhttp__on_header_value(llhttp__internal_t* s, const unsigned char* at, size_t length) {
-    printf("llhttp__on_header_value called\n");
-    return 0;
-}
+# Include paths
+INCLUDES=(
+  "-I$NODE_INCLUDE_DIR"
+  "-I$WORKSPACE_ROOT/node_modules/node-api-headers/include"
+  "-I$WORKSPACE_ROOT/deps/llhttp/build"
+  "-I$WORKSPACE_ROOT/packages/node/libuv/include"
+)
 
-int llhttp__on_headers_complete(llhttp__internal_t* s) {
-    printf("llhttp__on_headers_complete called\n");
-    return 0;
-}
+# Library paths and libs to link
+LDFLAGS=(
+  "$LIBUV_DIR/.libs/libuv.a"  # Static link libuv
+  "$LLHTTP_DIR/build/libllhttp.a"  # Static link llhttp
+)
 
-int llhttp__on_body(llhttp__internal_t* s, const unsigned char* at, size_t length) {
-    printf("llhttp__on_body called\n");
-    return 0;
-}
+# Platform specific flags
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # On macOS, link against node binary directly
+  LDFLAGS+=("-Wl,-bundle_loader,$NODE_PREFIX")
+  LDFLAGS+=("-bundle")
+else
+  # Linux and others use shared library
+  LDFLAGS+=("-shared")
+  LDFLAGS+=("-lnode")
+fi
 
-int llhttp__on_message_complete(llhttp__internal_t* s) {
-    printf("llhttp__on_message_complete called\n");
-    return 0;
-}
+# Output file
+OUTPUT="http.node"
 
-int llhttp__on_protocol(llhttp__internal_t* s, const unsigned char* at, size_t length) {
-    printf("llhttp__on_protocol called\n");
-    return 0;
-}
+# Build command
+$CXX $CXXFLAGS "${INCLUDES[@]}" \
+  -o "$OUTPUT" \
+  server.cc \
+  "${LDFLAGS[@]}"
 
-int llhttp__on_version(llhttp__internal_t* s, const unsigned char* at, size_t length) {
-    printf("llhttp__on_version called\n");
-    return 0;
-}
+# Make executable
+chmod +x "$OUTPUT"
 
-int llhttp__on_method(llhttp__internal_t* s, const unsigned char* at, size_t length) {
-    printf("llhttp__on_method called\n");
-    return 0;
-}
-
-int llhttp__before_headers_complete(llhttp__internal_t* s) {
-    printf("llhttp__before_headers_complete called\n");
-    return 0;
-}
-
-int llhttp__after_headers_complete(llhttp__internal_t* s) {
-    printf("llhttp__after_headers_complete called\n");
-    return 0;
-}
-
-int llhttp__after_message_complete(llhttp__internal_t* s) {
-    printf("llhttp__after_message_complete called\n");
-    return 0;
-}
-EOL
-
-# Compile our API implementation
-clang -c -fPIC llhttp_api.c \
-  -I"$ROOT_DIR/deps/llhttp/build"
-
-# Then compile our C++ code and link with object files
-clang++ -shared -fPIC -undefined dynamic_lookup \
-  "$DIR/server.cc" \
-  llhttp.o \
-  llhttp_api.o \
-  -I"$ROOT_DIR/deps/llhttp/build" \
-  -I"$(node -p "require('node-api-headers').include_dir")" \
-  -I"$NODE_INCLUDE" \
-  -I"$DIR/../libuv/include" \
-  "$LIBUV_DIR/libuv.a" \
-  -o "$DIR/http.node" \
-  -pthread
-
-chmod +x "$DIR/http.node"
-rm ./*.o llhttp_api.c
+echo "Built $OUTPUT successfully"

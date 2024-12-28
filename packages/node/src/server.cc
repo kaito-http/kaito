@@ -1,12 +1,12 @@
 #include <node_api.h>
-#include "../../../deps/llhttp/build/llhttp.h"
-#include "../libuv/include/uv.h"  // Using the exact path from your monorepo
-#include "../libuv/include/uv/unix.h"  // For UV_HANDLE_CLOSING
+#include "llhttp.h"
+#include "uv.h"
+#include "uv/unix.h" // For UV_HANDLE_CLOSING
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
-#include <execinfo.h>
+#include <execinfo.h> 
 #include <unistd.h>
 
 // Type definitions
@@ -61,10 +61,10 @@ static int on_message_complete(llhttp_t* parser);
 static void signal_handler(int sig) {
     void* array[10];
     size_t size;
-    
+
     // Get void*'s for all entries on the stack
     size = backtrace(array, 10);
-    
+
     // Print out all the frames to stderr
     fprintf(stderr, "\nError: signal %d:\n", sig);
     backtrace_symbols_fd(array, size, STDOUT_FILENO);
@@ -192,7 +192,7 @@ static void send_response(client_t* client, const char* response_str) {
         uv_close((uv_handle_t*)&client->handle, on_close);
         return;
     }
-    
+
     snprintf(wr->buf.base, total_length, response_template, content_length, response_str);
     wr->buf.len = total_length - 1;  // Exclude null terminator
     

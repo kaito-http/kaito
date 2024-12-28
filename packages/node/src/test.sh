@@ -16,7 +16,7 @@ sleep 5
 
 echo "Making request to server..."
 # Make a request with a timeout
-curl -v --max-time 10 http://localhost:3000
+curl -v --max-time 10 http://localhost:8080/test
 
 # Wait a bit to see the response handling
 sleep 2

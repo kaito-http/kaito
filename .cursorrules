@@ -1,0 +1,15 @@
+Remember you can use the test.sh script for testing
+the server, as it will run the server and then run curl,
+and then kill the server after a timeout. This is most
+useful for you, because you can't reply until processes
+are killed/exits.
+
+Don't install global modules with npm
+This project uses yarn and is a monorepo with workspaces
+
+You can use a new node feature to run typescript files:
+`node --experimental-strip-types file.ts`
+
+Do NOT use node-gyp, bindings.gyp or anything like that. I want
+to always use a simple build pipeline, and the node-api-headers
+header files.
