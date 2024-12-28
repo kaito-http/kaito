@@ -22,6 +22,10 @@ typedef struct {
     size_t url_len;
     char* method;
     size_t method_len;
+    char* current_header_field;
+    size_t current_header_field_len;
+    char* current_header_value;
+    size_t current_header_value_len;
     napi_ref headers;
 } client_t;
 
@@ -48,6 +52,42 @@ static int on_url(llhttp_t* parser, const char* at, size_t length) {
     memcpy(client->url, at, length);
     client->url[length] = '\0';
     client->url_len = length;
+    return 0;
+}
+
+static int on_header_field(llhttp_t* parser, const char* at, size_t length) {
+    client_t* client = (client_t*)parser->data;
+    if (client->current_header_field) free(client->current_header_field);
+    client->current_header_field = (char*)malloc(length + 1);
+    memcpy(client->current_header_field, at, length);
+    client->current_header_field[length] = '\0';
+    client->current_header_field_len = length;
+    return 0;
+}
+
+static int on_header_value(llhttp_t* parser, const char* at, size_t length) {
+    client_t* client = (client_t*)parser->data;
+    if (client->current_header_value) free(client->current_header_value);
+    client->current_header_value = (char*)malloc(length + 1);
+    memcpy(client->current_header_value, at, length);
+    client->current_header_value[length] = '\0';
+    client->current_header_value_len = length;
+
+    // Get handle scope
+    napi_handle_scope scope;
+    napi_open_handle_scope(client->env, &scope);
+
+    // Get headers object
+    napi_value headers;
+    napi_get_reference_value(client->env, client->headers, &headers);
+
+    // Add header to object
+    napi_value field, value;
+    napi_create_string_utf8(client->env, client->current_header_field, client->current_header_field_len, &field);
+    napi_create_string_utf8(client->env, client->current_header_value, client->current_header_value_len, &value);
+    napi_set_property(client->env, headers, field, value);
+
+    napi_close_handle_scope(client->env, scope);
     return 0;
 }
 
@@ -105,9 +145,12 @@ static void after_read(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf) 
     }
 
     // Create request object
-    napi_value request, headers;
+    napi_value request;
     napi_create_object(env, &request);
-    napi_create_object(env, &headers);
+
+    // Get headers object from reference
+    napi_value headers;
+    napi_get_reference_value(env, client_data->headers, &headers);
 
     // Set URL
     napi_value url;
@@ -144,6 +187,16 @@ static void after_read(uv_stream_t* client, ssize_t nread, const uv_buf_t* buf) 
     napi_close_handle_scope(env, scope);
 }
 
+static void cleanup_client(client_t* client) {
+    if (client->url) free(client->url);
+    if (client->method) free(client->method);
+    if (client->current_header_field) free(client->current_header_field);
+    if (client->current_header_value) free(client->current_header_value);
+    if (client->headers) napi_delete_reference(client->env, client->headers);
+    if (client->callback) napi_delete_reference(client->env, client->callback);
+    free(client);
+}
+
 static void on_connection(uv_stream_t* server, int status) {
     if (status < 0) return;
 
@@ -155,9 +208,16 @@ static void on_connection(uv_stream_t* server, int status) {
     napi_handle_scope scope;
     napi_open_handle_scope(server_data->env, &scope);
 
+    // Create headers object early
+    napi_value headers;
+    napi_create_object(server_data->env, &headers);
+    napi_create_reference(server_data->env, headers, 1, &client_data->headers);
+
     // Initialize HTTP parser
     llhttp_settings_init(&client_data->settings);
     client_data->settings.on_url = on_url;
+    client_data->settings.on_header_field = on_header_field;
+    client_data->settings.on_header_value = on_header_value;
     client_data->settings.on_headers_complete = on_headers_complete;
 
     llhttp_init(&client_data->parser, HTTP_REQUEST, &client_data->settings);
@@ -176,6 +236,7 @@ static void on_connection(uv_stream_t* server, int status) {
     if (uv_accept(server, (uv_stream_t*)client) == 0) {
         uv_read_start((uv_stream_t*)client, allocator, after_read);
     } else {
+        cleanup_client(client_data);
         uv_close((uv_handle_t*)client, on_close);
     }
 
