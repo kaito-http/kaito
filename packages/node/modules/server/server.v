@@ -4,7 +4,7 @@ import picoev
 import picohttpparser
 
 fn callback(data voidptr, req picohttpparser.Request, mut res picohttpparser.Response) {
-	res.http_ok()
+	res.status(200)
 	res.body('hi')
 	res.end()
 }
