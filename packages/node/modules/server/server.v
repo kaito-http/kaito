@@ -5,9 +5,21 @@ import picohttpparser
 
 fn callback(data voidptr, req picohttpparser.Request, mut res picohttpparser.Response) {
 	if req.method != 'GET' {
-		mut body_reader := req.get_body_reader(req.fd) or { panic('Failed to get body reader') }
+		mut body_reader := req.get_body_reader(req.fd) or {
+			res.status(400)
+			res.body('Failed to get body reader')
+			res.end()
+			return
+		}
 
 		body := body_reader.read_all() or {
+			if err.msg() == 'EOF' {
+				// EOF is normal, it means we've read everything
+				res.status(200)
+				res.body('{"status":"ok"}')
+				res.end()
+				return
+			}
 			res.status(400)
 			res.body('Failed to read body')
 			res.end()
@@ -15,7 +27,12 @@ fn callback(data voidptr, req picohttpparser.Request, mut res picohttpparser.Res
 		}
 
 		body_as_utf8 := body.bytestr()
-		println(body_as_utf8)
+		println('Received body: ${body_as_utf8}')
+
+		res.status(200)
+		res.body('{"status":"ok"}')
+		res.end()
+		return
 	}
 
 	res.status(200)
