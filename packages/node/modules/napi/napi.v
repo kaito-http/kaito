@@ -2,6 +2,7 @@ module napi
 
 #flag -I @VMODROOT/../../node_modules/node-api-headers/include
 #flag darwin -undefined dynamic_lookup
+#include <js_native_api.h>
 #include <node_api.h>
 
 // Basic types
@@ -19,7 +20,7 @@ fn C.napi_set_named_property(env Napi_env, object Napi_value, utf8name &char, va
 fn C.napi_create_int32(env Napi_env, value int, result &Napi_value) Napi_status
 fn C.napi_get_value_int32(env Napi_env, value Napi_value, result &int) Napi_status
 fn C.napi_create_string_utf8(env Napi_env, str &char, length usize, result &Napi_value) Napi_status
-fn C.napi_get_string_utf8(env Napi_env, value Napi_value, buf &char, bufsize usize, result &usize) Napi_status
+fn C.napi_get_value_string_utf8(env Napi_env, value Napi_value, buf &char, bufsize usize, result &usize) Napi_status
 fn C.napi_create_object(env Napi_env, result &Napi_value) Napi_status
 fn C.napi_create_array(env Napi_env, result &Napi_value) Napi_status
 fn C.napi_create_array_with_length(env Napi_env, length usize, result &Napi_value) Napi_status
@@ -143,18 +144,18 @@ pub fn check_status(status Napi_status) ! {
 // String conversion helpers
 pub fn (env &NapiEnv) create_string(s string) !NapiValue {
 	mut result := &Napi_value(unsafe { nil })
-	status := C.napi_create_string_utf8(env.env, unsafe { &char(s.str) }, s.len, result)
+	status := C.napi_create_string_utf8(env.env, s.str, s.len, result)
 	check_status(status)!
-	return NapiValue{env.env, *result}
+	return NapiValue{env.env, unsafe { *result }}
 }
 
 pub fn (val &NapiValue) to_string() !string {
 	mut len := usize(0)
-	mut status := C.napi_get_string_utf8(val.env, val.value, unsafe { nil }, 0, &len)
+	mut status := C.napi_get_value_string_utf8(val.env, val.value, unsafe { nil }, 0, &len)
 	check_status(status)!
 
 	mut buf := []u8{len: int(len) + 1}
-	status = C.napi_get_string_utf8(val.env, val.value, unsafe { &char(buf.data) }, len + 1, &len)
+	status = C.napi_get_value_string_utf8(val.env, val.value, unsafe { &char(buf.data) }, len + 1, &len)
 	check_status(status)!
 	return buf[..len].bytestr()
 }
@@ -164,14 +165,14 @@ pub fn (env &NapiEnv) create_int(n int) !NapiValue {
 	mut result := &Napi_value(unsafe { nil })
 	status := C.napi_create_int32(env.env, n, result)
 	check_status(status)!
-	return NapiValue{env.env, *result}
+	return NapiValue{env.env, unsafe { *result }}
 }
 
 pub fn (env &NapiEnv) create_double(n f64) !NapiValue {
 	mut result := &Napi_value(unsafe { nil })
 	status := C.napi_create_double(env.env, n, result)
 	check_status(status)!
-	return NapiValue{env.env, *result}
+	return NapiValue{env.env, unsafe { *result }}
 }
 
 pub fn (val &NapiValue) to_int() !int {
@@ -193,7 +194,7 @@ pub fn (env &NapiEnv) create_bool(b bool) !NapiValue {
 	mut result := &Napi_value(unsafe { nil })
 	status := C.napi_get_boolean(env.env, b, result)
 	check_status(status)!
-	return NapiValue{env.env, *result}
+	return NapiValue{env.env, unsafe { *result }}
 }
 
 pub fn (val &NapiValue) to_bool() !bool {
@@ -208,11 +209,11 @@ pub fn (env &NapiEnv) create_object() !NapiObject {
 	mut result := &Napi_value(unsafe { nil })
 	status := C.napi_create_object(env.env, result)
 	check_status(status)!
-	return NapiObject{env.env, *result}
+	return NapiObject{env.env, unsafe { *result }}
 }
 
 pub fn (obj &NapiObject) set_named_property(name string, val NapiValue) ! {
-	status := C.napi_set_named_property(obj.env, obj.obj, unsafe { &char(name.str) }, val.value)
+	status := C.napi_set_named_property(obj.env, obj.obj, name.str, val.value)
 	check_status(status)!
 }
 
@@ -221,14 +222,14 @@ pub fn (env &NapiEnv) create_array() !NapiArray {
 	mut result := &Napi_value(unsafe { nil })
 	status := C.napi_create_array(env.env, result)
 	check_status(status)!
-	return NapiArray{env.env, *result}
+	return NapiArray{env.env, unsafe { *result }}
 }
 
 pub fn (env &NapiEnv) create_array_with_length(length usize) !NapiArray {
 	mut result := &Napi_value(unsafe { nil })
 	status := C.napi_create_array_with_length(env.env, length, result)
 	check_status(status)!
-	return NapiArray{env.env, *result}
+	return NapiArray{env.env, unsafe { *result }}
 }
 
 pub fn (arr &NapiArray) get_length() !u32 {
@@ -246,16 +247,16 @@ pub struct ExportedFunction {
 
 pub fn create_function(env Napi_env, name string, callback Napi_callback) !Napi_value {
 	mut result := &Napi_value(unsafe { nil })
-	status := C.napi_create_function(env, unsafe { &char(name.str) }, name.len, callback, unsafe { nil }, result)
+	status := C.napi_create_function(env, name.str, name.len, callback, unsafe { nil }, result)
 	check_status(status)!
-	return *result
+	return unsafe { *result }
 }
 
 // Module exports helper
 pub fn export_functions(env Napi_env, exports Napi_value, functions []ExportedFunction) ! {
 	for func in functions {
 		value := create_function(env, func.name, func.func)!
-		status := C.napi_set_named_property(env, exports, unsafe { &char(func.name.str) }, value)
+		status := C.napi_set_named_property(env, exports, func.name.str, value)
 		check_status(status)!
 	}
 }
@@ -265,21 +266,21 @@ pub fn (env &NapiEnv) get_undefined() !NapiValue {
 	mut result := &Napi_value(unsafe { nil })
 	status := C.napi_get_undefined(env.env, result)
 	check_status(status)!
-	return NapiValue{env.env, *result}
+	return NapiValue{env.env, unsafe { *result }}
 }
 
 pub fn (env &NapiEnv) get_null() !NapiValue {
 	mut result := &Napi_value(unsafe { nil })
 	status := C.napi_get_null(env.env, result)
 	check_status(status)!
-	return NapiValue{env.env, *result}
+	return NapiValue{env.env, unsafe { *result }}
 }
 
 pub fn (env &NapiEnv) get_global() !NapiValue {
 	mut result := &Napi_value(unsafe { nil })
 	status := C.napi_get_global(env.env, result)
 	check_status(status)!
-	return NapiValue{env.env, *result}
+	return NapiValue{env.env, unsafe { *result }}
 }
 
 // Module initialization helper
