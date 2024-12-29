@@ -115,20 +115,24 @@ pub enum Napi_property_attributes {
 
 // High-level wrapper structs
 pub struct NapiEnv {
+pub:
 	env Napi_env
 }
 
 pub struct NapiValue {
+pub:
 	env   Napi_env
 	value Napi_value
 }
 
 pub struct NapiObject {
+pub:
 	env Napi_env
 	obj Napi_value
 }
 
 pub struct NapiArray {
+pub:
 	env Napi_env
 	arr Napi_value
 }
@@ -139,6 +143,13 @@ pub fn check_status(status Napi_status) ! {
 	if status != .napi_ok {
 		return error('NAPI error: ${status}')
 	}
+}
+
+// Error handling helpers
+@[inline]
+pub fn (env &NapiEnv) throw_error(msg string) Napi_value {
+	C.napi_throw_error(env.env, unsafe { nil }, msg.str)
+	return unsafe { nil }
 }
 
 // String conversion helpers
@@ -241,6 +252,7 @@ pub fn (arr &NapiArray) get_length() !u32 {
 
 // Function creation and export helpers
 pub struct ExportedFunction {
+pub:
 	name string
 	func Napi_callback = unsafe { nil }  // Initialize with nil
 }
