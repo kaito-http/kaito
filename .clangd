@@ -3,5 +3,3 @@
 CompileFlags:
   Add: 
     - "-I/Users/ali/code/kaito/node_modules/node-api-headers/include"
-    - "-I/Users/ali/code/kaito/packages/node/libuv/include"
-    - "-I/Users/ali/code/kaito/deps/llhttp/build"
