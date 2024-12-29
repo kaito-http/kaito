@@ -5,21 +5,15 @@ import server
 
 @[export: 'napi_register_module_v1']
 fn napi_register_module_v1(env napi.Napi_env, exports napi.Napi_value) napi.Napi_value {
-	napi_env := &napi.NapiEnv{env}
-	
-	println('Registering module...')  // Debug log
-	
-	// Define the start function - no need for explicit cast
-	functions := [
-		napi.ExportedFunction{
-			name: c'server'
-			func: start
-		}
-	]
+	mut function := unsafe { nil }
+	if C.napi_create_function(env, unsafe { nil }, 0, start, unsafe { nil }, &function) != .napi_ok {
+		C.napi_throw_error(env, unsafe { nil }, c'Failed to create function')
+		return unsafe { nil }
+	}	
 
-	println('Exporting functions...')  // Debug log
-	napi.export_functions(env, exports, functions) or {
-		return napi_env.throw_error('Failed to export functions: ${err}')
+	if C.napi_set_named_property(env, exports, c'server', function) != .napi_ok {
+		C.napi_throw_error(env, unsafe { nil }, c'Failed to add function to exports')
+		return unsafe { nil }
 	}
 
 	return exports
@@ -27,15 +21,16 @@ fn napi_register_module_v1(env napi.Napi_env, exports napi.Napi_value) napi.Napi
 
 fn start(env napi.Napi_env, info napi.Napi_callback_info) napi.Napi_value {
 	port := 8080
-	napi_env := &napi.NapiEnv{env}
+	mut result := unsafe { nil }
 
-	println('Starting server...')  // Debug log
+	println('Starting server...')
 	go server.start(port)
 
 	// Return 0 to indicate success
-	result := napi_env.create_int(0) or {
-		return napi_env.throw_error('Failed to create return value: ${err}')
+	if C.napi_create_int32(env, 0, &result) != .napi_ok {
+		C.napi_throw_error(env, unsafe { nil }, c'Failed to create return value')
+		return unsafe { nil }
 	}
 
-	return result.value
+	return result
 }

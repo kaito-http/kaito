@@ -147,8 +147,8 @@ pub fn check_status(status Napi_status) ! {
 
 // Error handling helpers
 @[inline]
-pub fn (env &NapiEnv) throw_error(msg string) Napi_value {
-	C.napi_throw_error(env.env, unsafe { nil }, msg.str)
+pub fn (env &NapiEnv) throw_error(msg &char) Napi_value {
+	C.napi_throw_error(env.env, unsafe { nil }, msg)
 	return unsafe { nil }
 }
 
@@ -261,38 +261,39 @@ pub:
 
 pub fn create_function(env Napi_env, name &char, callback Napi_callback) !Napi_value {
 	if callback == unsafe { nil } {
-		return error('Callback is null for function ${name}')
+		return error('Callback is null')
 	}
 
 	mut result := &Napi_value(unsafe { nil })
-
-	status := C.napi_create_function(env, name, unsafe { nil }, callback, unsafe { nil },
-		result)
-
+	// Use fixed length for now
+	status := C.napi_create_function(env, name, 6, callback, unsafe { nil }, result)
 	if status != .napi_ok {
 		return error('napi_create_function failed with status ${status}')
 	}
-
 	if unsafe { result == nil } {
 		return error('napi_create_function returned null result')
 	}
-
 	return unsafe { *result }
 }
 
 // Module exports helper
 pub fn export_functions(env Napi_env, exports Napi_value, functions []ExportedFunction) ! {
 	for func in functions {
-		value := create_function(env, func.name, func.func) or {
-			return error('Failed to create function ${func.name}: ${err}')
+		if func.func == unsafe { nil } {
+			return error('Function is null')
 		}
+
+		value := create_function(env, func.name, func.func) or {
+			return error('Failed to create function: ${err}')
+		}
+
 		if unsafe { value == nil } {
-			return error('Created function value is null for ${func.name}')
+			return error('Created function value is null')
 		}
 
 		status := C.napi_set_named_property(env, exports, func.name, value)
 		if status != .napi_ok {
-			return error('Failed to set property ${func.name} with status ${status}')
+			return error('Failed to set property with status ${status}')
 		}
 	}
 }
