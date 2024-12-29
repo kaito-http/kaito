@@ -4,8 +4,6 @@ import json
 import picoev
 import picohttpparser
 
-const port = 8089
-
 struct Message {
 	message string
 }
@@ -50,7 +48,7 @@ fn callback(data voidptr, req picohttpparser.Request, mut res picohttpparser.Res
 	res.end()
 }
 
-pub fn start() ! {
+pub fn start(port int) ! {
 	println('Starting webserver on http://localhost:${port}/ ...')
 	mut s := picoev.new(port: port, cb: callback)!
 	s.serve()

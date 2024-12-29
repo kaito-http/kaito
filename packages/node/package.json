@@ -1,0 +1,18 @@
+{
+	"name": "@kaito-http/node",
+	"type": "module",
+	"scripts": {
+		"build": "./build.sh"
+	},
+	"author": "Alistair Smith <hi@alistair.sh>",
+	"description": "Functional HTTP Framework for TypeScript",
+	"homepage": "https://github.com/kaito-http/kaito",
+	"keywords": [
+		"typescript",
+		"http",
+		"framework"
+	],
+	"license": "MIT",
+	"repository": "https://github.com/kaito-http/kaito",
+	"version": "3.0.0-beta.12"
+}

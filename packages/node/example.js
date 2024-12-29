@@ -4,4 +4,9 @@ const require = createRequire(import.meta.url);
 
 const binding = require('./binding.node');
 
-console.log(binding.foo());
+const server = binding.server(request => {
+	console.log(request);
+	return 'Hello World';
+});
+
+console.log(server);

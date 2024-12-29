@@ -10,8 +10,7 @@
 		"packages": [
 			"./packages/*",
 			"./apps/*",
-			"./examples/*",
-			"./deps/llhttp"
+			"./examples/*"
 		]
 	},
 	"scripts": {
