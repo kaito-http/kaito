@@ -16,11 +16,11 @@ type Napi_finalize = fn (env Napi_env, data voidptr, hint voidptr)
 pub struct Napi_property_descriptor {
 pub mut:
 	utf8name &char = unsafe { nil }    // property name
-	name     Napi_value = unsafe { nil }  // property name as napi_value
+	name     &Napi_value = unsafe { nil }  // property name as napi_value
 	method   Napi_callback = unsafe { nil }
 	getter   Napi_callback = unsafe { nil }
 	setter   Napi_callback = unsafe { nil }
-	value    Napi_value = unsafe { nil }
+	value    &Napi_value = unsafe { nil }
 	attributes Napi_property_attributes = .napi_default
 	data      voidptr = unsafe { nil }
 }
@@ -153,10 +153,10 @@ pub fn (val &NapiValue) to_string() !string {
 	mut status := C.napi_get_string_utf8(val.env, val.value, unsafe { nil }, 0, &len)
 	check_status(status)!
 
-	mut buf := []char{len: int(len) + 1}
+	mut buf := []u8{len: int(len) + 1}
 	status = C.napi_get_string_utf8(val.env, val.value, &char(buf.data), len + 1, &len)
 	check_status(status)!
-	return unsafe { tos_clone(&char(buf.data)) }
+	return buf[..len].bytestr()
 }
 
 // Number conversion helpers
