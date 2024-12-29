@@ -1,6 +1,6 @@
 {
 	"typescript.tsdk": "node_modules/typescript/lib",
 	"[v]": {
-		"editor.defaultFormatter": "vlanguage.vscode-vlang"
+		// "editor.defaultFormatter": "vlanguage.vscode-vlang"
 	}
 }
