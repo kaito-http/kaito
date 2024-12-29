@@ -2,6 +2,14 @@ module server
 
 import picoev
 import picohttpparser
+import time
+
+// simulate_token_generation simulates an LLM generating tokens
+fn simulate_token_generation(prompt string) []string {
+	// Split the prompt into words to simulate tokens
+	words := prompt.split(' ')
+	return words
+}
 
 // Request handler callback for the HTTP server
 fn callback(data voidptr, req picohttpparser.Request, mut res picohttpparser.Response) {
@@ -10,7 +18,7 @@ fn callback(data voidptr, req picohttpparser.Request, mut res picohttpparser.Res
 		res.header('Content-Type', 'application/json')
 		res.header('Connection', if req.client_wants_keep_alive() { 'keep-alive' } else { 'close' })
 		res.body('{"error":"Only POST method is allowed"}')
-		res.end() or {}
+		_ := res.end()
 		return
 	}
 
@@ -22,7 +30,7 @@ fn callback(data voidptr, req picohttpparser.Request, mut res picohttpparser.Res
 			res.header('Content-Type', 'application/json')
 			res.header('Connection', 'close')
 			res.body('{"error":"Failed to read request body"}')
-			res.end() or {}
+			_ := res.end()
 			return
 		}
 		body = body_bytes.bytestr()
@@ -33,15 +41,38 @@ fn callback(data voidptr, req picohttpparser.Request, mut res picohttpparser.Res
 		res.header('Content-Type', 'application/json')
 		res.header('Connection', if req.client_wants_keep_alive() { 'keep-alive' } else { 'close' })
 		res.body('{"error":"No body provided"}')
-		res.end() or {}
+		_ := res.end()
 		return
 	}
 
-	res.status(200)
-	res.header('Content-Type', 'text/plain')
-	res.header('Connection', if req.client_wants_keep_alive() { 'keep-alive' } else { 'close' })
-	res.body(body)
-	res.end() or {}
+	// Start streaming response
+	res.stream_start() or {
+		res.status(500)
+		res.header('Content-Type', 'application/json')
+		res.header('Connection', 'close')
+		res.body('{"error":"Failed to start streaming response"}')
+		_ := res.end()
+		return
+	}
+
+	// Simulate token generation and stream each token
+	tokens := simulate_token_generation(body)
+	for token in tokens {
+		// Add a small delay to simulate processing time
+		time.sleep(100 * time.millisecond)
+		
+		// Stream the token with a space
+		res.stream_chunk(token + ' ') or {
+			// If streaming fails, we can't recover, just return
+			return
+		}
+	}
+
+	// End the stream
+	res.stream_end() or {
+		// If ending fails, we can't do much about it
+		return
+	}
 }
 
 // start creates and starts a new HTTP server on the specified port
