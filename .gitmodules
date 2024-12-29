@@ -1,3 +1,9 @@
 [submodule "deps/llhttp"]
 	path = deps/llhttp
 	url = https://github.com/kaito-http/llhttp
+[submodule "packages/node/modules/picoev"]
+	path = packages/node/modules/picoev
+	url = https://github.com/kaito-http/kaito-picoev.git
+[submodule "packages/node/modules/picohttpparser"]
+	path = packages/node/modules/picohttpparser
+	url = https://github.com/kaito-http/kaito-picohttpparser.git
