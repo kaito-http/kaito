@@ -3,41 +3,48 @@ module server
 import picoev
 import picohttpparser
 
+// Request handler callback for the HTTP server
 fn callback(data voidptr, req picohttpparser.Request, mut res picohttpparser.Response) {
+	eprintln('Handling request: ${req.method} ${req.path}')
 	if req.method != 'POST' {
+		eprintln('Method not allowed: ${req.method}')
 		res.status(405)
+		res.header('Content-Type', 'application/json')
+		res.header('Connection', 'close')
 		res.body('{"error":"Only POST method is allowed"}')
-		res.end()
 		return
 	}
 
-	mut reader := req.get_body_reader() or {
+	// With the new streaming API, the body is already accumulated in req.body
+	// by the time this callback is called
+	if req.body.len == 0 {
+		eprintln('No body provided')
 		res.status(400)
+		res.header('Content-Type', 'application/json')
+		res.header('Connection', 'close')
 		res.body('{"error":"No body provided"}')
-		res.end()
 		return
 	}
 
-	// Read the entire body
-	body := reader.read_all() or {
-		res.status(400)
-		res.body('{"error":"Failed to read body: ${err}"}')
-		res.end()
-		return
-	}
-
-	println('Read complete body: ${body.bytestr()}')
+	eprintln('Received complete body: ${req.body} ${req.body.len}')
 	res.status(200)
-	res.body(body.bytestr())
-	res.end()
+	res.header('Content-Type', 'text/plain')
+	res.header('Connection', 'close')
+	res.body(req.body)
+	eprintln('Response prepared')
 }
 
+// start creates and starts a new HTTP server on the specified port
 pub fn start(port int) ! {
+	eprintln('Starting server on port ${port}')
 	mut s := picoev.new(
 		port: port,
 		cb: callback,
-		timeout_secs: 30
+		timeout_secs: 30,
+		max_read: 8192,
+		max_write: 8192
 	)!
 
+	eprintln('Server initialized, starting event loop')
 	s.serve()
 }

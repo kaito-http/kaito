@@ -13,3 +13,5 @@ You can use a new node feature to run typescript files:
 Do NOT use node-gyp, bindings.gyp or anything like that. I want
 to always use a simple build pipeline, and the node-api-headers
 header files.
+
+Do not use globals in vlang. Unsafe code is allowed.
