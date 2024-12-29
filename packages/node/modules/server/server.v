@@ -28,7 +28,7 @@ fn callback(data voidptr, req picohttpparser.Request, mut res picohttpparser.Res
 
 	println('Read complete body: ${body.bytestr()}')
 	res.status(200)
-	res.body('{"status":"ok","data":"${body.bytestr()}"}')
+	res.body(body.bytestr())
 	res.end()
 }
 
