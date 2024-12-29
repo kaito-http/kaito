@@ -36,14 +36,14 @@ fn C.napi_get_global(env Napi_env, result &Napi_value) Napi_status
 // Define the property descriptor struct properly
 pub struct Napi_property_descriptor {
 pub mut:
-	utf8name &char = unsafe { nil }    // property name
-	name     &Napi_value = unsafe { nil }  // property name as napi_value
-	method   Napi_callback = unsafe { nil }
-	getter   Napi_callback = unsafe { nil }
-	setter   Napi_callback = unsafe { nil }
-	value    &Napi_value = unsafe { nil }
+	utf8name   &char                    = unsafe { nil } // property name
+	name       &Napi_value              = unsafe { nil } // property name as napi_value
+	method     Napi_callback            = unsafe { nil }
+	getter     Napi_callback            = unsafe { nil }
+	setter     Napi_callback            = unsafe { nil }
+	value      &Napi_value              = unsafe { nil }
 	attributes Napi_property_attributes = .napi_default
-	data      voidptr = unsafe { nil }
+	data       voidptr                  = unsafe { nil }
 }
 
 // Reference types
@@ -162,11 +162,13 @@ pub fn (env &NapiEnv) create_string(s string) !NapiValue {
 
 pub fn (val &NapiValue) to_string() !string {
 	mut len := usize(0)
-	mut status := C.napi_get_value_string_utf8(val.env, val.value, unsafe { nil }, 0, &len)
+	mut status := C.napi_get_value_string_utf8(val.env, val.value, unsafe { nil }, 0,
+		&len)
 	check_status(status)!
 
 	mut buf := []u8{len: int(len) + 1}
-	status = C.napi_get_value_string_utf8(val.env, val.value, unsafe { &char(buf.data) }, len + 1, &len)
+	status = C.napi_get_value_string_utf8(val.env, val.value, unsafe { &char(buf.data) },
+		len + 1, &len)
 	check_status(status)!
 	return buf[..len].bytestr()
 }
@@ -253,23 +255,45 @@ pub fn (arr &NapiArray) get_length() !u32 {
 // Function creation and export helpers
 pub struct ExportedFunction {
 pub:
-	name string
-	func Napi_callback = unsafe { nil }  // Initialize with nil
+	name &char
+	func Napi_callback = unsafe { nil } // Initialize with nil
 }
 
-pub fn create_function(env Napi_env, name string, callback Napi_callback) !Napi_value {
+pub fn create_function(env Napi_env, name &char, callback Napi_callback) !Napi_value {
+	if callback == unsafe { nil } {
+		return error('Callback is null for function ${name}')
+	}
+
 	mut result := &Napi_value(unsafe { nil })
-	status := C.napi_create_function(env, name.str, name.len, callback, unsafe { nil }, result)
-	check_status(status)!
+
+	status := C.napi_create_function(env, name, unsafe { nil }, callback, unsafe { nil },
+		result)
+
+	if status != .napi_ok {
+		return error('napi_create_function failed with status ${status}')
+	}
+
+	if unsafe { result == nil } {
+		return error('napi_create_function returned null result')
+	}
+
 	return unsafe { *result }
 }
 
 // Module exports helper
 pub fn export_functions(env Napi_env, exports Napi_value, functions []ExportedFunction) ! {
 	for func in functions {
-		value := create_function(env, func.name, func.func)!
-		status := C.napi_set_named_property(env, exports, func.name.str, value)
-		check_status(status)!
+		value := create_function(env, func.name, func.func) or {
+			return error('Failed to create function ${func.name}: ${err}')
+		}
+		if unsafe { value == nil } {
+			return error('Created function value is null for ${func.name}')
+		}
+
+		status := C.napi_set_named_property(env, exports, func.name, value)
+		if status != .napi_ok {
+			return error('Failed to set property ${func.name} with status ${status}')
+		}
 	}
 }
 
