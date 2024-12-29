@@ -1,0 +1,15 @@
+{
+	"configurations": [
+		{
+			"name": "Mac",
+			"includePath": ["${workspaceFolder}/**", "${workspaceFolder}/node_modules/node-api-headers/include"],
+			"defines": [],
+			"macFrameworkPath": ["/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks"],
+			"compilerPath": "/usr/local/opt/llvm/bin/clang",
+			"cStandard": "c11",
+			"cppStandard": "c++17",
+			"intelliSenseMode": "macos-clang-arm64"
+		}
+	],
+	"version": 4
+}

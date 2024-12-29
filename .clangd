@@ -1,0 +1,5 @@
+# TODO: Figure out how to do relative path
+
+CompileFlags:
+  Add: 
+    - "-I/Users/ali/code/kaito/node_modules/node-api-headers/include"

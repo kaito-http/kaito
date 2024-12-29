@@ -181,7 +181,7 @@ const server = new KaitoServer({
 	fetch: handler,
 });
 
-await server.listen(3000, '0.0.0.0');
+await server.listen(8080, '0.0.0.0');
 
 console.log('Server listening at', server.url);
 
