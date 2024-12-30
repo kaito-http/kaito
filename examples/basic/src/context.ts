@@ -1,5 +1,3 @@
-/* eslint-disable arrow-body-style */
-
 import {createUtilities} from '@kaito-http/core';
 import {serialize, type SerializeOptions} from 'cookie';
 

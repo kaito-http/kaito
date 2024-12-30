@@ -1,6 +1,6 @@
 import {createKaitoHandler, KaitoError} from '@kaito-http/core';
 import {KaitoServer} from '@kaito-http/llhttp-wasm';
-import {default as Stripe, default as stripe} from 'stripe';
+import stripe from 'stripe';
 import {z} from 'zod';
 import {getContext, router} from './context.ts';
 
@@ -33,7 +33,7 @@ const users = router()
 		});
 	});
 
-const webCrypto = Stripe.createSubtleCryptoProvider();
+const webCrypto = stripe.createSubtleCryptoProvider();
 const exampleHandlingStripe = router().post('/webhook', async ({ctx}) => {
 	const body = await ctx.req.text();
 
