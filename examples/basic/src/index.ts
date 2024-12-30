@@ -107,6 +107,7 @@ const exampleOfThrough = router()
 	.get('/test', async ({ctx}) => ctx.lol.getTime());
 
 const root = router()
+	.get('/', async ({ctx}) => ctx.ip ?? 'No ip apparently')
 	// Basic inline access context
 	.get('/uptime', async ({ctx}) => ctx.uptime)
 	.post('/uptime', async ({ctx}) => ctx.uptime)
