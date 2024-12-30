@@ -1,5 +1,6 @@
 import {createServer, type Server, type Socket} from 'node:net';
 
+import {AsyncLocalStorage} from 'node:async_hooks';
 import {HTTPRequestParser, type ParseOptions} from './protocol/parser.ts';
 import {HTTPResponseWriter} from './protocol/writer.ts';
 
@@ -47,6 +48,18 @@ interface SocketState {
 		onClose: () => void;
 		onError: (error: Error) => void;
 	};
+}
+
+const socketStore = new AsyncLocalStorage<Socket>();
+
+export function getSocket() {
+	const store = socketStore.getStore();
+
+	if (!store) {
+		throw new Error('No socket available from getSocket()');
+	}
+
+	return store;
 }
 
 export class KaitoServer {
@@ -144,7 +157,7 @@ export class KaitoServer {
 				}
 
 				if (!socket.destroyed) {
-					const response = await this.options.fetch(request, socket);
+					const response = await socketStore.run(socket, () => this.options.fetch(request, socket));
 
 					// Set appropriate Connection header in response
 					if (!state.keepAlive) {

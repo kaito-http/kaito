@@ -1,6 +1,7 @@
 /* eslint-disable arrow-body-style */
 
 import {createUtilities} from '@kaito-http/core';
+import {getSocket} from '@kaito-http/llhttp-wasm';
 import {serialize, type SerializeOptions} from 'cookie';
 
 const serverStarted = Date.now();
@@ -11,8 +12,11 @@ export const {getContext, router} = createUtilities(async (req, res) => {
 	// included in this context file, allowing for it to be
 	// shared between routes.
 
+	const ip = getSocket().remoteAddress;
+
 	return {
 		req,
+		ip,
 
 		cookie(name: string, value: string, options: SerializeOptions = {}) {
 			res.headers.set('Set-Cookie', serialize(name, value, options));
