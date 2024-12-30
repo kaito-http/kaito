@@ -52,6 +52,23 @@ interface SocketState {
 
 const socketStore = new AsyncLocalStorage<Socket>();
 
+/**
+ * Gets the current socket from the request, can only be called inside of a request handler or getContext()
+ *
+ * This works by using AsyncLocalStorage to store the current socket
+ *
+ * @returns The current socket
+ *
+ * @example
+ * ```ts
+ * import {getSocket} from '@kaito-http/llhttp-wasm';
+ *
+ * router.get('/ip', async () => {
+ * 	const ip = getSocket().remoteAddress;
+ * 	return ip;
+ * });
+ * ```
+ */
 export function getSocket() {
 	const store = socketStore.getStore();
 
