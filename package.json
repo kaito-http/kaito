@@ -15,6 +15,7 @@
 	},
 	"scripts": {
 		"build": "yarn workspaces foreach -Rp -j unlimited --from '@kaito-http/*' --no-private run build",
+		"repomix": "yarn workspaces foreach -Rp -j unlimited --from '@kaito-http/*' --no-private run repomix",
 		"release": "yarn constraints --fix && yarn build && yarn publish-all",
 		"publish-all": "yarn workspaces foreach -R --from '@kaito-http/*' --no-private npm publish --access public"
 	},
