@@ -14,6 +14,9 @@ const fetch = createKaitoHandler({
 	}),
 });
 
-await KaitoServer.serve({port: 3000, fetch});
+const server = await KaitoServer.serve({
+	fetch,
+	port: 3000,
+});
 
-console.log('Server listening at :3000');
+console.log('Server listening at', server.url);
