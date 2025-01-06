@@ -1,6 +1,5 @@
-import {createServer, type Server, type Socket} from 'node:net';
-
 import {AsyncLocalStorage} from 'node:async_hooks';
+import {createServer, type Server, type Socket} from 'node:net';
 import {HTTPRequestParser, type ParseOptions} from './protocol/parser.ts';
 import {HTTPResponseWriter} from './protocol/writer.ts';
 
@@ -42,7 +41,7 @@ interface SocketState {
 	isProcessing: boolean;
 	requestCount: number;
 	keepAlive: boolean;
-	idleTimeout: NodeJS.Timeout | null;
+	idleTimeout: ReturnType<typeof setTimeout> | null;
 	handlers: {
 		onData: (data: Buffer) => Promise<void>;
 		onClose: () => void;
@@ -190,7 +189,6 @@ export class KaitoServer {
 						this.cleanupSocket(socket);
 						socket.destroy();
 					} else {
-						// Reset idle timeout for keep-alive connections
 						this.resetIdleTimeout(socket, state);
 					}
 				}
@@ -225,8 +223,8 @@ export class KaitoServer {
 		this.connections.delete(socket);
 	}
 
-	public listen(port: number, hostname: string = '0.0.0.0'): Promise<void> {
-		return new Promise<void>((resolve, reject) => {
+	public listen(port: number, hostname: string = '0.0.0.0'): Promise<this> {
+		return new Promise<this>((resolve, reject) => {
 			const onError = (error: Error) => {
 				this.server.off('error', onError);
 				reject(error);
@@ -234,7 +232,7 @@ export class KaitoServer {
 
 			this.server.once('error', onError).listen(port, hostname, () => {
 				this.server.off('error', onError);
-				resolve();
+				resolve(this);
 			});
 		});
 	}
@@ -249,7 +247,7 @@ export class KaitoServer {
 		}
 
 		// Remove server listeners
-		this.server.removeAllListeners('error').removeAllListeners('connection');
+		this.server.removeAllListeners('error').removeAllListeners('connection').removeAllListeners('listening');
 
 		return new Promise<void>((resolve, reject) => {
 			this.server.close((error?: Error) => {

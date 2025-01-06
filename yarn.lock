@@ -891,6 +891,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@kaito-http-examples/bench@workspace:examples/bench":
+  version: 0.0.0-use.local
+  resolution: "@kaito-http-examples/bench@workspace:examples/bench"
+  dependencies:
+    "@kaito-http/core": "workspace:^"
+    "@kaito-http/llhttp-wasm": "workspace:^"
+    tsx: "npm:^4.19.2"
+    typescript: "npm:^5.7.2"
+  languageName: unknown
+  linkType: soft
+
 "@kaito-http-examples/client@workspace:examples/client":
   version: 0.0.0-use.local
   resolution: "@kaito-http-examples/client@workspace:examples/client"

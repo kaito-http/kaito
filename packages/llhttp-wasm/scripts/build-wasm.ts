@@ -8,7 +8,7 @@ const dockerfilePath = resolve(scriptDir, './Build.dockerfile');
 const buildDir = resolve(scriptDir, '../src/llhttp/build/wasm');
 
 console.log('Building Docker image...');
-execSync(`docker build -t llhttp -f ${dockerfilePath} .`, {
+execSync(`docker build --no-cache -t llhttp -f ${dockerfilePath} .`, {
 	stdio: 'inherit',
 	cwd: scriptDir,
 });

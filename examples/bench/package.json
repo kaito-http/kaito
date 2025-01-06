@@ -1,0 +1,28 @@
+{
+	"name": "@kaito-http-examples/bench",
+	"private": true,
+	"type": "module",
+	"author": "Alistair Smith <hi@alistair.sh>",
+	"description": "Functional HTTP Framework for TypeScript",
+	"homepage": "https://github.com/kaito-http/kaito",
+	"repository": "https://github.com/kaito-http/kaito",
+	"license": "MIT",
+	"version": "3.0.0-beta.13",
+	"scripts": {
+		"dev": "node --import=tsx --watch src/index.ts",
+		"start": "node --import=tsx src/index.ts"
+	},
+	"dependencies": {
+		"@kaito-http/core": "workspace:^",
+		"@kaito-http/llhttp-wasm": "workspace:^"
+	},
+	"devDependencies": {
+		"tsx": "^4.19.2",
+		"typescript": "^5.7.2"
+	},
+	"keywords": [
+		"typescript",
+		"http",
+		"framework"
+	]
+}

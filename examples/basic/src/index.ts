@@ -178,11 +178,9 @@ const handler = createKaitoHandler({
 	},
 });
 
-const server = new KaitoServer({
+const server = await new KaitoServer({
 	fetch: handler,
-});
-
-await server.listen(3000, '0.0.0.0');
+}).listen(3000);
 
 console.log('Server listening at', server.url);
 
