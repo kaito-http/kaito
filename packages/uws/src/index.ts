@@ -31,7 +31,7 @@ export interface ServeOptions {
 
 export class KaitoServer {
 	public static async serve(options: ServeOptions) {
-		const app = uWS.App().get('/*', (res, req) => {
+		const app = uWS.App().any('/*', async (res, req) => {
 			const headers = new Headers();
 			req.forEach((key, value) => {
 				headers.set(key, value);
@@ -39,17 +39,57 @@ export class KaitoServer {
 
 			const body = new ReadableStream({
 				start(controller) {
-					//
+					let buffer: Buffer | undefined;
+
+					res.onData((ab, isLast) => {
+						const chunk = Buffer.from(ab);
+
+						if (buffer) {
+							buffer = Buffer.concat([buffer, chunk]);
+						} else {
+							buffer = chunk;
+						}
+
+						if (isLast) {
+							if (buffer) {
+								controller.enqueue(buffer);
+							}
+							controller.close();
+						}
+					});
+
+					res.onAborted(() => {
+						controller.error(new Error('Request aborted'));
+					});
 				},
 			});
 
+			console.log(req.getUrl());
+
 			const request = new Request(req.getUrl(), {
 				headers,
-				method: req.getMethod(),
 				body,
+				method: req.getMethod(),
 			});
 
 			const response = await options.fetch(request);
+
+			res.writeStatus(`${response.status} ${response.statusText}`);
+
+			for (const [header, value] of headers) {
+				res.writeHeader(header, value);
+			}
+
+			// Stream response body
+			await response.body?.pipeTo(
+				new WritableStream({
+					write(chunk) {
+						res.write(chunk);
+					},
+				}),
+			);
+
+			res.end();
 		});
 
 		app.listen(options.port, () => {
@@ -59,9 +99,9 @@ export class KaitoServer {
 		const server = new KaitoServer(app);
 	}
 
-	private readonly app: uWS.App;
+	private readonly app: ReturnType<typeof uWS.App>;
 
-	private constructor(app: uWS.App) {
-		//
+	private constructor(app: ReturnType<typeof uWS.App>) {
+		this.app = app;
 	}
 }
