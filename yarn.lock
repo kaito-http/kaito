@@ -959,6 +959,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@kaito-http/uws@workspace:packages/uws"
   dependencies:
+    tsup: "npm:^8.3.5"
     uWebSockets.js: "https://github.com/kaito-http/uWebSockets.js#v20.51.0"
   languageName: unknown
   linkType: soft

@@ -1,27 +1,3 @@
-// /* Minimal HTTP/3 example */
-
-// const uWS = require('../dist/uws.js');
-// const port = 9001;
-
-// /* ./quiche-client --no-verify https://localhost:9001 */
-
-// /* The only difference here is that we use uWS.H3App rather than uWS.App or uWS.SSLApp.
-//  * And of course, there are no WebSockets in HTTP/3 only WebTransport (coming) */
-
-// const app = uWS.H3App({
-//   key_file_name: 'misc/key.pem',
-//   cert_file_name: 'misc/cert.pem',
-//   passphrase: '1234'
-// }).get('/*', (res, req) => {
-//   res.end('H3llo World!');
-// }).listen(port, (token) => {
-//   if (token) {
-//     console.log('Listening to port ' + port);
-//   } else {
-//     console.log('Failed to listen to port ' + port);
-//   }
-// });
-
 import uWS from 'uWebSockets.js';
 
 export interface ServeOptions {
@@ -30,57 +6,62 @@ export interface ServeOptions {
 }
 
 export class KaitoServer {
-	public static async serve(options: ServeOptions) {
+	private static getRequestBodyStream(res: uWS.HttpResponse) {
+		return new ReadableStream({
+			start(controller) {
+				let buffer: Buffer | undefined;
+
+				res.onData((ab, isLast) => {
+					const chunk = Buffer.from(ab);
+
+					if (buffer) {
+						buffer = Buffer.concat([buffer, chunk]);
+					} else {
+						buffer = chunk;
+					}
+
+					if (isLast) {
+						if (buffer) {
+							controller.enqueue(buffer);
+						}
+						controller.close();
+					}
+				});
+
+				res.onAborted(() => {
+					controller.error(new Error('Request aborted'));
+				});
+			},
+		});
+	}
+
+	private static BASE = 'http://kaito';
+
+	public static serve(options: ServeOptions) {
 		const app = uWS.App().any('/*', async (res, req) => {
 			const headers = new Headers();
+
 			req.forEach((key, value) => {
 				headers.set(key, value);
 			});
 
-			const body = new ReadableStream({
-				start(controller) {
-					let buffer: Buffer | undefined;
+			const method = req.getMethod();
+			const url = this.BASE.concat(req.getUrl());
 
-					res.onData((ab, isLast) => {
-						const chunk = Buffer.from(ab);
-
-						if (buffer) {
-							buffer = Buffer.concat([buffer, chunk]);
-						} else {
-							buffer = chunk;
-						}
-
-						if (isLast) {
-							if (buffer) {
-								controller.enqueue(buffer);
-							}
-							controller.close();
-						}
-					});
-
-					res.onAborted(() => {
-						controller.error(new Error('Request aborted'));
-					});
-				},
-			});
-
-			console.log(req.getUrl());
-
-			const request = new Request(req.getUrl(), {
+			const request = new Request(url, {
 				headers,
-				body,
-				method: req.getMethod(),
+				method,
+				body: method === 'get' || method === 'head' ? null : this.getRequestBodyStream(res),
 			});
 
 			const response = await options.fetch(request);
 
-			res.writeStatus(`${response.status} ${response.statusText}`);
+			res.writeStatus(response.status.toString().concat(' ', response.statusText));
 
 			for (const [header, value] of headers) {
 				res.writeHeader(header, value);
 			}
 
-			// Stream response body
 			await response.body?.pipeTo(
 				new WritableStream({
 					write(chunk) {
@@ -92,16 +73,26 @@ export class KaitoServer {
 			res.end();
 		});
 
-		app.listen(options.port, () => {
-			console.log(`Listening on port ${options.port}`);
-		});
+		const instance = new KaitoServer(app);
 
-		const server = new KaitoServer(app);
+		return new Promise<KaitoServer>((resolve, reject) => {
+			app.listen(options.port, ok => {
+				if (ok) {
+					resolve(instance);
+				} else {
+					reject(new Error('Failed to listen on port ' + options.port));
+				}
+			});
+		});
 	}
 
 	private readonly app: ReturnType<typeof uWS.App>;
 
 	private constructor(app: ReturnType<typeof uWS.App>) {
 		this.app = app;
+	}
+
+	public close() {
+		this.app.close();
 	}
 }
