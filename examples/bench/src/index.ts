@@ -1,5 +1,5 @@
 import {createKaitoHandler} from '@kaito-http/core';
-import {KaitoServer} from '@kaito-http/llhttp-wasm';
+import {KaitoServer} from '@kaito-http/uws';
 import {getContext, router} from './context.ts';
 
 const root = router().get('/', async () => 'Hey!');
@@ -14,6 +14,9 @@ const fetch = createKaitoHandler({
 	}),
 });
 
-const server = await new KaitoServer({fetch}).listen(3000);
+const server = await KaitoServer.serve({
+	fetch,
+	port: 3000,
+});
 
 console.log('Server listening at', server.url);
