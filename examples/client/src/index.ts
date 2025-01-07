@@ -9,6 +9,8 @@ const api = createKaitoHTTPClient<App>({
 // to tell the client not to parse the response as JSON.
 const valueOfAResponse = await api.get('/v1/response/stream');
 
+const decoder = new TextDecoder();
+
 for await (const chunk of valueOfAResponse.body!) {
-	console.log(chunk);
+	console.log(decoder.decode(chunk));
 }
