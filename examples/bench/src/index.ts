@@ -9,8 +9,8 @@ const root = router()
 
 		const stream = new ReadableStream({
 			async start(controller) {
-				for await (const chunk of text) {
-					controller.enqueue(chunk);
+				for await (const chunk of text.split(' ')) {
+					controller.enqueue(chunk + '\n');
 					await new Promise(resolve => setTimeout(resolve, 200));
 				}
 				controller.close();

@@ -1,3 +1,4 @@
+import {AsyncLocalStorage} from 'node:async_hooks';
 import uWS from 'uWebSockets.js';
 
 export interface ServeOptions {
@@ -13,6 +14,22 @@ const SPACE = ' ';
 const GET = 'get';
 const HEAD = 'head';
 const CONTENT_LENGTH = 'content-length';
+
+const STORE = new AsyncLocalStorage<{
+	remoteAddress: string;
+}>();
+
+export function getSocket() {
+	const store = STORE.getStore();
+
+	if (!store) {
+		throw new Error(
+			'You can only called getSocket() inside of getContext() or somewhere nested inside of a request handler',
+		);
+	}
+
+	return store;
+}
 
 export class KaitoServer {
 	private static getRequestBodyStream(res: uWS.HttpResponse) {
@@ -71,22 +88,31 @@ export class KaitoServer {
 				body: method === GET || method === HEAD ? null : this.getRequestBodyStream(res),
 			});
 
-			const response = await options.fetch(request);
+			const store: typeof STORE extends AsyncLocalStorage<infer R> ? R : never = {
+				remoteAddress: Buffer.from(res.getRemoteAddress()).toString('utf-8'),
+			};
 
-			res.writeStatus(response.status.toString().concat(SPACE, response.statusText));
+			const response = await STORE.run(store, () => options.fetch(request));
 
-			for (const [header, value] of response.headers) {
-				res.writeHeader(header, value);
-			}
+			res.cork(() => {
+				res.writeStatus(response.status.toString().concat(SPACE, response.statusText));
 
-			const body = response.body;
-			if (!body) {
-				res.end();
+				for (const [header, value] of response.headers) {
+					res.writeHeader(header, value);
+				}
+
+				if (!response.body) {
+					res.end();
+				}
+			});
+
+			if (!response.body) {
 				return;
 			}
 
 			if (response.headers.has(CONTENT_LENGTH)) {
 				const contentLength = parseInt(response.headers.get(CONTENT_LENGTH)!);
+
 				if (contentLength < 65536) {
 					res.end(await response.arrayBuffer());
 					return;
@@ -94,17 +120,24 @@ export class KaitoServer {
 			}
 
 			const writeNext = async (data: Uint8Array): Promise<void> => {
-				const writeSucceeded = res.write(data);
+				let writeSucceeded: boolean | undefined;
+				res.cork(() => {
+					writeSucceeded = res.write(data);
+				});
 
 				if (!writeSucceeded) {
 					return new Promise<void>(resolve => {
 						let offset = 0;
 						res.onWritable(availableSpace => {
-							const chunk = data.subarray(offset, offset + availableSpace);
-							const ok = res.write(chunk);
+							let ok: boolean | undefined;
+							res.cork(() => {
+								const chunk = data.subarray(offset, offset + availableSpace);
+								ok = res.write(chunk);
+							});
 
 							if (ok) {
 								offset += availableSpace;
+
 								if (offset >= data.length) {
 									resolve();
 									return false;
@@ -118,7 +151,7 @@ export class KaitoServer {
 			};
 
 			try {
-				const reader = body.getReader();
+				const reader = response.body.getReader();
 
 				while (!aborted) {
 					const {done, value} = await reader.read();
@@ -133,7 +166,7 @@ export class KaitoServer {
 				}
 			} finally {
 				if (!aborted) {
-					res.end();
+					res.cork(() => res.end());
 				}
 			}
 		});
