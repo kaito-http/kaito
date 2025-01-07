@@ -2,9 +2,11 @@ import uWS from 'uWebSockets.js';
 
 export interface ServeOptions {
 	port: number;
-	host?: string;
+	host: string;
 	fetch: (request: Request) => Promise<Response>;
 }
+
+export type ServeUserOptions = Omit<ServeOptions, 'host'> & Partial<Pick<ServeOptions, 'host'>>;
 
 const BASE = 'http://kaito';
 const SPACE = ' ';
@@ -14,15 +16,15 @@ const CONTENT_LENGTH = 'content-length';
 
 export class KaitoServer {
 	private static getRequestBodyStream(res: uWS.HttpResponse) {
-		return new ReadableStream({
+		return new ReadableStream<Uint8Array>({
 			start(controller) {
-				let buffer: Buffer | undefined;
+				let buffer: Uint8Array | undefined;
 
 				res.onData((ab, isLast) => {
-					const chunk = Buffer.from(ab);
+					const chunk = new Uint8Array(ab.slice(0));
 
 					if (buffer) {
-						buffer = Buffer.concat([buffer, chunk]);
+						buffer = new Uint8Array([...buffer, ...chunk]);
 					} else {
 						buffer = chunk;
 					}
@@ -42,7 +44,12 @@ export class KaitoServer {
 		});
 	}
 
-	public static serve(options: ServeOptions) {
+	public static serve(options: ServeUserOptions) {
+		const fullOptions: ServeOptions = {
+			host: '0.0.0.0',
+			...options,
+		};
+
 		const app = uWS.App().any('/*', async (res, req) => {
 			const headers = new Headers();
 
@@ -81,13 +88,11 @@ export class KaitoServer {
 				}
 			}
 
-			const reader = body.getReader();
-
 			const writeNext = async (data: Uint8Array): Promise<void> => {
 				const writeSucceeded = res.write(data);
 
 				if (!writeSucceeded) {
-					return new Promise(resolve => {
+					return new Promise<void>(resolve => {
 						let offset = 0;
 						res.onWritable(availableSpace => {
 							const chunk = data.subarray(offset, offset + availableSpace);
@@ -107,37 +112,33 @@ export class KaitoServer {
 				}
 			};
 
-			const pump = async () => {
-				try {
-					while (true) {
-						const {done, value} = await reader.read();
+			try {
+				const reader = body.getReader();
 
-						if (done) {
-							break;
-						}
+				while (true) {
+					const {done, value} = await reader.read();
 
-						if (value) {
-							await writeNext(value);
-						}
+					if (done) {
+						break;
 					}
 
-					res.end();
-				} catch {
-					res.end();
+					if (value) {
+						await writeNext(value);
+					}
 				}
-			};
-
-			pump();
+			} finally {
+				res.end();
+			}
 		});
 
-		const instance = new KaitoServer(app, options);
+		const instance = new KaitoServer(app, fullOptions);
 
 		return new Promise<KaitoServer>((resolve, reject) => {
-			app.listen(options.port, ok => {
+			app.listen(fullOptions.host, fullOptions.port, ok => {
 				if (ok) {
 					resolve(instance);
 				} else {
-					reject(new Error('Failed to listen on port ' + options.port));
+					reject(new Error('Failed to listen on port ' + fullOptions.port));
 				}
 			});
 		});
