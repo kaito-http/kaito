@@ -8,7 +8,7 @@ const root = router()
 	.get('/stream', async () => {
 		const text = 'This is an example of text being streamed every 200ms by using Response directly';
 
-		const stream = new ReadableStream({
+		const stream = new ReadableStream<string>({
 			async start(controller) {
 				for await (const chunk of text.split(' ')) {
 					controller.enqueue(chunk + '\n');
