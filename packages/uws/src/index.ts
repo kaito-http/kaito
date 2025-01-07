@@ -51,6 +51,11 @@ export class KaitoServer {
 		};
 
 		const app = uWS.App().any('/*', async (res, req) => {
+			let aborted = false;
+			res.onAborted(() => {
+				aborted = true;
+			});
+
 			const headers = new Headers();
 
 			req.forEach((key, value) => {
@@ -115,7 +120,7 @@ export class KaitoServer {
 			try {
 				const reader = body.getReader();
 
-				while (true) {
+				while (!aborted) {
 					const {done, value} = await reader.read();
 
 					if (done) {
@@ -127,7 +132,9 @@ export class KaitoServer {
 					}
 				}
 			} finally {
-				res.end();
+				if (!aborted) {
+					res.end();
+				}
 			}
 		});
 
