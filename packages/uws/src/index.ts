@@ -15,9 +15,21 @@ const GET = 'get';
 const HEAD = 'head';
 const CONTENT_LENGTH = 'content-length';
 
-const STORE = new AsyncLocalStorage<{
+interface StoreSocket {
 	remoteAddress: string;
-}>();
+}
+
+function createStoreSocket(res: uWS.HttpResponse): StoreSocket {
+	return {
+		get remoteAddress() {
+			const value = Buffer.from(res.getRemoteAddressAsText()).toString('ascii');
+			Object.defineProperty(this, 'remoteAddress', {value});
+			return value;
+		},
+	};
+}
+
+const STORE = new AsyncLocalStorage<StoreSocket>();
 
 export function getSocket() {
 	const store = STORE.getStore();
@@ -74,10 +86,7 @@ export class KaitoServer {
 			});
 
 			const headers = new Headers();
-
-			req.forEach((key, value) => {
-				headers.set(key, value);
-			});
+			req.forEach((k, v) => headers.set(k, v));
 
 			const method = req.getMethod();
 			const url = BASE.concat(req.getUrl());
@@ -88,11 +97,7 @@ export class KaitoServer {
 				body: method === GET || method === HEAD ? null : this.getRequestBodyStream(res),
 			});
 
-			const store: typeof STORE extends AsyncLocalStorage<infer R> ? R : never = {
-				remoteAddress: Buffer.from(res.getRemoteAddress()).toString('utf-8'),
-			};
-
-			const response = await STORE.run(store, () => options.fetch(request));
+			const response = await STORE.run(createStoreSocket(res), options.fetch, request);
 
 			res.cork(() => {
 				res.writeStatus(response.status.toString().concat(SPACE, response.statusText));

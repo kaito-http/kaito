@@ -1,9 +1,10 @@
 import {createKaitoHandler} from '@kaito-http/core';
-import {KaitoServer} from '@kaito-http/uws';
+import {getSocket, KaitoServer} from '@kaito-http/uws';
 import {getContext, router} from './context.ts';
 
 const root = router()
 	.get('/', async () => 'Hey!')
+	.get('/ip', async () => getSocket().remoteAddress)
 	.get('/stream', async () => {
 		const text = 'This is an example of text being streamed every 200ms by using Response directly';
 
