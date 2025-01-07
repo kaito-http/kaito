@@ -2,6 +2,9 @@
 	"name": "@kaito-http-examples/client",
 	"packageManager": "yarn@4.5.0",
 	"type": "module",
+	"scripts": {
+		"start": "node --import=tsx src/index.ts"
+	},
 	"dependencies": {
 		"@kaito-http-examples/basic": "workspace:^",
 		"@kaito-http/client": "workspace:^"

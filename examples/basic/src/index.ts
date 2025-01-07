@@ -1,5 +1,5 @@
 import {createKaitoHandler, KaitoError} from '@kaito-http/core';
-import {KaitoServer} from '@kaito-http/llhttp-wasm';
+import {KaitoServer} from '@kaito-http/uws';
 import {default as Stripe, default as stripe} from 'stripe';
 import {z} from 'zod';
 import {getContext, router} from './context.ts';
@@ -54,14 +54,32 @@ const exampleHandlingStripe = router().post('/webhook', async ({ctx}) => {
 	console.log('Stripe event:', event);
 });
 
-const exampleReturningResponse = router().get('/', async () => {
-	return new Response('Hello world', {
-		status: 200,
-		headers: {
-			'Content-Type': 'text/plain',
-		},
+const exampleReturningResponse = router()
+	.get('/', async () => {
+		return new Response('Hello world', {
+			status: 200,
+			headers: {
+				'Content-Type': 'text/plain',
+			},
+		});
+	})
+	.get('/stream', async () => {
+		const stream = new ReadableStream<string>({
+			async start(controller) {
+				controller.enqueue('Hello, ');
+				await new Promise(resolve => setTimeout(resolve, 1000));
+				controller.enqueue('world!');
+				await new Promise(resolve => setTimeout(resolve, 1000));
+				controller.close();
+			},
+		});
+
+		return new Response(stream, {
+			headers: {
+				'Content-Type': 'text/plain',
+			},
+		});
 	});
-});
 
 const v1 = router()
 	// Basic inline route
@@ -107,8 +125,8 @@ const exampleOfThrough = router()
 	.get('/test', async ({ctx}) => ctx.lol.getTime());
 
 const root = router()
-	.get('/', async ({ctx}) => ctx.ip ?? 'No ip apparently')
 	// Basic inline access context
+	.get('/', async ({ctx}) => ctx.ip)
 	.get('/uptime', async ({ctx}) => ctx.uptime)
 	.post('/uptime', async ({ctx}) => ctx.uptime)
 
@@ -129,58 +147,47 @@ const root = router()
 	// Merge this router with another router (v1)
 	.merge('/v1', v1);
 
-const CORS_HEADERS_ITERABLE = [
-	['Access-Control-Allow-Origin', 'http://localhost:3000'],
-	['Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS'],
-	['Access-Control-Allow-Headers', 'Content-Type, Authorization'],
-	['Access-Control-Max-Age', '86400'],
-	['Access-Control-Allow-Credentials', 'true'],
-] satisfies Iterable<[string, string]>;
+const cors = (origin: string, response: Response) => {
+	response.headers.set('Access-Control-Allow-Origin', origin);
+	response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+	response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	response.headers.set('Access-Control-Max-Age', '86400');
+	response.headers.set('Access-Control-Allow-Credentials', 'true');
+	return response;
+};
 
-const CORS_HEADERS = new Headers(CORS_HEADERS_ITERABLE);
+const ALLOWED_ORIGINS = ['http://localhost:3000', 'https://app.example.com'];
 
-const handler = createKaitoHandler({
+const handle = createKaitoHandler({
 	router: root,
 	getContext,
 
-	// Before runs code before every request. This is helpful for setting things like CORS.
-	// You can return a value from before, and it will be passed to the after call.
-	// If you return a response in `before`, the router will not be called.
+	onError: async ({error}) => ({
+		status: 500,
+		message: error.message,
+	}),
+
 	before: async req => {
-		if (req.method === 'OPTIONS') {
-			return new Response(null, {
-				status: 204,
-				headers: CORS_HEADERS,
-			});
-		}
+		const origin = req.headers.get('origin');
 
-		// Return something from `before`, and it will be passed to `after`.
-		return {
-			timestamp: Date.now(),
-		};
+		if (req.method === 'OPTIONS' && origin && ALLOWED_ORIGINS.includes(origin)) {
+			return cors(origin, new Response(null, {status: 204}));
+		}
 	},
 
-	// Access the return value from `before` in `after`.
-	// This does NOT get called if `before` returns a response.
-	after: async ({timestamp}, res) => {
-		for (const [key, value] of CORS_HEADERS_ITERABLE) {
-			res.headers.set(key, value);
+	transform: async (req, res) => {
+		const origin = req.headers.get('origin');
+
+		if (origin && ALLOWED_ORIGINS.includes(origin)) {
+			return cors(origin, res);
 		}
-
-		console.log(`Request took ${Date.now() - timestamp}ms`);
-	},
-
-	async onError({error}) {
-		return {
-			status: 500,
-			message: error.message,
-		};
 	},
 });
 
-const server = await new KaitoServer({
-	fetch: handler,
-}).listen(3000);
+const server = await KaitoServer.serve({
+	port: 3000,
+	fetch: handle,
+});
 
 console.log('Server listening at', server.url);
 

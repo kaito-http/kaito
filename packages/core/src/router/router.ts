@@ -81,20 +81,8 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 						>
 					: Omit<Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>, 'path' | 'method' | 'through'>)
 			| Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>['run'],
-	): Router<
-		ContextFrom,
-		ContextTo,
-		R | Route<ContextFrom, ContextTo, Result extends Response ? unknown : Result, Path, Method, Query, Body>
-	> => {
-		const merged: Route<
-			ContextFrom,
-			ContextTo,
-			Result extends Response ? unknown : Result,
-			Path,
-			Method,
-			Query,
-			Body
-		> = {
+	): Router<ContextFrom, ContextTo, R | Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>> => {
+		const merged: Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body> = {
 			// TODO: Ideally fix the typing here, but this will be replaced in Kaito v4 where all routes must return a Response (which we can type)
 			...((typeof route === 'object' ? route : {run: route}) as {run: never}),
 			method,
@@ -123,7 +111,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		});
 	};
 
-	public freeze = (server: Omit<ServerConfig<ContextFrom, any>, 'router'>) => {
+	public freeze = (server: Omit<ServerConfig<ContextFrom>, 'router'>) => {
 		const routes = new Map<string, Map<KaitoMethod, AnyRoute>>();
 
 		for (const route of this.state.routes) {
@@ -185,10 +173,11 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 			const response = new KaitoResponse();
 
 			try {
-				const rootCtx = await server.getContext(request, response);
-				const ctx = await route.through(rootCtx);
 				const body = route.body ? await route.body.parse(await req.json()) : undefined;
 				const query = Router.parseQuery(route.query, url);
+
+				const rootCtx = await server.getContext(request, response);
+				const ctx = await route.through(rootCtx);
 
 				const result = await route.run({
 					ctx,
@@ -198,6 +187,10 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 				});
 
 				if (result instanceof Response) {
+					if (server.enableClientResponseHints) {
+						result.headers.set('x-kaito-is-response', '1');
+					}
+
 					return result;
 				}
 

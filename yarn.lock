@@ -882,7 +882,7 @@ __metadata:
   dependencies:
     "@kaito-http/client": "workspace:^"
     "@kaito-http/core": "workspace:^"
-    "@kaito-http/llhttp-wasm": "workspace:^"
+    "@kaito-http/uws": "workspace:^"
     cookie: "npm:^1.0.2"
     stripe: "npm:^17.5.0"
     tsx: "npm:^4.19.2"
@@ -955,7 +955,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@kaito-http/uws@workspace:packages/uws":
+"@kaito-http/uws@workspace:^, @kaito-http/uws@workspace:packages/uws":
   version: 0.0.0-use.local
   resolution: "@kaito-http/uws@workspace:packages/uws"
   dependencies:

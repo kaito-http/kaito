@@ -8,10 +8,10 @@ import type {APIResponse} from './util.ts';
  * ```ts
  * const response = new KaitoResponse();
  *
- * response.status = 200;
- * response.header('Content-Type', 'application/json');
+ * response.status(200);
+ * response.headers.set('Content-Type', 'application/json');
  *
- * console.log(response.headers); // Headers { 'content-type': 'application/json' }
+ * console.log(response.headers); // Headers {'content-type': 'application/json'}
  * ```
  */
 export class KaitoResponse {
@@ -31,7 +31,24 @@ export class KaitoResponse {
 		return this._headers;
 	}
 
-	public status(status: number) {
+	/**
+	 * Gets the status code of this KaitoResponse instance
+	 * @returns The status code
+	 */
+	public status(): number;
+
+	/**
+	 * Sets the status code of this KaitoResponse instance
+	 * @param status The status code to set
+	 * @returns This KaitoResponse instance
+	 */
+	public status(status: number): this;
+
+	public status(status?: number) {
+		if (status === undefined) {
+			return this._status;
+		}
+
 		this._status = status;
 		return this;
 	}

@@ -47,8 +47,8 @@ export class KaitoClientHTTPError extends Error {
 	}
 }
 
-export type JSONIFY<T> = T extends Date
-	? string
+export type JSONIFY<T> = T extends {toJSON(...args: any): infer R}
+	? R
 	: T extends Record<string, unknown>
 		? {[K in keyof T]: JSONIFY<T[K]>}
 		: T extends Array<unknown>
@@ -123,6 +123,10 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			const request = new Request(url, init);
 
 			const response = await fetch(request);
+
+			if (response.headers.get('x-kaito-is-response') === '1') {
+				return response as never;
+			}
 
 			const result = (await response.json()) as APIResponse<never>;
 
