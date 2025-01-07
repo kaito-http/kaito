@@ -1,10 +1,10 @@
 import {createKaitoHandler} from '@kaito-http/core';
-import {getSocket, KaitoServer} from '@kaito-http/uws';
+import {getRemoteAddress, KaitoServer} from '@kaito-http/uws';
 import {getContext, router} from './context.ts';
 
 const root = router()
 	.get('/', async () => 'Hey!')
-	.get('/ip', async () => getSocket().remoteAddress)
+	.get('/ip', async () => getRemoteAddress())
 	.get('/stream', async () => {
 		const text = 'This is an example of text being streamed every 200ms by using Response directly';
 
@@ -14,6 +14,7 @@ const root = router()
 					controller.enqueue(chunk + '\n');
 					await new Promise(resolve => setTimeout(resolve, 200));
 				}
+
 				controller.close();
 			},
 		});
@@ -34,6 +35,7 @@ const fetch = createKaitoHandler({
 const server = await KaitoServer.serve({
 	fetch,
 	port: 3000,
+	host: '127.0.0.1',
 });
 
 console.log('Server listening at', server.url);

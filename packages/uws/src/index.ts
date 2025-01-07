@@ -9,17 +9,12 @@ export interface ServeOptions {
 
 export type ServeUserOptions = Omit<ServeOptions, 'host'> & Partial<Pick<ServeOptions, 'host'>>;
 
-const BASE = 'http://kaito';
 const SPACE = ' ';
 const GET = 'get';
 const HEAD = 'head';
 const CONTENT_LENGTH = 'content-length';
 
-interface StoreSocket {
-	remoteAddress: string;
-}
-
-function createStoreSocket(res: uWS.HttpResponse): StoreSocket {
+function lazyRemoteAddress(res: uWS.HttpResponse) {
 	return {
 		get remoteAddress() {
 			const value = Buffer.from(res.getRemoteAddressAsText()).toString('ascii');
@@ -29,18 +24,45 @@ function createStoreSocket(res: uWS.HttpResponse): StoreSocket {
 	};
 }
 
-const STORE = new AsyncLocalStorage<StoreSocket>();
+const STORE = new AsyncLocalStorage<{remoteAddress: string}>();
 
-export function getSocket() {
+/**
+ * Get the remote address (ip address) of the request
+ *
+ * You can only use this function inside of getContext(), or inside of a route handler.
+ * This function will throw if called outside of either of those.
+ *
+ * Be warned that if you are serving behind a reverse proxy (like Cloudflare, nginx, etc), this will return the ip address of the proxy, not the client.
+ * You should consult the docs of your reverse proxy to see how to get the client's ip address. Usually that is
+ * done by looking at a header like `x-forwarded-for` or `cf-connecting-ip`.
+ *
+ * This uses AsyncLocalStorage under the hood, so if the constraints of how this function works are confusing, or
+ * if you are just wondering how it works, you should look at the AsyncLocalStorage docs: https://nodejs.org/api/async_context.html
+ *
+ * @returns The remote address of the request
+ * @example
+ * ```typescript
+ * import {getRemoteAddress} from '@kaito-http/uws';
+ *
+ * // Ok to use `getRemoteAddress()` inside of this function, since we are calling it from inside a route handler.
+ * // Just be aware that it will throw if called outside of a route handler or outside of getContext()
+ * function printUserIp() {
+ *   return `Your IP is ${getRemoteAddress()}`;
+ * }
+ *
+ * router().get('/ip', async () => printUserIp());
+ * ```
+ */
+export function getRemoteAddress() {
 	const store = STORE.getStore();
 
 	if (!store) {
 		throw new Error(
-			'You can only called getSocket() inside of getContext() or somewhere nested inside of a request handler',
+			'You can only called getRemoteAddress() inside of getContext() or somewhere nested inside of a route handler',
 		);
 	}
 
-	return store;
+	return store.remoteAddress;
 }
 
 export class KaitoServer {
@@ -79,6 +101,8 @@ export class KaitoServer {
 			...options,
 		};
 
+		const {origin} = new URL('http://' + fullOptions.host + ':' + fullOptions.port);
+
 		const app = uWS.App().any('/*', async (res, req) => {
 			let aborted = false;
 			res.onAborted(() => {
@@ -89,7 +113,7 @@ export class KaitoServer {
 			req.forEach((k, v) => headers.set(k, v));
 
 			const method = req.getMethod();
-			const url = BASE.concat(req.getUrl());
+			const url = origin.concat(req.getUrl());
 
 			const request = new Request(url, {
 				headers,
@@ -97,7 +121,7 @@ export class KaitoServer {
 				body: method === GET || method === HEAD ? null : this.getRequestBodyStream(res),
 			});
 
-			const response = await STORE.run(createStoreSocket(res), options.fetch, request);
+			const response = await STORE.run(lazyRemoteAddress(res), options.fetch, request);
 
 			res.cork(() => {
 				res.writeStatus(response.status.toString().concat(SPACE, response.statusText));
