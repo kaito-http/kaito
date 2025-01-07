@@ -1,7 +1,7 @@
 {
 	"name": "@kaito-http/llhttp-wasm",
 	"type": "module",
-	"version": "3.0.0-beta.13",
+	"version": "3.0.0-beta.14",
 	"description": "Functional HTTP Framework for TypeScript",
 	"scripts": {
 		"build-wasm": "node --import=tsx scripts/build-wasm.ts",
