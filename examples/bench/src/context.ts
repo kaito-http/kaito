@@ -1,7 +1,10 @@
-/* eslint-disable arrow-body-style */
-
 import {createUtilities} from '@kaito-http/core';
 
-export const {getContext, router} = createUtilities(async req => ({
-	req,
-}));
+const start = performance.now();
+
+export const {getContext, router} = createUtilities(async req => {
+	return {
+		req,
+		uptime: performance.now() - start,
+	};
+});
