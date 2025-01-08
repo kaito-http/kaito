@@ -12,6 +12,10 @@
 		".": {
 			"import": "./dist/index.js",
 			"require": "./dist/index.cjs"
+		},
+		"./stream": {
+			"import": "./dist/stream/stream.js",
+			"require": "./dist/stream/stream.cjs"
 		}
 	},
 	"homepage": "https://github.com/kaito-http/kaito",

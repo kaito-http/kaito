@@ -149,16 +149,27 @@ export class KaitoServer {
 			}
 
 			const writeNext = async (data: Uint8Array): Promise<void> => {
+				if (aborted) {
+					return;
+				}
+
 				let writeSucceeded: boolean | undefined;
 				res.cork(() => {
 					writeSucceeded = res.write(data);
 				});
 
 				if (!writeSucceeded) {
-					return new Promise<void>(resolve => {
+					return new Promise<void>((resolve, reject) => {
 						let offset = 0;
+
 						res.onWritable(availableSpace => {
 							let ok: boolean | undefined;
+
+							if (aborted) {
+								reject();
+								return false;
+							}
+
 							res.cork(() => {
 								const chunk = data.subarray(offset, offset + availableSpace);
 								ok = res.write(chunk);

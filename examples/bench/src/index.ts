@@ -1,26 +1,27 @@
 import {createKaitoHandler} from '@kaito-http/core';
-import {getRemoteAddress, KaitoServer} from '@kaito-http/uws';
+import {sse} from '@kaito-http/core/stream';
+import {KaitoServer} from '@kaito-http/uws';
 import {getContext, router} from './context.ts';
 
-const root = router()
-	.get('/', async () => 'Hey!')
-	.get('/ip', async () => getRemoteAddress())
-	.get('/stream', async () => {
-		const text = 'This is an example of text being streamed every 200ms by using Response directly';
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-		const stream = new ReadableStream<string>({
-			async start(controller) {
-				for await (const chunk of text.split(' ')) {
-					controller.enqueue(chunk + '\n');
-					await new Promise(resolve => setTimeout(resolve, 200));
-				}
+const root = router().get('/stream', async () => {
+	const text = "This is an example of text being streamed every 200ms by using Kaito's stream() function";
 
-				controller.close();
-			},
-		});
+	return sse({
+		async start(controller) {
+			for await (const chunk of text.split(' ')) {
+				controller.enqueue({
+					data: chunk,
+				});
 
-		return new Response(stream);
+				await sleep(100);
+			}
+
+			controller.close();
+		},
 	});
+});
 
 const fetch = createKaitoHandler({
 	router: root,
@@ -39,3 +40,5 @@ const server = await KaitoServer.serve({
 });
 
 console.log('Server listening at', server.url);
+
+export type App = typeof root;

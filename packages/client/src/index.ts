@@ -1,4 +1,5 @@
 import type {APIResponse, ErroredAPIResponse, InferParsable, InferRoutes, KaitoMethod, Router} from '@kaito-http/core';
+import type {KaitoSSEResponse} from '@kaito-http/core/stream';
 import {pathcat} from 'pathcat';
 import pkg from '../package.json' with {type: 'json'};
 
@@ -63,6 +64,20 @@ export interface KaitoHTTPClientRootOptions {
 	base: string;
 }
 
+export class KaitoEventSource {
+	private readonly stream: ReadableStream<string>;
+
+	public constructor(stream: ReadableStream<Uint8Array>) {
+		this.stream = stream.pipeThrough(new TextDecoderStream());
+	}
+
+	async *[Symbol.asyncIterator]() {
+		for await (const chunk of this.stream) {
+			yield chunk;
+		}
+	}
+}
+
 export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>(
 	rootOptions: KaitoHTTPClientRootOptions,
 ) {
@@ -82,6 +97,12 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 				}>
 			>
 		>;
+
+		stream: IfNeverThenUndefined<
+			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse
+				? true
+				: never
+		>;
 	};
 
 	const create = <M extends KaitoMethod>(method: M) => {
@@ -90,7 +111,11 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			...[options = {}]: [keyof PickRequiredKeys<RequestOptionsFor<M, Path>>] extends [never]
 				? [options?: AlwaysEnabledOptions]
 				: [options: RemoveOnlyUndefinedKeys<UndefinedKeysToOptional<RequestOptionsFor<M, Path>>> & AlwaysEnabledOptions]
-		): Promise<JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>> => {
+		): Promise<
+			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse
+				? KaitoEventSource
+				: JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>
+		> => {
 			const params = (options as {params?: {}}).params ?? {};
 			const query = (options as {query?: {}}).query ?? {};
 			const body = (options as {body?: unknown}).body ?? undefined;
@@ -123,6 +148,14 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			const request = new Request(url, init);
 
 			const response = await fetch(request);
+
+			if ('stream' in options && options.stream) {
+				if (response.body === null) {
+					throw new Error('Response body is null, so cannot stream');
+				}
+
+				return new KaitoEventSource(response.body) as never;
+			}
 
 			if (response.headers.get('x-kaito-is-response') === '1') {
 				return response as never;
