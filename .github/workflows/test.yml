@@ -31,4 +31,4 @@ jobs:
         run: yarn test-all
 
       - name: Run tsc
-        run: yarn tsc -build --noEmit
+        run: yarn tsc -build

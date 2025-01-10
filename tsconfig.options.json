@@ -4,7 +4,6 @@
 		"module": "NodeNext",
 		"target": "ESNext",
 		"strict": true,
-		"noEmit": false,
 		"emitDeclarationOnly": true, // Required for composite builds.
 		"composite": true,
 		"outDir": "${configDir}/compile", // Specify an output folder for all emitted files.
