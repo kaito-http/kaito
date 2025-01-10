@@ -5,19 +5,23 @@
 	"description": "Functional HTTP Framework for TypeScript",
 	"scripts": {
 		"build": "tsup",
-		"attw": "npx --yes @arethetypeswrong/cli --profile node16 --pack ."
+		"attw": "attw --profile node16 --pack ."
 	},
 	"exports": {
 		"./package.json": "./package.json",
 		".": {
-			"import": "./dist/index.js",
+			"import": {
+				"types": "./src/index.ts",
+				"default": "./dist/index.js"
+			},
 			"require": "./dist/index.cjs"
 		}
 	},
 	"files": [
 		"./package.json",
 		"dist",
-		"README.md"
+		"README.md",
+		"src"
 	],
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"homepage": "https://github.com/kaito-http/kaito",
@@ -32,6 +36,7 @@
 		"uWebSockets.js": "https://github.com/kaito-http/uWebSockets.js#v20.51.0"
 	},
 	"devDependencies": {
+		"@arethetypeswrong/cli": "^0.17.2",
 		"tsup": "^8.3.5"
 	}
 }

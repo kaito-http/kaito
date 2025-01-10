@@ -1,3 +1,6 @@
 .next
 .yarn
-packages/llhttp-wasm/src/llhttp/build
+build/
+compile/
+dist/
+**/llhttp/base64.ts
