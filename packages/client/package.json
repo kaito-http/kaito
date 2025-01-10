@@ -11,7 +11,10 @@
 	"exports": {
 		"./package.json": "./package.json",
 		".": {
-			"import": "./dist/index.js",
+			"import": {
+				"types": "./src/index.ts",
+				"default": "./dist/index.js"
+			},
 			"require": "./dist/index.cjs"
 		}
 	},
@@ -26,7 +29,8 @@
 	"files": [
 		"package.json",
 		"README.md",
-		"dist"
+		"dist",
+		"src"
 	],
 	"devDependencies": {
 		"tsup": "^8.3.5"
