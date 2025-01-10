@@ -3,6 +3,7 @@ desktop.ini
 .DS_Store
 .idea
 .vscode
+compile
 dist
 *.log
 .yarn/*

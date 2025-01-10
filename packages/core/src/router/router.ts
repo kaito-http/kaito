@@ -4,7 +4,7 @@ import {KaitoRequest} from '../request.ts';
 import {KaitoResponse} from '../response.ts';
 import type {AnyQueryDefinition, AnyRoute, Route} from '../route.ts';
 import type {ServerConfig} from '../server.ts';
-import {type ErroredAPIResponse, type Parsable} from '../util.ts';
+import type {ErroredAPIResponse, MakeOptional, Parsable} from '../util.ts';
 import type {KaitoMethod} from './types.ts';
 
 type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
@@ -111,7 +111,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		});
 	};
 
-	public freeze = (server: Omit<ServerConfig<ContextFrom>, 'router'>) => {
+	public freeze = (server: Omit<MakeOptional<ServerConfig<ContextFrom>, 'enableClientResponseHints'>, 'router'>) => {
 		const routes = new Map<string, Map<KaitoMethod, AnyRoute>>();
 
 		for (const route of this.state.routes) {

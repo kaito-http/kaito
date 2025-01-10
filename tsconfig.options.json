@@ -1,0 +1,26 @@
+{ 
+	"compilerOptions": {
+		"moduleResolution": "NodeNext",
+		"module": "NodeNext",
+		"target": "ESNext",
+		"strict": true,
+		"noEmit": false,
+		"emitDeclarationOnly": true,
+        "composite": true,
+		"outDir": "${configDir}/compile" /* Specify an output folder for all emitted files. */,
+    	"tsBuildInfoFile": "${configDir}/compile/.tsbuildinfo", /* Specify the folder for .tsbuildinfo incremental compilation files. */
+		"useUnknownInCatchVariables": true,
+		"noImplicitOverride": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"exactOptionalPropertyTypes": true,
+		"noImplicitReturns": false,
+		"noUncheckedIndexedAccess": true,
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"isolatedModules": true,
+		"skipLibCheck": true
+	},
+	"exclude": ["compile/", "**/*/compile/**/*", "**/*/dist/**/*", "node_modules", "tsup.config.ts",  "**/tsup.config.ts"]
+}

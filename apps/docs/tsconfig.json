@@ -1,5 +1,5 @@
 {
-	"extends": "../../tsconfig.json",
+	"extends": "../../tsconfig.options.json",
 	"compilerOptions": {
 		"jsx": "preserve",
 		"lib": ["dom", "dom.iterable", "esnext"],
@@ -12,5 +12,5 @@
 		"moduleResolution": "Bundler"
 	},
 	"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
-	"exclude": ["node_modules"]
+	"exclude": ["node_modules", "compile"]
 }
