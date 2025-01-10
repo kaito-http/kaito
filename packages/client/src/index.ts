@@ -1,5 +1,5 @@
 import type {APIResponse, ErroredAPIResponse, InferParsable, InferRoutes, KaitoMethod, Router} from '@kaito-http/core';
-import type {KaitoSSEResponse} from '@kaito-http/core/stream';
+import type {BaseSSEEvent, KaitoSSEResponse} from '@kaito-http/core/stream';
 import {pathcat} from 'pathcat';
 import pkg from '../package.json' with {type: 'json'};
 
@@ -64,16 +64,61 @@ export interface KaitoHTTPClientRootOptions {
 	base: string;
 }
 
-export class KaitoEventSource {
+export type ExtractDistributiveEvents<U> = U extends BaseSSEEvent<infer T, infer E> ? BaseSSEEvent<T,E> : never
+
+export class KaitoEventSource<T extends BaseSSEEvent<unknown, string>> {
 	private readonly stream: ReadableStream<string>;
+	// buffer needed because when reading from the stream, 
+	// we might receive a chunk that:
+	// - Contains multiple complete events
+	// - Contains partial events
+	// - Cuts an event in the middle
+	private buffer = '';
 
 	public constructor(stream: ReadableStream<Uint8Array>) {
 		this.stream = stream.pipeThrough(new TextDecoderStream());
 	}
 
-	async *[Symbol.asyncIterator]() {
+	private parseEvent(eventText: string): T | null {
+		const lines = eventText.split('\n');
+		const event: Partial<T> = {};
+
+		for (const line of lines) {
+			const colonIndex = line.indexOf(':');
+			if (colonIndex === -1) continue;
+
+			const field = line.slice(0, colonIndex).trim();
+			const value = line.slice(colonIndex + 1).trim();
+
+			switch (field) {
+				case 'event':
+					event.event = value;
+					break;
+				case 'data':
+					event.data = JSON.parse(value) as T;
+					break;
+				case 'id':
+					event.id = value;
+					break;
+				case 'retry':
+					event.retry = parseInt(value, 10);
+					break;
+			}
+		}
+
+		return 'data' in event ? event as T : null;
+	}
+
+	async *[Symbol.asyncIterator](): AsyncGenerator<T, void, unknown> {
 		for await (const chunk of this.stream) {
-			yield chunk;
+			this.buffer += chunk;
+			const events = this.buffer.split('\n\n');
+			this.buffer = events.pop() || '';
+
+			for (const eventText of events) {
+				const event = this.parseEvent(eventText);
+				if (event) yield event;
+			}
 		}
 	}
 }
@@ -99,7 +144,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 		>;
 
 		stream: IfNeverThenUndefined<
-			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse
+			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<any>
 				? true
 				: never
 		>;
@@ -112,8 +157,8 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 				? [options?: AlwaysEnabledOptions]
 				: [options: RemoveOnlyUndefinedKeys<UndefinedKeysToOptional<RequestOptionsFor<M, Path>>> & AlwaysEnabledOptions]
 		): Promise<
-			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse
-				? KaitoEventSource
+			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<infer U>
+				? KaitoEventSource<ExtractDistributiveEvents<U>>
 				: JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>
 		> => {
 			const params = (options as {params?: {}}).params ?? {};

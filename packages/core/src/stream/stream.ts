@@ -1,4 +1,4 @@
-export class KaitoStreamResponse<T> extends Response {
+export class KaitoStreamResponse<T, _ClientType> extends Response {
 	constructor(body: ReadableStream<T>) {
 		super(body, {
 			headers: {
@@ -16,31 +16,26 @@ export class KaitoStreamResponse<T> extends Response {
 	}
 }
 
-export class KaitoSSEResponse extends KaitoStreamResponse<string> {}
+export class KaitoSSEResponse<T> extends KaitoStreamResponse<string, T> {}
 
-export function stream<T = string>(body: UnderlyingDefaultSource<T>): KaitoStreamResponse<T> {
-	return new KaitoStreamResponse<T>(new ReadableStream<T>(body));
+export function stream<T, U>(body: UnderlyingDefaultSource<T>): KaitoStreamResponse<T, unknown> {
+	return new KaitoStreamResponse<T, U>(new ReadableStream<T>(body));
 }
 
-export type SSEEvent = (
-	| {
-			data: string;
-			event: string;
-	  }
-	| {
-			data: string;
-			event?: string | undefined;
-	  }
-	| {
-			data?: string | undefined;
-			event: string;
-	  }
-) & {
+export type BaseSSEEvent<T, E extends string> = ({	
+	data: T;
+	event?: E | undefined;
+} | {	
+	data?: T | undefined;
+	event: E
+}) & {
 	retry?: number;
 	id?: string;
 };
 
-export function sseEventToString(event: SSEEvent): string {
+export type SSEEvent = BaseSSEEvent<string, string>;
+
+export function sseEventToString(event: BaseSSEEvent<unknown, string>): string {
 	let result = '';
 
 	if (event.event) {
@@ -55,26 +50,31 @@ export function sseEventToString(event: SSEEvent): string {
 		result += `retry:${event.retry}\n`;
 	}
 
-	if (event.data) {
-		result += `data:${event.data}`;
+	if (event.data !== undefined) {
+		result += `data:${JSON.stringify(event.data)}`;
 	}
 
 	return result;
 }
 
-export class SSEController {
+export class SSEController implements Disposable {
 	private readonly controller: ReadableStreamDefaultController<string>;
 
 	public constructor(controller: ReadableStreamDefaultController<string>) {
 		this.controller = controller;
 	}
-
-	public enqueue(event: SSEEvent): void {
+	
+	public enqueue<T>(event: BaseSSEEvent<T, string>): void {
 		this.controller.enqueue(sseEventToString(event) + '\n\n');
 	}
 
 	public close(): void {
 		this.controller.close();
+	}
+
+	
+	[Symbol.dispose](): void {
+		this.close()
 	}
 }
 
@@ -84,7 +84,7 @@ export interface SSESource {
 	pull?(controller: SSEController): Promise<void>;
 }
 
-export function sse(source: SSESource) {
+function sseFromSource<T>(source: SSESource) {
 	const start = source.start;
 	const pull = source.pull;
 	const cancel = source.cancel;
@@ -109,5 +109,27 @@ export function sse(source: SSESource) {
 			: {}),
 	});
 
-	return new KaitoSSEResponse(readable);
+	return new KaitoSSEResponse<T>(readable);
+}
+
+export type ExtractEvents<U> = U extends BaseSSEEvent<infer T, infer E> ? BaseSSEEvent<T, E> : never
+
+export function sse<U, E extends string, T extends BaseSSEEvent<U,E>>(source: SSESource | AsyncGenerator<T, unknown, unknown> | (() => AsyncGenerator<T, unknown, unknown>)) {
+	const evaluated = typeof source === 'function' ? source() : source;
+	
+	if('next' in evaluated) {
+		const generator = evaluated;
+		return sseFromSource<T>({
+			async start(controller) {
+				using c = controller // ensures close is called on controller when we're done
+				for await (const event of generator) {
+					c.enqueue(event);
+				}
+			}
+		});
+	} else {
+		// if the SSESource interface is used only strings are permitted.
+		// serialization / deserialization for objects is left to the user
+		return sseFromSource<string>(evaluated);
+	}
 }

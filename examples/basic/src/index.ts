@@ -3,6 +3,12 @@ import {KaitoServer} from '@kaito-http/uws';
 import {default as Stripe, default as stripe} from 'stripe';
 import {z} from 'zod';
 import {getContext, router} from './context.ts';
+import {sse} from '@kaito-http/core/stream';
+import {randomEvent} from './data.ts';
+
+async function sleep(ms: number) {
+	await new Promise(resolve => setTimeout(resolve, ms));
+}
 
 const users = router()
 	.post('/:id', {
@@ -67,9 +73,9 @@ const exampleReturningResponse = router()
 		const stream = new ReadableStream<string>({
 			async start(controller) {
 				controller.enqueue('Hello, ');
-				await new Promise(resolve => setTimeout(resolve, 1000));
+				await sleep(1000);
 				controller.enqueue('world!');
-				await new Promise(resolve => setTimeout(resolve, 1000));
+				await sleep(1000);
 				controller.close();
 			},
 		});
@@ -112,6 +118,64 @@ const v1 = router()
 			// Body is typed as `Record<string, unknown>`
 			return {body, name: query.name};
 		},
+	})
+	
+	// example streaming SSE responses to get request using low level interface
+	.get('/sse_stream', {
+		query: {
+			content: z.string()
+		},
+		run: async ({query}) => {
+			// This is an example of using the SSESource interface
+			return sse({
+				async start(controller) {
+					// ensure controller is closed
+					using _ = controller;
+					var i = 0;
+					for await (const word of query.content.split(' ')) {
+						i++
+						controller.enqueue({
+							id: i.toString(),
+							data: word // only strings are supported in this SSE interface
+						});
+					}
+				}
+			});
+		}
+	})
+
+	// example streaming SSE responses to post request with just an async generator
+	.post('/sse_stream', {
+		body: z.object({
+			count: z.number()
+		}),
+		run: async ({body}) => {
+			// This is an example of a discriminated union being sent on the stream
+			return sse(async function*() {
+				for (let i = 0; i < Math.max(body.count,100); i++) {
+					yield randomEvent(); // random event is a discriminated union on "data"
+					await sleep(100);
+				}
+			});
+		}
+	})
+
+	// example streaming SSE responses to post request with just an async generator
+	.post('/sse_stream_union', {
+		body: z.object({
+			count: z.number()
+		}),
+		run: async ({body}) => {
+			// This is an example of a union of different types being sent on the stream
+			return sse(async function*() {
+				for (let i = 0; i < Math.max(body.count,100); i++) {
+					yield {
+						data: randomEvent().data // this is just a union, not discriminated
+					};
+					await sleep(100);
+				}
+			});
+		}
 	})
 
 	// Merge this router with another router (users).
