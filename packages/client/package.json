@@ -5,7 +5,8 @@
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"description": "Functional HTTP Framework for TypeScript",
 	"scripts": {
-		"build": "tsup"
+		"build": "tsup",
+		"attw": "npx --yes @arethetypeswrong/cli --profile node16 --pack ."
 	},
 	"exports": {
 		"./package.json": "./package.json",

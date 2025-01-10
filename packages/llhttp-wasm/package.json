@@ -5,7 +5,8 @@
 	"description": "Functional HTTP Framework for TypeScript",
 	"scripts": {
 		"build-wasm": "node --import=tsx scripts/build-wasm.ts",
-		"build": "yarn build-wasm && tsup"
+		"build": "yarn build-wasm && tsup",
+		"attw": "npx --yes @arethetypeswrong/cli --profile node16 --pack ."
 	},
 	"exports": {
 		"./package.json": "./package.json",
