@@ -28,4 +28,4 @@ jobs:
         run: yarn
 
       - name: Run tsc
-        run: yarn tsc --noEmit
+        run: yarn tsc -build --noEmit
