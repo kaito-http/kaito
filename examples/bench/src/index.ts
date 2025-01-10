@@ -8,11 +8,10 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const root = router().get('/stream', async () => {
 	const text = "This is an example of text being streamed every 100ms by using Kaito's sse() function";
 
-	return sse(async function*() {
+	return sse(async function* () {
 		for (const word in text.split(' ')) {
-			yield {
-				data: word
-			}
+			yield {data: word, event: 'cool', retry: 1000};
+
 			await sleep(100);
 		}
 	});

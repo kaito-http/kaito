@@ -1,5 +1,5 @@
 import type {APIResponse, ErroredAPIResponse, InferParsable, InferRoutes, KaitoMethod, Router} from '@kaito-http/core';
-import type {BaseSSEEvent, KaitoSSEResponse} from '@kaito-http/core/stream';
+import type {KaitoSSEResponse, SSEEvent} from '@kaito-http/core/stream';
 import {pathcat} from 'pathcat';
 import pkg from '../package.json' with {type: 'json'};
 
@@ -64,11 +64,9 @@ export interface KaitoHTTPClientRootOptions {
 	base: string;
 }
 
-export type ExtractDistributiveEvents<U> = U extends BaseSSEEvent<infer T, infer E> ? BaseSSEEvent<T,E> : never
-
-export class KaitoEventSource<T extends BaseSSEEvent<unknown, string>> {
+export class KaitoEventSource<T extends SSEEvent<unknown, string>> {
 	private readonly stream: ReadableStream<string>;
-	// buffer needed because when reading from the stream, 
+	// buffer needed because when reading from the stream,
 	// we might receive a chunk that:
 	// - Contains multiple complete events
 	// - Contains partial events
@@ -95,7 +93,7 @@ export class KaitoEventSource<T extends BaseSSEEvent<unknown, string>> {
 					event.event = value;
 					break;
 				case 'data':
-					event.data = JSON.parse(value) as T;
+					event.data = JSON.parse(value) as T['data'];
 					break;
 				case 'id':
 					event.id = value;
@@ -106,7 +104,7 @@ export class KaitoEventSource<T extends BaseSSEEvent<unknown, string>> {
 			}
 		}
 
-		return 'data' in event ? event as T : null;
+		return 'data' in event ? (event as T) : null;
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<T, void, unknown> {
@@ -157,8 +155,10 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 				? [options?: AlwaysEnabledOptions]
 				: [options: RemoveOnlyUndefinedKeys<UndefinedKeysToOptional<RequestOptionsFor<M, Path>>> & AlwaysEnabledOptions]
 		): Promise<
-			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<infer U>
-				? KaitoEventSource<ExtractDistributiveEvents<U>>
+			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<
+				infer U extends SSEEvent<unknown, string>
+			>
+				? KaitoEventSource<U>
 				: JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>
 		> => {
 			const params = (options as {params?: {}}).params ?? {};
