@@ -10,12 +10,10 @@
 	"exports": {
 		"./package.json": "./package.json",
 		".": {
-			"types": "./src/index.ts",
 			"import": "./dist/index.js",
 			"require": "./dist/index.cjs"
 		},
 		"./stream": {
-			"types": "./src/stream/stream.ts",
 			"import": "./dist/stream/stream.js",
 			"require": "./dist/stream/stream.cjs"
 		}
