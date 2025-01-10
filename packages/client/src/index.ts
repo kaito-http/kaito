@@ -26,6 +26,8 @@ export type UndefinedKeysToOptional<T> = {
 	[K in keyof T as undefined extends T[K] ? never : K]: T[K];
 };
 
+export type IsExactly<T, A, True, False> = T extends A ? (A extends T ? True : False) : False;
+
 export type AlwaysEnabledOptions = {
 	signal?: AbortSignal | null | undefined;
 };
@@ -64,7 +66,7 @@ export interface KaitoHTTPClientRootOptions {
 	base: string;
 }
 
-export class KaitoEventSource<T extends SSEEvent<unknown, string>> {
+export class KaitoSSEStream<T extends SSEEvent<unknown, string>> {
 	private readonly stream: ReadableStream<string>;
 	// buffer needed because when reading from the stream,
 	// we might receive a chunk that:
@@ -141,10 +143,14 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			>
 		>;
 
-		stream: IfNeverThenUndefined<
+		sse: IfNeverThenUndefined<
 			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<any>
 				? true
 				: never
+		>;
+
+		response: IfNeverThenUndefined<
+			IsExactly<JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>, Response, true, never>
 		>;
 	};
 
@@ -158,7 +164,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<
 				infer U extends SSEEvent<unknown, string>
 			>
-				? KaitoEventSource<U>
+				? KaitoSSEStream<U>
 				: JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>
 		> => {
 			const params = (options as {params?: {}}).params ?? {};
@@ -194,15 +200,15 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 
 			const response = await fetch(request);
 
-			if ('stream' in options && options.stream) {
+			if ('sse' in options && options.sse) {
 				if (response.body === null) {
 					throw new Error('Response body is null, so cannot stream');
 				}
 
-				return new KaitoEventSource(response.body) as never;
+				return new KaitoSSEStream(response.body) as never;
 			}
 
-			if (response.headers.get('x-kaito-is-response') === '1') {
+			if ('response' in options && options.response) {
 				return response as never;
 			}
 

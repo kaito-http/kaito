@@ -10,7 +10,7 @@ function assertNever(x: never): never {
 }
 
 const getSSE = await api.get('/v1/sse_stream', {
-	stream: true,
+	sse: true,
 	query: {
 		content: 'This is an example of SSE streaming text',
 	},
@@ -21,7 +21,7 @@ for await (const event of getSSE) {
 }
 
 const postSSE = await api.post('/v1/sse_stream', {
-	stream: true,
+	sse: true,
 	body: {
 		count: 20,
 	},
@@ -53,7 +53,7 @@ for await (const event of postSSE) {
 }
 
 const postUnionSSE = await api.post('/v1/sse_stream_union', {
-	stream: true,
+	sse: true,
 	body: {
 		count: 20,
 	},
