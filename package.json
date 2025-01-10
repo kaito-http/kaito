@@ -14,6 +14,7 @@
 		]
 	},
 	"scripts": {
+		"compile": "tsc -build",
 		"build": "yarn workspaces foreach -Rp -j unlimited --from '@kaito-http/*' --no-private run build",
 		"attw": "yarn workspaces foreach -Rp -j unlimited --from '@kaito-http/*' --no-private run attw",
 		"release": "yarn constraints --fix && yarn build && yarn publish-all",

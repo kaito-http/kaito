@@ -10,14 +10,18 @@
 	"exports": {
 		"./package.json": "./package.json",
 		".": {
-			"import": "./dist/index.js",
+			"import": {
+				"types": "./src/index.ts",
+				"default": "./dist/index.js"
+			},
 			"require": "./dist/index.cjs"
 		}
 	},
 	"files": [
 		"./package.json",
 		"dist",
-		"README.md"
+		"README.md",
+		"src"
 	],
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"homepage": "https://github.com/kaito-http/kaito",

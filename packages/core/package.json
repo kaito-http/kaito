@@ -11,11 +11,17 @@
 	"exports": {
 		"./package.json": "./package.json",
 		".": {
-			"import": "./dist/index.js",
+			"import": {
+				"types": "./src/index.ts",
+				"default": "./dist/index.js"
+			},
 			"require": "./dist/index.cjs"
 		},
 		"./stream": {
-			"import": "./dist/stream/stream.js",
+			"import": {
+				"types": "./src/stream/stream.ts",
+				"default": "./dist/stream/stream.js"
+			},
 			"require": "./dist/stream/stream.cjs"
 		}
 	},
@@ -35,7 +41,8 @@
 	"files": [
 		"package.json",
 		"README.md",
-		"dist"
+		"dist",
+		"src"
 	],
 	"bugs": {
 		"url": "https://github.com/kaito-http/kaito/issues"
