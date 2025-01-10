@@ -2,25 +2,25 @@
 	"extends": "./tsconfig.options.json",
 	"references": [
 		{
-			"path": "packages/client"
+			"path": "./packages/client"
 		},
 		{
-			"path": "packages/core"
+			"path": "./packages/core"
 		},
 		{
-			"path": "packages/llhttp-wasm"
+			"path": "./packages/llhttp-wasm"
 		},
 		{
-			"path": "packages/uws"
+			"path": "./packages/uws"
 		},
 		{
-			"path": "examples/basic"
+			"path": "./examples/basic"
 		},
 		{
-			"path": "examples/bench"
+			"path": "./examples/bench"
 		},
 		{
-			"path": "apps/docs"
+			"path": "./apps/docs"
 		}
 	]
 }
