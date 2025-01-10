@@ -5,10 +5,10 @@
 		"target": "ESNext",
 		"strict": true,
 		"noEmit": false,
-		"emitDeclarationOnly": true,
-        "composite": true,
+		"emitDeclarationOnly": true, /* required for composite builds */
+		"composite": true,
 		"outDir": "${configDir}/compile" /* Specify an output folder for all emitted files. */,
-    	"tsBuildInfoFile": "${configDir}/compile/.tsbuildinfo", /* Specify the folder for .tsbuildinfo incremental compilation files. */
+		"tsBuildInfoFile": "${configDir}/compile/.tsbuildinfo", /* Specify the folder for .tsbuildinfo incremental compilation files. */
 		"useUnknownInCatchVariables": true,
 		"noImplicitOverride": true,
 		"noFallthroughCasesInSwitch": true,
