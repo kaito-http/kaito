@@ -9,6 +9,12 @@ function assertNever(x: never): never {
 	throw new Error(`Unhandled case: ${JSON.stringify(x)}`);
 }
 
+const getResponse = await api.get('/v1/response/', {
+	response: true,
+});
+
+console.log(await getResponse.text()); // This response contains some text! So we don't want the Kaito client to parse it
+
 const getSSE = await api.get('/v1/sse_stream', {
 	sse: true,
 	query: {
