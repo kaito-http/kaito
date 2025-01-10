@@ -119,11 +119,11 @@ const v1 = router()
 			return {body, name: query.name};
 		},
 	})
-	
+
 	// example streaming SSE responses to get request using low level interface
 	.get('/sse_stream', {
 		query: {
-			content: z.string()
+			content: z.string(),
 		},
 		run: async ({query}) => {
 			// This is an example of using the SSESource interface
@@ -133,49 +133,49 @@ const v1 = router()
 					using _ = controller;
 					var i = 0;
 					for await (const word of query.content.split(' ')) {
-						i++
+						i++;
 						controller.enqueue({
 							id: i.toString(),
-							data: word // only strings are supported in this SSE interface
+							data: word, // only strings are supported in this SSE interface
 						});
 					}
-				}
+				},
 			});
-		}
+		},
 	})
 
 	// example streaming SSE responses to post request with just an async generator
 	.post('/sse_stream', {
 		body: z.object({
-			count: z.number()
+			count: z.number(),
 		}),
 		run: async ({body}) => {
 			// This is an example of a discriminated union being sent on the stream
-			return sse(async function*() {
-				for (let i = 0; i < Math.max(body.count,100); i++) {
+			return sse(async function* () {
+				for (let i = 0; i < Math.max(body.count, 100); i++) {
 					yield randomEvent(); // random event is a discriminated union on "data"
 					await sleep(100);
 				}
 			});
-		}
+		},
 	})
 
 	// example streaming SSE responses to post request with just an async generator
 	.post('/sse_stream_union', {
 		body: z.object({
-			count: z.number()
+			count: z.number(),
 		}),
 		run: async ({body}) => {
 			// This is an example of a union of different types being sent on the stream
-			return sse(async function*() {
-				for (let i = 0; i < Math.max(body.count,100); i++) {
+			return sse(async function* () {
+				for (let i = 0; i < Math.max(body.count, 100); i++) {
 					yield {
-						data: randomEvent().data // this is just a union, not discriminated
+						data: randomEvent().data, // this is just a union, not discriminated
 					};
 					await sleep(100);
 				}
 			});
-		}
+		},
 	})
 
 	// Merge this router with another router (users).

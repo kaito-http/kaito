@@ -5,7 +5,7 @@ export const config = {
 	dts: {
 		compilerOptions: {
 			composite: false,
-		}
+		},
 	},
 	format: ['esm', 'cjs'],
 } satisfies Options;

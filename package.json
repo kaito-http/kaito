@@ -14,6 +14,7 @@
 		]
 	},
 	"scripts": {
+		"lint": "yarn workspaces foreach -Rp -j unlimited run prettier . --write",
 		"compile": "tsc -build",
 		"build": "yarn workspaces foreach -Rp -j unlimited --from '@kaito-http/*' --no-private run build",
 		"test-all": "yarn workspaces foreach -Rp -j unlimited --from '@kaito-http/*' --no-private run test",
