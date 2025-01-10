@@ -6,7 +6,7 @@
 	"scripts": {
 		"build-wasm": "node --import=tsx scripts/build-wasm.ts",
 		"build": "yarn build-wasm && tsup",
-		"attw": "npx --yes @arethetypeswrong/cli --profile node16 --pack ."
+		"attw": "attw --profile node16 --pack ."
 	},
 	"exports": {
 		"./package.json": "./package.json",
@@ -34,6 +34,7 @@
 	"repository": "https://github.com/kaito-http/kaito",
 	"license": "MIT",
 	"devDependencies": {
+		"@arethetypeswrong/cli": "^0.17.2",
 		"tsup": "^8.3.5"
 	}
 }
