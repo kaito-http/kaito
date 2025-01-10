@@ -200,16 +200,16 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 
 			const response = await fetch(request);
 
+			if ('response' in options && options.response) {
+				return response as never;
+			}
+
 			if ('sse' in options && options.sse) {
 				if (response.body === null) {
 					throw new Error('Response body is null, so cannot stream');
 				}
 
 				return new KaitoSSEStream(response.body) as never;
-			}
-
-			if ('response' in options && options.response) {
-				return response as never;
 			}
 
 			const result = (await response.json()) as APIResponse<never>;
