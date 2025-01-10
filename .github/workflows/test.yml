@@ -6,8 +6,8 @@ on:
       - 'packages/*'
 
 jobs:
-  lint:
-    name: ESLint
+  check:
+    name: test and typecheck
 
     runs-on: ${{ matrix.os }}
     strategy:
