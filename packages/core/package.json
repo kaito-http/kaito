@@ -6,7 +6,8 @@
 	"description": "Functional HTTP Framework for TypeScript",
 	"scripts": {
 		"build": "tsup",
-		"attw": "npx --yes @arethetypeswrong/cli --profile node16 --pack ."
+		"attw": "npx --yes @arethetypeswrong/cli --profile node16 --pack .",
+		"test": "node --test --import=tsx ./src/**/*.test.ts"
 	},
 	"exports": {
 		"./package.json": "./package.json",

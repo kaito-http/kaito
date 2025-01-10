@@ -3,7 +3,7 @@ on:
   pull_request:
   push:
     paths:
-      - 'packages/core'
+      - 'packages/*'
 
 jobs:
   lint:
@@ -26,6 +26,9 @@ jobs:
 
       - name: Install dependencies
         run: yarn
+
+      - name: Run tests
+        run: yarn test-all
 
       - name: Run tsc
         run: yarn tsc -build --noEmit
