@@ -9,3 +9,8 @@ dist
 !.yarn/releases
 !.yarn/plugins
 !.yarn/sdks
+
+# Environment variables
+.env
+.env.local
+.env.*.local

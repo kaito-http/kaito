@@ -148,17 +148,19 @@ const v1 = router()
 					// TODO: use `using` once Node.js supports it
 					// ensure controller is closed
 					// using c = controller;
-					let i = 0;
+					try {
+						let i = 0;
 
-					for await (const word of query.content.split(' ')) {
-						i++;
-						controller.enqueue({
-							id: i.toString(),
-							data: word, // only strings are supported in this SSE interface
-						});
+						for await (const word of query.content.split(' ')) {
+							i++;
+							controller.enqueue({
+								id: i.toString(),
+								data: word, // only strings are supported in this SSE interface
+							});
+						}
+					} finally {
+						controller.close();
 					}
-
-					controller.close();
 				},
 			});
 		},
