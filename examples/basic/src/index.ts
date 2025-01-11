@@ -1,5 +1,5 @@
 import {createKaitoHandler, KaitoError} from '@kaito-http/core';
-import {sse} from '@kaito-http/core/stream';
+import {sse, sseFromAnyReadable} from '@kaito-http/core/stream';
 import {KaitoServer} from '@kaito-http/uws';
 import {default as Stripe, default as stripe} from 'stripe';
 import {z} from 'zod';
@@ -85,6 +85,22 @@ const exampleReturningResponse = router()
 				'Content-Type': 'text/plain',
 			},
 		});
+	})
+	.get('/stream-sse-kinda', async () => {
+		const stream = new ReadableStream<string>({
+			async start(controller) {
+				controller.enqueue('hello!');
+				await sleep(1000);
+				controller.enqueue('world!');
+				await sleep(1000);
+				controller.close();
+			},
+		});
+
+		return sseFromAnyReadable(stream, chunk => ({
+			event: 'message',
+			data: chunk,
+		}));
 	});
 
 const v1 = router()

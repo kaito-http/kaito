@@ -36,7 +36,12 @@ export type SSEEvent<T, E extends string> = (
 	id?: string;
 };
 
-export function sseEventToString<T>(event: SSEEvent<T, string>): string {
+/**
+ * Converts an SSE Event into a string, ready for sending to the client
+ * @param event The SSE Event
+ * @returns A stringified version
+ */
+export function sseEventToString(event: SSEEvent<unknown, string>): string {
 	let result = '';
 
 	if (event.event) {
@@ -112,8 +117,6 @@ function sseFromSource<U, E extends string>(source: SSESource<U, E>) {
 	return new KaitoSSEResponse<SSEEvent<U, E>>(readable);
 }
 
-export type ExtractEvents<U> = U extends SSEEvent<infer T, infer E> ? SSEEvent<T, E> : never;
-
 export function sse<U, E extends string, T extends SSEEvent<U, E>>(
 	source: SSESource<U, E> | AsyncGenerator<T, unknown, unknown> | (() => AsyncGenerator<T, unknown, unknown>),
 ): KaitoSSEResponse<T> {
@@ -136,4 +139,17 @@ export function sse<U, E extends string, T extends SSEEvent<U, E>>(
 		// serialization / deserialization for objects is left to the user
 		return sseFromSource<U, E>(evaluated);
 	}
+}
+
+export function sseFromAnyReadable<R, U, E extends string>(
+	stream: ReadableStream<R>,
+	transform: (chunk: R) => SSEEvent<U, E>,
+) {
+	const transformer = new TransformStream({
+		transform: (chunk, controller) => {
+			controller.enqueue(transform(chunk));
+		},
+	});
+
+	return sse(stream.pipeThrough(transformer));
 }
