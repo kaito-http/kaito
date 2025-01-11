@@ -6,20 +6,14 @@ import {getContext, router} from './context.ts';
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const root = router().get('/stream', async () => {
-	const text = "This is an example of text being streamed every 200ms by using Kaito's stream() function";
+	const text = "This is an example of text being streamed every 100ms by using Kaito's sse() function";
 
-	return sse({
-		async start(controller) {
-			for await (const chunk of text.split(' ')) {
-				controller.enqueue({
-					data: chunk,
-				});
+	return sse(async function* () {
+		for (const word in text.split(' ')) {
+			yield {data: word, event: 'cool', retry: 1000};
 
-				await sleep(100);
-			}
-
-			controller.close();
-		},
+			await sleep(100);
+		}
 	});
 });
 

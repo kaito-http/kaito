@@ -1,2 +1,6 @@
 .next
 .yarn
+build/
+compile/
+dist/
+**/llhttp/base64.ts

@@ -5,12 +5,16 @@
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"description": "Functional HTTP Framework for TypeScript",
 	"scripts": {
-		"build": "tsup"
+		"build": "tsup",
+		"attw": "attw --profile node16 --pack ."
 	},
 	"exports": {
 		"./package.json": "./package.json",
 		".": {
-			"import": "./dist/index.js",
+			"import": {
+				"types": "./src/index.ts",
+				"default": "./dist/index.js"
+			},
 			"require": "./dist/index.cjs"
 		}
 	},
@@ -25,9 +29,11 @@
 	"files": [
 		"package.json",
 		"README.md",
-		"dist"
+		"dist",
+		"src"
 	],
 	"devDependencies": {
+		"@arethetypeswrong/cli": "^0.17.2",
 		"tsup": "^8.3.5"
 	},
 	"dependencies": {

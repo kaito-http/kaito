@@ -5,16 +5,24 @@
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"description": "Functional HTTP Framework for TypeScript",
 	"scripts": {
-		"build": "tsup"
+		"build": "tsup",
+		"test": "node --test --import=tsx ./src/**/*.test.ts",
+		"attw": "attw --profile node16 --pack ."
 	},
 	"exports": {
 		"./package.json": "./package.json",
 		".": {
-			"import": "./dist/index.js",
+			"import": {
+				"types": "./src/index.ts",
+				"default": "./dist/index.js"
+			},
 			"require": "./dist/index.cjs"
 		},
 		"./stream": {
-			"import": "./dist/stream/stream.js",
+			"import": {
+				"types": "./src/stream/stream.ts",
+				"default": "./dist/stream/stream.js"
+			},
 			"require": "./dist/stream/stream.cjs"
 		}
 	},
@@ -27,6 +35,7 @@
 	],
 	"license": "MIT",
 	"devDependencies": {
+		"@arethetypeswrong/cli": "^0.17.2",
 		"@types/node": "^22.10.2",
 		"tsup": "^8.3.5",
 		"typescript": "^5.7.2"
@@ -34,7 +43,8 @@
 	"files": [
 		"package.json",
 		"README.md",
-		"dist"
+		"dist",
+		"src"
 	],
 	"bugs": {
 		"url": "https://github.com/kaito-http/kaito/issues"

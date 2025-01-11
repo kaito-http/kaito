@@ -6,7 +6,7 @@ const api = createKaitoHTTPClient<App>({
 });
 
 const stream = await api.get('/stream', {
-	stream: true,
+	sse: true,
 });
 
 for await (const chunk of stream) {

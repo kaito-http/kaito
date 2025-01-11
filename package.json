@@ -14,7 +14,11 @@
 		]
 	},
 	"scripts": {
+		"lint": "yarn workspaces foreach -Rp -j unlimited run prettier . --write",
+		"compile": "tsc -build",
 		"build": "yarn workspaces foreach -Rp -j unlimited --from '@kaito-http/*' --no-private run build",
+		"test-all": "yarn workspaces foreach -Rp -j unlimited --from '@kaito-http/*' --no-private run test",
+		"attw": "yarn workspaces foreach -Rp -j unlimited --from '@kaito-http/*' --no-private run attw",
 		"release": "yarn constraints --fix && yarn build && yarn publish-all",
 		"publish-all": "yarn workspaces foreach -R --from '@kaito-http/*' --no-private npm publish --access public"
 	},

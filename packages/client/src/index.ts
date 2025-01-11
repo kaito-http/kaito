@@ -1,5 +1,5 @@
 import type {APIResponse, ErroredAPIResponse, InferParsable, InferRoutes, KaitoMethod, Router} from '@kaito-http/core';
-import type {KaitoSSEResponse} from '@kaito-http/core/stream';
+import type {KaitoSSEResponse, SSEEvent} from '@kaito-http/core/stream';
 import {pathcat} from 'pathcat';
 import pkg from '../package.json' with {type: 'json'};
 
@@ -25,6 +25,8 @@ export type UndefinedKeysToOptional<T> = {
 } & {
 	[K in keyof T as undefined extends T[K] ? never : K]: T[K];
 };
+
+export type IsExactly<T, A, True, False> = T extends A ? (A extends T ? True : False) : False;
 
 export type AlwaysEnabledOptions = {
 	signal?: AbortSignal | null | undefined;
@@ -64,16 +66,59 @@ export interface KaitoHTTPClientRootOptions {
 	base: string;
 }
 
-export class KaitoEventSource {
+export class KaitoSSEStream<T extends SSEEvent<unknown, string>> {
 	private readonly stream: ReadableStream<string>;
+	// buffer needed because when reading from the stream,
+	// we might receive a chunk that:
+	// - Contains multiple complete events
+	// - Contains partial events
+	// - Cuts an event in the middle
+	private buffer = '';
 
 	public constructor(stream: ReadableStream<Uint8Array>) {
 		this.stream = stream.pipeThrough(new TextDecoderStream());
 	}
 
-	async *[Symbol.asyncIterator]() {
+	private parseEvent(eventText: string): T | null {
+		const lines = eventText.split('\n');
+		const event: Partial<T> = {};
+
+		for (const line of lines) {
+			const colonIndex = line.indexOf(':');
+			if (colonIndex === -1) continue;
+
+			const field = line.slice(0, colonIndex).trim();
+			const value = line.slice(colonIndex + 1).trim();
+
+			switch (field) {
+				case 'event':
+					event.event = value;
+					break;
+				case 'data':
+					event.data = JSON.parse(value) as T['data'];
+					break;
+				case 'id':
+					event.id = value;
+					break;
+				case 'retry':
+					event.retry = parseInt(value, 10);
+					break;
+			}
+		}
+
+		return 'data' in event ? (event as T) : null;
+	}
+
+	async *[Symbol.asyncIterator](): AsyncGenerator<T, void, unknown> {
 		for await (const chunk of this.stream) {
-			yield chunk;
+			this.buffer += chunk;
+			const events = this.buffer.split('\n\n');
+			this.buffer = events.pop() || '';
+
+			for (const eventText of events) {
+				const event = this.parseEvent(eventText);
+				if (event) yield event;
+			}
 		}
 	}
 }
@@ -98,10 +143,14 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			>
 		>;
 
-		stream: IfNeverThenUndefined<
-			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse
+		sse: IfNeverThenUndefined<
+			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<any>
 				? true
 				: never
+		>;
+
+		response: IfNeverThenUndefined<
+			IsExactly<JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>, Response, true, never>
 		>;
 	};
 
@@ -112,8 +161,10 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 				? [options?: AlwaysEnabledOptions]
 				: [options: RemoveOnlyUndefinedKeys<UndefinedKeysToOptional<RequestOptionsFor<M, Path>>> & AlwaysEnabledOptions]
 		): Promise<
-			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse
-				? KaitoEventSource
+			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<
+				infer U extends SSEEvent<unknown, string>
+			>
+				? KaitoSSEStream<U>
 				: JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>
 		> => {
 			const params = (options as {params?: {}}).params ?? {};
@@ -149,16 +200,16 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 
 			const response = await fetch(request);
 
-			if ('stream' in options && options.stream) {
+			if ('response' in options && options.response) {
+				return response as never;
+			}
+
+			if ('sse' in options && options.sse) {
 				if (response.body === null) {
 					throw new Error('Response body is null, so cannot stream');
 				}
 
-				return new KaitoEventSource(response.body) as never;
-			}
-
-			if (response.headers.get('x-kaito-is-response') === '1') {
-				return response as never;
+				return new KaitoSSEStream(response.body) as never;
 			}
 
 			const result = (await response.json()) as APIResponse<never>;

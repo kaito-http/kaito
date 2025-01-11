@@ -3,16 +3,16 @@ on:
   pull_request:
   push:
     paths:
-      - 'packages/core'
+      - 'packages/*'
 
 jobs:
-  lint:
-    name: ESLint
+  check:
+    name: test and typecheck
 
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        node: ['18.x', '20.x', '22.x']
+        node: ['18.x', '20.x', '22.x', '23.x']
         os: [ubuntu-latest, windows-latest]
 
     steps:
@@ -27,5 +27,8 @@ jobs:
       - name: Install dependencies
         run: yarn
 
+      - name: Run tests
+        run: yarn test-all
+
       - name: Run tsc
-        run: yarn tsc --noEmit
+        run: yarn tsc -build
