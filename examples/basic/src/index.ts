@@ -145,17 +145,20 @@ const v1 = router()
 			// This is an example of using the SSESource interface
 			return sse({
 				async start(controller) {
+					// TODO: use `using` once Node.js supports it
 					// ensure controller is closed
-					using c = controller;
+					// using c = controller;
 					let i = 0;
 
 					for await (const word of query.content.split(' ')) {
 						i++;
-						c.enqueue({
+						controller.enqueue({
 							id: i.toString(),
 							data: word, // only strings are supported in this SSE interface
 						});
 					}
+
+					controller.close();
 				},
 			});
 		},

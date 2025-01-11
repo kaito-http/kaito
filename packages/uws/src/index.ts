@@ -119,6 +119,9 @@ export class KaitoServer {
 				headers,
 				method,
 				body: method === GET || method === HEAD ? null : this.getRequestBodyStream(res),
+
+				// @ts-expect-error undici in Node.js doesn't define the types
+				duplex: 'half',
 			});
 
 			const response = await STORE.run(lazyRemoteAddress(res), options.fetch, request);

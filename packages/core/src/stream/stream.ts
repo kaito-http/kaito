@@ -126,12 +126,15 @@ export function sse<U, E extends string, T extends SSEEvent<U, E>>(
 		const generator = evaluated;
 		return sseFromSource<U, E>({
 			async start(controller) {
-				// ensures close is called on controller when we're done
-				using c = controller;
+				// TODO: use `using` once Node.js supports it
+				// // ensures close is called on controller when we're done
+				// using c = controller;
 
 				for await (const event of generator) {
-					c.enqueue(event);
+					controller.enqueue(event);
 				}
+
+				controller.close();
 			},
 		});
 	} else {
