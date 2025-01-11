@@ -13,19 +13,17 @@ async function main() {
 	try {
 		while (true) {
 			const topic = await rl.question('What would you like a story about? ');
-			console.log(topic);
 			const stream = await api.get('/v1/stories', {
 				query: {
 					topic,
 				},
 				sse: true,
 			});
-			console.log('iterating stream');
 			for await (const chunk of stream) {
-				console.log('got chunk');
+				// this does not necessarily flush afaik
 				process.stdout.write(chunk.data);
 			}
-
+			// this will definitely flush stdout
 			console.log('\n');
 		}
 	} finally {

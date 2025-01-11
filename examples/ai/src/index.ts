@@ -75,7 +75,6 @@ const handle = createKaitoHandler({
 	}),
 
 	before: async req => {
-		console.log('req', req, req.url);
 		const origin = req.headers.get('origin');
 
 		if (req.method === 'OPTIONS' && origin && ALLOWED_ORIGINS.includes(origin)) {
