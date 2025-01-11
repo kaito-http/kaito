@@ -144,7 +144,7 @@ export function sse<U, E extends string, T extends SSEEvent<U, E>>(
 export function sseFromAnyReadable<R, U, E extends string>(
 	stream: ReadableStream<R>,
 	transform: (chunk: R) => SSEEvent<U, E>,
-) {
+): KaitoSSEResponse<SSEEvent<U, E>> {
 	const transformer = new TransformStream({
 		transform: (chunk, controller) => {
 			controller.enqueue(transform(chunk));
