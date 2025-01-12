@@ -1,7 +1,7 @@
 import type {KaitoError} from './error.ts';
 import type {KaitoRequest} from './request.ts';
 import type {Router} from './router/router.ts';
-import type {GetContext, MakeOptional} from './util.ts';
+import type {GetContext} from './util.ts';
 
 export type Before = (req: Request) => Promise<Response | void | undefined>;
 
@@ -66,14 +66,7 @@ export type ServerConfig<ContextFrom> = {
 	transform?: (req: Request, res: Response) => Promise<Response | void | undefined>;
 };
 
-export function createKaitoHandler<Context>(
-	userConfig: MakeOptional<ServerConfig<Context>, 'enableClientResponseHints'>,
-) {
-	const config: ServerConfig<Context> = {
-		enableClientResponseHints: true,
-		...userConfig,
-	};
-
+export function createKaitoHandler<Context>(config: ServerConfig<Context>) {
 	const handle = config.router.freeze(config);
 
 	return async (request: Request): Promise<Response> => {
