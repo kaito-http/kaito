@@ -2,8 +2,8 @@ name: Testing
 on:
   pull_request:
   push:
-    paths:
-      - 'packages/*'
+    branches:
+      - main
 
 jobs:
   check:
