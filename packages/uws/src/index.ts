@@ -115,7 +115,8 @@ export class KaitoServer {
 			const method = req.getMethod();
 			//  req.getUrl does not include the query string in the url
 			const query = req.getQuery();
-			const url = origin.concat(req.getUrl() + (query ? '?' + query : ''));
+
+			const url = origin.concat(req.getUrl(), query ? '?' + query : '');
 
 			const request = new Request(url, {
 				headers,
