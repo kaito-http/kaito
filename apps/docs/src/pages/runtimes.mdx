@@ -99,7 +99,8 @@ interface Env {
 	STRIPE_SECRET_KEY: string;
 }
 
-// Recommendation is to move the storage and getStore function to the context.ts file, and include the env in your context object.
+// Recommendation is to move the storage instance to the `context.ts` file
+// and include the value in your context object.
 const storage = new AsyncLocalStorage<{
 	env: Env;
 	cfCtx: ExecutionContext; // has .waitUntil() and .passThroughOnException()
@@ -107,7 +108,7 @@ const storage = new AsyncLocalStorage<{
 
 const app = router().get('/', async ({ctx}) => {
 	return {
-		freeStripeKey: ctx.env.STRIPE_SECRET_KEY,
+		freeStripeKey: ctx.env.STRIPE_SECRET_KEY, // obviously don't send your stripe key to the client lol
 	};
 });
 
@@ -121,6 +122,8 @@ const handle = createKaitoHandler({
 });
 
 export default {
-	fetch: async (request, env, ctx) => storage.run({env, cfCtx: ctx}, () => handle(request)),
+	fetch: async (request, env, ctx) => {
+		return storage.run({env, cfCtx: ctx}, () => handle(request));
+	},
 } satisfies ExportedHandler<Env>;
 ```

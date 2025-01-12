@@ -19,8 +19,7 @@
 		"allowImportingTsExtensions": true,
 		"verbatimModuleSyntax": true,
 		"isolatedModules": true,
-		"skipLibCheck": true,
-		"jsx": "preserve"
+		"skipLibCheck": true
 	},
 	"exclude": ["compile/", "**/*/compile/**/*", "**/*/dist/**/*", "node_modules", "tsup.config.ts", "**/tsup.config.ts"]
 }
