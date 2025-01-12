@@ -116,7 +116,10 @@ const handle = createKaitoHandler({
 	router: app,
 	getContext: async req => {
 		const store = storage.getStore()!;
-		return {env: store.env, cfCtx: store.cfCtx};
+		return {
+			env: store.env,
+			cfCtx: store.cfCtx,
+		};
 	},
 	// ...
 });
