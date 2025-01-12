@@ -171,7 +171,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			const query = (options as {query?: {}}).query ?? {};
 			const body = (options as {body?: unknown}).body ?? undefined;
 
-			const url = pathcat<string>(rootOptions.base, path, {...params, ...query});
+			const url = new URL(pathcat<string>(rootOptions.base, path, {...params, ...query}));
 
 			const headers = new Headers({
 				Accept: 'application/json',

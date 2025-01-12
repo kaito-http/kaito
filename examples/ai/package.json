@@ -1,0 +1,34 @@
+{
+	"name": "@kaito-http-examples/ai",
+	"private": true,
+	"type": "module",
+	"author": "Alistair Smith <hi@alistair.sh>",
+	"description": "Functional HTTP Framework for TypeScript",
+	"homepage": "https://github.com/kaito-http/kaito",
+	"repository": "https://github.com/kaito-http/kaito",
+	"license": "MIT",
+	"version": "3.0.0-beta.20",
+	"scripts": {
+		"dev": "node --watch --import=tsx src/index.ts",
+		"start": "node --import=tsx src/index.ts",
+		"cli": "node --import=tsx src/client.ts",
+		"demo": "node demo.cjs"
+	},
+	"dependencies": {
+		"@google/generative-ai": "^0.21.0",
+		"@kaito-http/client": "workspace:^",
+		"@kaito-http/core": "workspace:^",
+		"@kaito-http/uws": "workspace:^",
+		"dotenv": "^16.3.1",
+		"zod": "^3.24.1"
+	},
+	"devDependencies": {
+		"tsx": "^4.19.2",
+		"typescript": "^5.7.2"
+	},
+	"keywords": [
+		"typescript",
+		"http",
+		"framework"
+	]
+}
