@@ -66,7 +66,7 @@ export interface KaitoHTTPClientRootOptions {
 	base: string;
 }
 
-export class KaitoSSEStream<T extends SSEEvent<unknown, string>> {
+export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements AsyncIterable<T> {
 	private readonly stream: ReadableStream<string>;
 	// buffer needed because when reading from the stream,
 	// we might receive a chunk that:
@@ -85,7 +85,10 @@ export class KaitoSSEStream<T extends SSEEvent<unknown, string>> {
 
 		for (const line of lines) {
 			const colonIndex = line.indexOf(':');
-			if (colonIndex === -1) continue;
+
+			if (colonIndex === -1) {
+				continue;
+			}
 
 			const field = line.slice(0, colonIndex).trim();
 			const value = line.slice(colonIndex + 1).trim();
