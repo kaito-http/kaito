@@ -10,7 +10,8 @@
 		"resolveJsonModule": true,
 		"module": "Preserve",
 		"moduleResolution": "Bundler",
-		"noEmit": true
+		"noEmit": true,
+		"emitDeclarationOnly": false
 	},
 	"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
 	"exclude": ["node_modules", "compile"]
