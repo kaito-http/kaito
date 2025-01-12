@@ -4,7 +4,7 @@ Kaito v3+ was designed to work with any runtime, including serverless runtimes l
 
 ## Bun
 
-Bun is the runtime most suited for Kaito. It's the runtime with the fastest Request/Response server built in.
+Bun is the runtime most suited for Kaito, as it has the fastest Request/Response server built in.
 
 ```ts
 import {createKaitoHandler} from '@kaito-http/core';
@@ -95,34 +95,32 @@ Cloudflare Workers passes environment variables to the handler function, which i
 ```ts
 import {AsyncLocalStorage} from 'node:async_hooks';
 
+interface Env {
+	STRIPE_SECRET_KEY: string;
+}
+
 // Recommendation is to move the storage and getStore function to the context.ts file, and include the env in your context object.
 const storage = new AsyncLocalStorage<{
-	env: Record<string, string>;
+	env: Env;
 	cfCtx: ExecutionContext; // has .waitUntil() and .passThroughOnException()
 }>();
 
-const getStore = () => {
-	const value = storage.getStore();
-	if (!value) throw new Error('No store found');
-	return value;
-};
-
 const app = router().get('/', async ({ctx}) => {
 	return {
-		env: ctx.env,
+		freeStripeKey: ctx.env.STRIPE_SECRET_KEY,
 	};
 });
 
 const handle = createKaitoHandler({
 	router: app,
 	getContext: async req => {
-		const store = getStore();
+		const store = storage.getStore()!;
 		return {env: store.env, cfCtx: store.cfCtx};
 	},
 	// ...
 });
 
 export default {
-	fetch: async (request, env) => storage.run({env}, () => handle(request)),
-};
+	fetch: async (request, env, ctx) => storage.run({env, cfCtx: ctx}, () => handle(request)),
+} satisfies ExportedHandler<Env>;
 ```
