@@ -20,7 +20,7 @@
 			"path": "./examples/bench"
 		},
 		{
-			"path": "./apps/docs"
+			"path": "./examples/deno"
 		}
 	]
 }
