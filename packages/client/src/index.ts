@@ -68,6 +68,7 @@ export interface KaitoHTTPClientRootOptions {
 
 export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements AsyncIterable<T> {
 	private readonly stream: ReadableStream<string>;
+
 	// buffer needed because when reading from the stream,
 	// we might receive a chunk that:
 	// - Contains multiple complete events
@@ -123,6 +124,13 @@ export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements Asyn
 				if (event) yield event;
 			}
 		}
+	}
+
+	/**
+	 * Get the underlying stream for more advanced use cases
+	 */
+	public getStream() {
+		return this.stream;
 	}
 }
 

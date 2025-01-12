@@ -1,16 +1,28 @@
 {
-	"extends": "../../tsconfig.options.json",
-	"compilerOptions": {
-		"jsx": "preserve",
-		"lib": ["dom", "dom.iterable", "esnext"],
-		"allowJs": true,
-		"skipLibCheck": true,
-		"incremental": true,
-		"esModuleInterop": true,
-		"resolveJsonModule": true,
-		"module": "Preserve",
-		"moduleResolution": "Bundler"
-	},
-	"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
-	"exclude": ["node_modules", "compile"]
+  "extends": "../../tsconfig.options.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "incremental": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "noEmit": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "compile"
+  ]
 }
