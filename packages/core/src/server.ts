@@ -64,24 +64,6 @@ export type ServerConfig<ContextFrom> = {
 	 * ```
 	 */
 	transform?: (req: Request, res: Response) => Promise<Response | void | undefined>;
-
-	/**
-	 * Controls whether the server includes a header to indicate non-JSON responses.
-	 *
-	 * When a route handler returns a `Response` object, this setting determines if
-	 * the server adds a header indicating the response should not be parsed as JSON.
-	 *
-	 * The `@kaito-http/client` package checks for this header's presence:
-	 * - If present: Returns the raw Response object
-	 * - If absent: Attempts to parse the response as JSON
-	 *
-	 * You might want to disable this feature when:
-	 * 1. Using a custom client that doesn't recognize this header
-	 * 2. Security requirements prevent exposing framework details in headers
-	 *
-	 * @default true
-	 */
-	enableClientResponseHints: boolean;
 };
 
 export function createKaitoHandler<Context>(
