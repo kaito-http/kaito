@@ -1,24 +1,17 @@
-# Server
+# The handler
 
-The `createServer` function is a very minimal part of Kaito, it simply wraps `http.createServer` as well as provides a few extra features.
-
-As of version `2.3.0`, kaito implemented `find-my-way` which massively improves performance, so we expose the internal fmw instance if you would like to access it for whatever reason.
-
-To use it, simply replace your `createServer` import and call with `createFMWServer`. Below is an example of using `find-my-way` to pretty print a list of all available routes.
+The `createKaitoHandler` function is a very minimal part of Kaito, it simply wraps all your functions together and returns a `request -> response` function.
 
 ```ts
-import {createFMWServer} from '@kaito-http/core';
+import {createKaitoHandler} from '@kaito-http/core';
 
-const {server, fmw} = createFMWServer({
+const handler = createKaitoHandler({
 	getContext,
 	router,
 	onError,
-	// ...
 });
 
-server.listen(8080, () => {
-	console.log(fmw.prettyPrint());
-});
+Bun.serve({fetch: handler, port: 3000});
 ```
 
 ## `onError`
@@ -26,12 +19,11 @@ server.listen(8080, () => {
 In the example above, you can see I have included a property called `onError`. This is a function that is called whenever an error is thrown in the request lifecycle. This function should reply with an object that contains a `status` and `message`. These will be used to reply to the client.
 
 ```ts
-import {createServer} from '@kaito-http/core';
+import {createKaitoHandler} from '@kaito-http/core';
 import {ZodError} from 'zod';
 
-const server = createServer({
-	// Be careful with using `res` here. It will enable you to send a response early (which will break your application).
-	// It may be removed it in the future.
+const handler = createKaitoHandler({
+	// Be careful with using `res` here.
 	onError: async ({error, req, res}) => {
 		if (error instanceof ZodError) {
 			return {status: 400, message: 'Invalid request'};

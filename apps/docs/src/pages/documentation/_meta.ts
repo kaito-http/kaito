@@ -4,9 +4,8 @@ const meta: Meta = {
 	context: 'Context',
 	routes: 'Routes',
 	routers: 'Routers',
-	server: 'Server',
+	handler: 'Handler',
 	'error-handling': 'Error Handling',
-	'escape-hatches': 'Escape Hatches',
 };
 
 export default meta;

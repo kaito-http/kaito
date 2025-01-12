@@ -7,9 +7,7 @@ import {Callout} from 'nextra/components';
 
 # Error Handling
 
-Errors are handled very gracefully in Kaito. You can throw an error in any route, and it will always be caught and handled. This means that you don't have to worry about catching errors in your routes, and you can focus on writing your application.
-
-## Throwing Errors
+Errors are handled very gracefully in Kaito. You can throw anywhere in any route, and it will be caught and handled. This allows you to focus on the happy-paths of your application, and know that errors are handled gracefully. The other advantage to this pattern is that you don't have to worry about error messages that could contain sensitive information, as everything passes through your onError handler.
 
 Kaito has a built in error called `KaitoError`. You can throw this error in your routes, and it will be caught and sent back to the client.
 
@@ -18,14 +16,14 @@ Kaito has a built in error called `KaitoError`. You can throw this error in your
 	internally and are always sent back to the client.
 </Callout>
 
-```ts {8}
+```ts filename="routes/users.ts" {8}
 export const users = router().get('/:id', async ({ctx, params}) => {
 	const user = await ctx.db.users.findOne({
 		where: {id: params.id},
 	});
 
 	if (!user) {
-		// Client will receive this status code and error message. Will *not* be passed to the .onError() handler
+		// Client will receive this status code and error message always. This bypasses your .onError() handler
 		throw new KaitoError(404, 'User not found');
 	}
 

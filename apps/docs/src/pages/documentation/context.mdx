@@ -18,7 +18,7 @@ In the documentation about routers, you'll learn about how routers can create th
 	[routes](/documentation/routes) documentation for information on the Request/Response model.
 </Callout>
 
-```ts
+```ts filename="context.ts"
 import {createUtilities} from '@kaito-http/core';
 import {db} from './db.ts';
 
@@ -51,13 +51,13 @@ export const {getContext, router} = createUtilities(async (req, res) => {
 
 You can then use this context, when setup correctly with a router, inside every single route. E.g.
 
-```ts
+```ts filename="routes/users.ts"
 import {z} from 'zod';
-import {router} from './context';
+import {router} from '../context.ts';
 
-export const users = router().get('/users', {
+export const users = router().get('/users/search', {
 	query: {
-		search: z.string(),
+		search: z.string().max(200),
 	},
 
 	async run({ctx, query}) {

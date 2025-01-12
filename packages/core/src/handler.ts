@@ -3,11 +3,9 @@ import type {KaitoRequest} from './request.ts';
 import type {Router} from './router/router.ts';
 import type {GetContext} from './util.ts';
 
-export type Before = (req: Request) => Promise<Response | void | undefined>;
-
-export type ServerConfig<ContextFrom> = {
+export type HandlerConfig<ContextFrom> = {
 	/**
-	 * The root router to mount on this server.
+	 * The root router to mount on this handler.
 	 */
 	router: Router<ContextFrom, unknown, any>;
 
@@ -45,12 +43,15 @@ export type ServerConfig<ContextFrom> = {
 	 * }
 	 * ```
 	 */
-	before?: Before;
+	before?: (req: Request) => Promise<Response | void | undefined>;
 
 	/**
 	 * Transforms the response before it is sent to the client. Very useful for settings headers like CORS.
 	 *
 	 * You can also return a new response in this function, or just mutate the current one.
+	 *
+	 * This function WILL receive the result of `.before()` if you return a response from it. This means
+	 *  you only need to define headers in a single place.
 	 *
 	 * @example
 	 * ```ts
@@ -66,13 +67,21 @@ export type ServerConfig<ContextFrom> = {
 	transform?: (req: Request, res: Response) => Promise<Response | void | undefined>;
 };
 
-export function createKaitoHandler<Context>(config: ServerConfig<Context>) {
+export function createKaitoHandler<Context>(config: HandlerConfig<Context>) {
 	const handle = config.router.freeze(config);
 
 	return async (request: Request): Promise<Response> => {
 		if (config.before) {
 			const result = await config.before(request);
-			if (result instanceof Response) return result;
+
+			if (result instanceof Response) {
+				if (config.transform) {
+					const result2 = await config.transform(request, result);
+					if (result2 instanceof Response) return result;
+				}
+
+				return result;
+			}
 		}
 
 		const response = await handle(request);

@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import {KaitoError, WrappedError} from '../error.ts';
+import type {HandlerConfig} from '../handler.ts';
 import {KaitoRequest} from '../request.ts';
 import {KaitoResponse} from '../response.ts';
 import type {AnyQueryDefinition, AnyRoute, Route} from '../route.ts';
-import type {ServerConfig} from '../server.ts';
 import type {ErroredAPIResponse, Parsable} from '../util.ts';
 import type {KaitoMethod} from './types.ts';
 
@@ -112,7 +112,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		});
 	};
 
-	public freeze = (server: Omit<ServerConfig<ContextFrom>, 'router'>) => {
+	public freeze = (server: Omit<HandlerConfig<ContextFrom>, 'router'>) => {
 		const routes = new Map<string, Map<KaitoMethod, AnyRoute>>();
 
 		for (const route of this.state.routes) {
