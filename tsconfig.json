@@ -15,10 +15,16 @@
 			"path": "./packages/uws"
 		},
 		{
+			"path": "./examples/ai"
+		},
+		{
 			"path": "./examples/basic"
 		},
 		{
 			"path": "./examples/bench"
+		},
+		{
+			"path": "./examples/client"
 		},
 		{
 			"path": "./examples/deno"
