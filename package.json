@@ -1,6 +1,6 @@
 {
 	"name": "kaito-http",
-	"version": "3.0.0",
+	"version": "3.0.1",
 	"repository": "https://github.com/kaito-http/kaito",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
