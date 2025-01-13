@@ -86,8 +86,9 @@ const handle = createKaitoHandler({
 	// And pass our root router
 	router: app,
 
-	// Define an async `onError` handler, in case something goes wrong inside of the route.
-	// More on that that later.
+	// Define an async `onError` handler, in case something goes wrong inside of the route
+	// This will handle all thrown errors EXCEPT for KaitoError, which is a special error type
+	// you can throw for simple error messages with a status code
 	onError: async ({error}) => {
 		console.log(error);
 
