@@ -2,6 +2,12 @@ import type {KaitoHead} from './head.ts';
 import type {KaitoRequest} from './request.ts';
 import {Router} from './router/router.ts';
 
+/**
+ * A helper to check if the environment is Node.js-like and the NODE_ENV is development
+ */
+export const isNodeLikeDev =
+	typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env.NODE_ENV === 'development';
+
 export type ErroredAPIResponse = {success: false; data: null; message: string};
 export type SuccessfulAPIResponse<T> = {success: true; data: T; message: 'OK'};
 export type APIResponse<T> = ErroredAPIResponse | SuccessfulAPIResponse<T>;

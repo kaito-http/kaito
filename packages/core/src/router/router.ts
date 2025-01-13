@@ -3,7 +3,7 @@ import type {HandlerConfig} from '../handler.ts';
 import {KaitoHead} from '../head.ts';
 import {KaitoRequest} from '../request.ts';
 import type {AnyQueryDefinition, AnyRoute, Route} from '../route.ts';
-import type {ErroredAPIResponse, Parsable} from '../util.ts';
+import {isNodeLikeDev, type ErroredAPIResponse, type Parsable} from '../util.ts';
 import type {KaitoMethod} from './types.ts';
 
 type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
@@ -187,6 +187,19 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 				});
 
 				if (result instanceof Response) {
+					if (isNodeLikeDev) {
+						if (head.touched) {
+							const msg = [
+								'Kaito detected that you used the KaitoHead object to modify the headers or status, but then returned a Response in the route',
+								'This is usually a mistake, as your Response object will override any changes you made to the headers or status code.',
+								'',
+								'This warning was shown because `process.env.NODE_ENV=development`',
+							].join('\n');
+
+							console.warn(msg);
+						}
+					}
+
 					return result;
 				}
 
