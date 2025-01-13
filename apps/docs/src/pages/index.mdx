@@ -13,8 +13,14 @@ Kaito is a seriously good HTTP Server Framework for TypeScript. It works with ma
 - 📦 Absolutely tiny package size, making it ideal for serverless environments
 - 🏎️ Streaming support with built-in utilities for doing server-sent events (SSE)
 
-### Why Kaito?
+### The client
 
-The most popular HTTP Server frameworks on npm are all built for Node.js, and are all similar iterations of a very dated pattern that was popularized by Express.js.
+Kaito has an optional client library that is built on top of the Fetch API. It works great in the browser and also in any server runtime! The client can import the TypeScript definition of your server and allow for full e2e type safety.
 
-Kaito is different. We've reimagined what a modern HTTP Server Framework should be, and we've built it from the ground up to be the best possible experience for TypeScript developers.
+This means url paths, query params, request body, and response body are all fully typed. You can break things in the backend and know exactly what needs to be fixed in the frontend. It's truly the best way to build a full stack application with TypeScript everywhere.
+
+[Learn more about the client →](/documentation/client)
+
+### So, why choose Kaito?
+
+The most popular HTTP Server frameworks on npm are all built for Node.js, and are all similar iterations of a very dated pattern that was popularized by Express.js. Kaito is different. We've reimagined what a modern HTTP Server Framework should be, and we've built it from the ground up to be the best possible experience for TypeScript developers.
