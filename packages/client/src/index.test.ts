@@ -1,39 +1,10 @@
-import {createUtilities} from '@kaito-http/core';
-import {sse} from '@kaito-http/core/stream';
 import assert from 'node:assert/strict';
 import {describe, test} from 'node:test';
-import {z} from 'zod';
 import {createKaitoHTTPClient, KaitoClientHTTPError, KaitoSSEStream} from './index.ts';
 
-const {router: createRouter} = createUtilities(async (req, res) => ({req, res}));
+import type {App} from './router.test.ts';
 
 describe('KaitoHTTPClient', () => {
-	const router = createRouter()
-		.get('/users', {
-			query: {
-				limit: z.string().transform(Number).pipe(z.number()),
-			},
-			run: async () => [{id: 1, name: 'Test User'}],
-		})
-		.post('/users', {
-			body: z.object({name: z.string()}),
-			run: async () => ({id: 1, name: 'New User'}),
-		})
-		.get('/users/:id', async () => ({id: 123, name: 'Test User'}))
-		.get('/stream', async () =>
-			sse(
-				new ReadableStream({
-					start(controller) {
-						controller.enqueue('Hello');
-						controller.enqueue('World');
-						controller.close();
-					},
-				}),
-			),
-		);
-
-	type App = typeof router;
-
 	describe('Basic HTTP operations', () => {
 		test('should make GET requests', async () => {
 			const mockFetch = async (req: Request) => {
