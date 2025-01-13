@@ -70,4 +70,6 @@ const server = createKaitoHandler({
 });
 ```
 
+You can also return a response inside of `.transform()` as well, but we find that there are few use cases for this. Most of the time you'll only be mutating headers.
+
 This feature was called Before/After in Kaito v2. The functionality has changed a little bit, so migrating to v3 might require some changes.
