@@ -15,8 +15,6 @@ To ensure compatibility, always use matching versions of the client and server p
 bun i @kaito-http/client
 ```
 
-All requests include credentials by default (`credentials: 'include'`). This ensures cookies are properly sent with cross-origin requests. There's currently no way to disable this
-
 ## Basic Usage
 
 Create a client instance by providing your API's type and base URL:
@@ -164,4 +162,83 @@ try {
 		console.log('Error details:', error.body);
 	}
 }
+```
+
+## Customizing Request Behavior
+
+The client provides two powerful options for customizing how requests are made: `fetch` and `before`.
+
+### Request Preprocessing
+
+The `before` option lets you modify requests before they are sent. This is perfect for:
+
+- Adding authentication headers
+- Setting up request tracking
+- Modifying request parameters
+
+```ts
+const api = createKaitoHTTPClient<App>({
+	base: 'http://localhost:3000',
+	before: async (url, init) => {
+		// Set credentials
+		const request = new Request(url, {
+			...init,
+			credentials: 'include',
+		});
+
+		// Add authentication
+		request.headers.set('Authorization', `Bearer ${getToken()}`);
+
+		// Add tracking headers
+		request.headers.set('X-Request-ID', generateRequestId());
+
+		return request;
+	},
+});
+```
+
+You can combine both options for maximum flexibility:
+
+```ts
+const api = createKaitoHTTPClient<App>({
+	base: 'http://localhost:3000',
+	before: async (url, init) => {
+		const request = new Request(url, init);
+		request.headers.set('Authorization', `Bearer ${getToken()}`);
+		return request;
+	},
+	fetch: async request => {
+		const response = await fetch(request);
+		// Add response processing here
+		return response;
+	},
+});
+```
+
+### Custom Fetch Implementation
+
+You can provide a custom `fetch` implementation to override the default global `fetch`. This is useful when you need to:
+
+- Use a different fetch implementation
+- Add global request interceptors
+- Modify how requests are made
+
+```ts
+const api = createKaitoHTTPClient<App>({
+	base: 'http://localhost:3000',
+	fetch: async request => {
+		// Use a custom fetch implementation
+		return await customFetch(request);
+
+		// Or modify the response if you really want to
+		const response = await fetch(request);
+		return new Response(response.body, {
+			status: response.status,
+			headers: {
+				...Object.fromEntries(response.headers),
+				'X-Custom-Header': 'value',
+			},
+		});
+	},
+});
 ```
