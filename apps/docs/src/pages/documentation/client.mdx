@@ -1,8 +1,8 @@
 # Client
 
-Kaito provides a strongly-typed HTTP client that works seamlessly with your Kaito server. The client supports all HTTP methods, streaming, and SSE out of the box.
+Kaito provides a strongly-typed HTTP client that seamlessly integrates with your Kaito server. The client supports all HTTP methods, streaming responses, and Server-Sent Events (SSE) out of the box.
 
-Kaito releases versions of all packages together, so make sure to use the same version of the client and server. They will be guaranteed to work together.
+To ensure compatibility, always use matching versions of the client and server packages, as they are released together.
 
 ```bash
 bun i @kaito-http/client
@@ -10,7 +10,7 @@ bun i @kaito-http/client
 
 ## Basic Usage
 
-To use the Kaito HTTP client, first create a client instance by providing your API's type and base URL:
+Create a client instance by providing your API's type and base URL:
 
 ```ts filename="api/index.ts"
 const app = router().merge('/v1', v1);
@@ -25,9 +25,8 @@ export type App = typeof app;
 
 ```ts filename="client/index.ts" /type {App}/ /<App>/
 import {createKaitoHTTPClient} from '@kaito-http/client';
-import type {App} from '../api/index.ts'; // Make sure to use `import type` here!!
+import type {App} from '../api/index.ts'; // Use `import type` to avoid runtime overhead
 
-// Pass `App` as the type parameter so the client knows about all your routes
 const api = createKaitoHTTPClient<App>({
 	base: 'http://localhost:3000',
 });
@@ -35,15 +34,18 @@ const api = createKaitoHTTPClient<App>({
 
 ## Making Requests
 
-### Normal requests
+### Normal Requests
 
-Kaito's client will make sure that you pass all the correct input data for your routes. That includes query parameters, path parameters, and body data. It will also autofill the URL for you, and also will include the correct return type.
+The Kaito client ensures type safety across your entire API. It automatically:
+
+- Validates input data (query parameters, path parameters, and request body)
+- Constructs the correct URL
+- Provides proper TypeScript types for the response
 
 ```ts
-// `user` will be correctly typed! No extra type definitions needed!!
+// `user` will be fully typed based on your route definition
 const user = await api.get('/v1/users/:id', {
 	params: {
-		// Params will be correctly enforced
 		id: '123',
 	},
 });
@@ -52,7 +54,7 @@ console.log(user);
 
 await api.post('/v1/users/@me', {
 	body: {
-		name: 'John Doe', // body will be correctly typed based on the route's body schema! Amazing!
+		name: 'John Doe', // Body schema is enforced by TypeScript
 	},
 });
 ```
@@ -111,11 +113,45 @@ for await (const event of postStream) {
 }
 ```
 
-## Errors
+## Request Configuration
 
-If the route throws an error, the client will know and will throw a `KaitoClientHTTPError`. This error has a `.request`, `.response` and `.body` property which you can use to debug the error.
+The client provides several options to customize your requests:
 
-We also export a `isKaitoClientHTTPError` function that you can use to check if an error is a Kaito client HTTP error. This just does an `instanceof` check.
+```ts
+// Cancel requests using AbortSignal
+const controller = new AbortController();
+const user = await api.get('/v1/users/:id', {
+	params: {id: '123'},
+	signal: controller.signal,
+});
+
+// Add custom headers
+const response = await api.post('/v1/users', {
+	body: {name: 'John'},
+	headers: {
+		'X-Custom-Header': 'value',
+	},
+});
+```
+
+For authentication and session management, all requests include credentials by default (`credentials: 'include'`). This ensures cookies are properly sent with cross-origin requests.
+
+## Error Handling
+
+When a route throws an error, the client throws a `KaitoClientHTTPError` with detailed information about what went wrong:
+
+- `.request`: The original `Request` object
+- `.response`: The `Response` object containing status code and headers
+- `.body`: The error response with this structure:
+  ```ts
+  {
+    success: false,
+    message: string,
+    // Additional error details may be included
+  }
+  ```
+
+Here's how to handle errors effectively:
 
 ```ts
 import {isKaitoClientHTTPError} from '@kaito-http/client';
@@ -124,7 +160,9 @@ try {
 	const response = await api.get('/v1/this-will-throw');
 } catch (error: unknown) {
 	if (isKaitoClientHTTPError(error)) {
-		console.log(error.request, error.response, error.body);
+		console.log('Error message:', error.message);
+		console.log('Status code:', error.response.status);
+		console.log('Error details:', error.body);
 	}
 }
 ```
