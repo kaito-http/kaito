@@ -29,6 +29,8 @@ jobs:
 
       - name: Build
         run: yarn build
+        env:
+          SKIP_WASM: "${{ matrix.os == 'windows-latest' }}"
 
       - name: Run tests
         run: yarn test-all
