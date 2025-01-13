@@ -1,5 +1,6 @@
 {
 	"extends": "./tsconfig.options.json",
+	"exclude": ["./apps/docs/**/*"],
 	"references": [
 		{
 			"path": "./packages/client"
@@ -20,7 +21,7 @@
 			"path": "./examples/bench"
 		},
 		{
-			"path": "./apps/docs"
+			"path": "./examples/deno"
 		}
 	]
 }

@@ -1,7 +1,7 @@
-import type {App} from './index.ts';
 import {createKaitoHTTPClient} from '@kaito-http/client';
-import * as readline from 'node:readline/promises';
 import {stdin as input, stdout as output} from 'node:process';
+import * as readline from 'node:readline/promises';
+import type {App} from './index.ts';
 
 const api = createKaitoHTTPClient<App>({
 	base: 'http://localhost:3000',
@@ -13,16 +13,19 @@ async function main() {
 	try {
 		while (true) {
 			const topic = await rl.question('What would you like a story about? ');
+
 			const stream = await api.get('/v1/stories', {
+				sse: true,
 				query: {
 					topic,
 				},
-				sse: true,
 			});
+
 			for await (const chunk of stream) {
 				// this does not necessarily flush afaik
 				process.stdout.write(chunk.data);
 			}
+
 			// this will definitely flush stdout
 			console.log('\n');
 		}

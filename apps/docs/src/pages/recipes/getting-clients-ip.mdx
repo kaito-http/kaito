@@ -1,89 +1,76 @@
 import {Callout} from 'nextra/components';
 
-# Getting the Client's IP
+# Reading the client IP address
 
-Kaito was designed to be light and unopinionated outside of the core functionality. Other libraries like [Express](https://expressjs.com/) and [Fastify](https://www.fastify.io/) have a lot of configuration options for things that are not core to its functionality.
+Getting the client IP address in Kaito differs depending on what server runtime you're using and also if you are using a reverse proxy or not.
 
-This is why you may find some features missing from Kaito. One example of this is getting the client's IP with or without a proxy in front of your Kaito server.
+For example, if you are using a reverse proxy like Cloudflare, you'll need to use the `cf-connecting-ip` header to get the client IP address.
 
-### Example (With a Proxy)
-
-The way to access the client's IP address can vary depending on if you are hosting behind a reverse proxy (like nginx) or not. Proxys will often add a header(s) to the request with the client's IP address.
-
-Please refer to your proxy's documentation for specific information on how to get it.
-
-Here is an example of accessing the client's IP address with a proxy in front of your Kaito server
-
-<Callout type="warning">
-	The code below should ONLY be used if you *trust* your proxy. Otherwise these headers *can* be spoofed by the client
-	and manipulated. **Make sure** to only include headers that you know are expected to be present.
-</Callout>
+## Cloudflare proxy example
 
 ```ts
-import {createUtilities, type KaitoRequest} from '@kaito-http/core';
+export const myRouter = router().get('/ip', async ({ctx}) => {
+	const ip = ctx.req.headers.get('cf-connecting-ip'); // you must pass `.req` in your context object
 
-// Incomplete list of possible headers, these are typically the ones you would
-// find on popular proxies, like CloudFlare, Nginx, and other cloud providers.
-// Make sure to only include headers that you expect to be present.
-const possibleHeaders = [
-	'x-forwarded-for',
-	'x-forwarded',
-	'forwarded-for',
-	'forwarded',
-	'x-client-ip',
-	'x-real-ip',
-	'cf-connecting-ip',
-	'true-client-ip',
-	'x-cluster-client-ip',
-] as const;
-
-/**
- * Gets the client's IP address from the request headers.
- * This function tries to extract it from common headers,
- * and if it fails, it tries to extract it from the socket's connecting IP,
- * otherwise it returns null.
- *
- * @param req The Kaito request object.
- * @returns The client's IP address, or null if it cannot be extracted.
- */
-function extractIPFromRequest(req: KaitoRequest) {
-	for (const header of possibleHeaders) {
-		const ip = req.headers[header];
-
-		if (ip !== undefined) {
-			return ip;
-		}
+	if (!ip) {
+		throw new KaitoError(400, 'Probably not behind Cloudflare!');
 	}
 
-	// If the headers don't contain the IP, you can try to return it from the socket,
-	// but chances are this will be the proxy's IP. Most *might* want to remove the line below
-	if (req.raw.socket.remoteAddress) {
-		// Accessing .raw to get the underlying Node.js request object
-		return req.raw.socket.remoteAddress;
-	}
-
-	return null;
-}
-
-export const {getContext, router} = createUtilities(async (req, res) => {
-	return {
-		req,
-		res,
-		clientIp: extractIPFromRequest(req),
-	};
+	return ip;
 });
 ```
 
-### Example (Without a Proxy)
+Other reverse proxies will have different headers, nginx for example uses `x-forwarded-for`. Consult the docs of your reverse proxy to see how to get the client IP address.
 
-If you aren't using a proxy, more than likely you can just get the client's IP by using the `req.socket.remoteAddress` property. If this is not the case and you believe there should be another example, feel free to contribute to this documentation!
+In most cases, apps ARE behind reverse proxies, and it's rare that you'll want the IP address of the connection itself. If you actually do need it, you'll have to consult the docs of your server runtime. Below are a couple snippets that may be helpful, though.
+
+## Bun
+
+With `Bun.serve()`, you can access the client IP address with the server's `.remoteIP` method. We recommend storing this in AsyncLocalStorage so you can access it in your route handlers.
+
+Bear in mind that you can move the ip property to your context object to make it cleaner to access. Below is just a lightweight example.
 
 ```ts
-export const {getContext, router} = createUtilities(async (req, res) => {
-	return {
-		req,
-		res,
-		clientIp: req.raw.socket.remoteAddress || null,
-	};
+import {AsyncLocalStorage} from 'node:async_hooks';
+
+const ipStore = new AsyncLocalStorage<string>();
+
+const app = router().get('/ip', async ({ctx}) => {
+	const ip = ipStore.getStore()!;
+	return ip;
+});
+
+const handle = createKaitoHandler({
+	router: app,
+	// ...
+});
+
+const server = Bun.serve({
+	port: 3000,
+	fetch: async (request, server) => {
+		const ip = server.remoteIP(request);
+		return ipStore.run(ip, () => handle(request));
+	},
 });
 ```
+
+## Node.js
+
+Since you'll be using `@kaito-http/uws` with Node.js, you can use the exported function `getRemoteAddress` to get the client IP address. Like the Bun example above, this also uses AsyncLocalStorage under the hood. The `getRemoteAddress` is a wrapper around the `getRemoteAddressAsText` function that comes from uWebSockets.js directly.
+
+```ts
+import {getRemoteAddress} from '@kaito-http/uws';
+
+const app = router().get('/ip', async ({ctx}) => {
+	const ip = getRemoteAddress(); // Will "just work" in Node.js, as long as you are using KaitoServer
+	return ip;
+});
+```
+
+---
+
+If you're not using Bun or Node.js, you should consult the docs of your server runtime to see how to get the client IP address. We'll happily accept a PR to this docs page to add snippets for other server runtimes.
+
+### Kaito v1 & v2
+
+Previous versions of Kaito were built on top of Node.js only, so you could just access the `req.socket.remoteAddress` property to get the client's IP address. The Web Fetch API doesn't have a `.socket` property on requests, so most server implementations let you access the remote ip address or socket instance (if any) through other means.

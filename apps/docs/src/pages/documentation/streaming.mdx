@@ -1,0 +1,41 @@
+# Streaming
+
+Kaito supports streaming out of the box we let you return a `Response` with a `ReadableStream` body, but we also have built-in utilities for doing server-sent events (SSE).
+
+## SSE
+
+SSE is a technology that allows you to stream data to the client in realtime. It's a very simple protocol. You can [learn about it on MDN](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events).
+
+Kaito has a built-in utility for doing SSE, called `sse`. This function returns a `Response` object that you can return from your route.
+
+```ts
+const stream = router().get('/', async ({ctx}) => {
+	return sse(async function* () {
+		yield {data: 'Hello, world!'};
+		await new Promise(resolve => setTimeout(resolve, 1000));
+		yield {data: 'Hello, world!'};
+	});
+});
+```
+
+## Basic streaming
+
+You can also just return a response with a `ReadableStream` body.
+
+```ts
+router().get('/', async () => {
+	const stream = new ReadableStream<string>({
+		async start(controller) {
+			controller.enqueue('Hello, ');
+			await sleep(1000);
+			controller.enqueue('world!');
+			await sleep(1000);
+			controller.close();
+		},
+	});
+
+	return new Response(stream, {
+		headers: {'Content-Type': 'text/plain'},
+	});
+});
+```

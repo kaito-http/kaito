@@ -6,7 +6,7 @@
 	"license": "MIT",
 	"dependencies": {
 		"es-urlcat": "^1.0.0",
-		"next": "^15.1.2",
+		"next": "^15.1.4",
 		"nextra": "3.3.1",
 		"nextra-theme-docs": "3.3.1",
 		"pathcat": "^1.4.0",
@@ -19,10 +19,10 @@
 		"build": "next build"
 	},
 	"devDependencies": {
-		"@types/node": "^22.10.2",
-		"@types/react": "^19.0.2",
-		"@types/react-dom": "^19.0.2",
-		"typescript": "^5.7.2"
+		"@types/node": "^22.10.5",
+		"@types/react": "^19.0.5",
+		"@types/react-dom": "^19.0.3",
+		"typescript": "^5.7.3"
 	},
 	"description": "Functional HTTP Framework for TypeScript",
 	"homepage": "https://github.com/kaito-http/kaito",

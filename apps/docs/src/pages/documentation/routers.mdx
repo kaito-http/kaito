@@ -7,7 +7,11 @@ import {Callout} from 'nextra-theme-docs';
 
 # Routers
 
-Routers hold all of our routes and their metadata. They can be merged together to allow for separating logic into different files.
+Routers are a collection of routes and their metadata. They can be merged together to allow for separating logic into different files.
+
+- Routers are immutable, and all methods return a new router instance
+- You chain router methods: `router().post().get()`
+- Use `.through()` to change the context instance for all routes defined after the `.through()`
 
 ## Creating a Router
 
@@ -38,7 +42,7 @@ export const api = router().merge('/v1', v1).merge('/v2', v2);
 
 You can expect all type information to be carried over as well as the route names and correct prefixes.
 
-## `.through()` (Middleware alternative)
+## `.through()`
 
 Kaito takes a different approach to traditional express.js style "middleware." This is mostly because of the inpredictable nature of such a pattern. Kaito offers a superior alternative, `.through()`.
 
@@ -130,7 +134,7 @@ const usersRouter = router()
 	});
 ```
 
-## Advanced usage with `.through()`
+## Composition
 
 A nice pattern that `.through()` enables is to export a router from another file that already has some 'through-logic' applied to it. This allows for extremely powerful composition of routers.
 

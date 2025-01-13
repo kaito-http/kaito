@@ -63,11 +63,54 @@ export type Prettify<T> = {
 } & {};
 
 export interface KaitoHTTPClientRootOptions {
+	/**
+	 * The base URL for all API requests.
+	 * All paths will be resolved relative to this URL.
+	 *
+	 * @example 'https://api.example.com'
+	 */
 	base: string;
+
+	/**
+	 * A function that is called before the request is made.
+	 * Useful for adding headers, authentication, etc.
+	 *
+	 * @param url The URL to make the request to
+	 * @param init The request init object
+	 * @returns A Promise resolving to the modified Request object
+	 *
+	 * @example
+	 * ```ts
+	 * before: async (url, init) => {
+	 *   const request = new Request(url, init);
+	 *   request.headers.set('Authorization', 'Bearer token');
+	 *   return request;
+	 * }
+	 * ```
+	 */
+	before?: (url: URL, init: RequestInit) => Promise<Request>;
+
+	/**
+	 * Custom fetch implementation to use instead of the global fetch.
+	 * Useful for adding custom fetch behavior or using a different fetch implementation.
+	 *
+	 * @param request The Request object to fetch
+	 * @returns A Promise resolving to the Response
+	 *
+	 * @example
+	 * ```ts
+	 * fetch: async (request) => {
+	 *   const response = await customFetch(request);
+	 *   return response;
+	 * }
+	 * ```
+	 */
+	fetch?: (request: Request) => Promise<Response>;
 }
 
 export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements AsyncIterable<T> {
 	private readonly stream: ReadableStream<string>;
+
 	// buffer needed because when reading from the stream,
 	// we might receive a chunk that:
 	// - Contains multiple complete events
@@ -123,6 +166,13 @@ export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements Asyn
 				if (event) yield event;
 			}
 		}
+	}
+
+	/**
+	 * Get the underlying stream for more advanced use cases
+	 */
+	public getStream() {
+		return this.stream;
 	}
 }
 
@@ -187,7 +237,6 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			const init: RequestInit = {
 				headers,
 				method,
-				credentials: 'include',
 			};
 
 			if (options.signal !== undefined) {
@@ -201,7 +250,32 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 
 			const request = new Request(url, init);
 
-			const response = await fetch(request);
+			const response = await (rootOptions.fetch ?? fetch)(
+				rootOptions.before ? await rootOptions.before(url, init) : request,
+			);
+
+			if (!response.ok) {
+				if (response.headers.get('content-type')?.includes('application/json')) {
+					// Try to assume non-ok responses are from `.onError()` and so therefore do have a body
+					// but in the case we somehow got a non-ok response without a body, we'll just throw
+					// an error with the status text and status code
+
+					const json = await response.json().then(
+						data => data as ErroredAPIResponse,
+						() => null,
+					);
+
+					if (json) {
+						throw new KaitoClientHTTPError(request, response, json);
+					}
+				}
+
+				throw new KaitoClientHTTPError(request, response, {
+					message: `Request to ${url} failed with status ${response.status} and no obvious body`,
+					success: false,
+					data: null,
+				});
+			}
 
 			if ('response' in options && options.response) {
 				return response as never;
@@ -218,6 +292,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			const result = (await response.json()) as APIResponse<never>;
 
 			if (!result.success) {
+				// In theory success is always true because we've already checked the response status
 				throw new KaitoClientHTTPError(request, response, result);
 			}
 
@@ -236,39 +311,6 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 	};
 }
 
-export async function safe<T>(
-	promise: Promise<T>,
-	fallbackErrorMessage: ((error: unknown) => string) | string = 'Something went wrong',
-): Promise<
-	| {
-			success: true;
-			data: T;
-	  }
-	| {
-			success: false;
-			error: unknown;
-			message: string;
-	  }
-> {
-	return promise
-		.then(res => ({success: true as const, data: res}))
-		.catch((error: unknown) => {
-			if (error instanceof KaitoClientHTTPError) {
-				return {
-					success: false as const,
-					error,
-					message: error.message,
-				};
-			}
-
-			console.warn(error);
-
-			const message = typeof fallbackErrorMessage === 'function' ? fallbackErrorMessage(error) : fallbackErrorMessage;
-
-			return {
-				success: false as const,
-				error,
-				message,
-			};
-		});
+export function isKaitoClientHTTPError(error: unknown): error is KaitoClientHTTPError {
+	return error instanceof KaitoClientHTTPError;
 }

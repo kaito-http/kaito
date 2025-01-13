@@ -1,13 +1,13 @@
 import {createKaitoHandler, KaitoError} from '@kaito-http/core';
 import {sse, sseFromAnyReadable} from '@kaito-http/core/stream';
 import {KaitoServer} from '@kaito-http/uws';
-import {default as Stripe, default as stripe} from 'stripe';
+import stripe from 'stripe';
 import {z} from 'zod';
 import {getContext, router} from './context.ts';
 import {randomEvent} from './data.ts';
 
 async function sleep(ms: number) {
-	await new Promise(resolve => setTimeout(resolve, ms));
+	await new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
 const users = router()
@@ -39,7 +39,7 @@ const users = router()
 		});
 	});
 
-const webCrypto = Stripe.createSubtleCryptoProvider();
+const webCrypto = stripe.createSubtleCryptoProvider();
 const exampleHandlingStripe = router().post('/webhook', async ({ctx}) => {
 	const body = await ctx.req.text();
 
@@ -233,15 +233,6 @@ const root = router()
 	// Merge this router with another router (v1)
 	.merge('/v1', v1);
 
-const cors = (origin: string, response: Response) => {
-	response.headers.set('Access-Control-Allow-Origin', origin);
-	response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-	response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-	response.headers.set('Access-Control-Max-Age', '86400');
-	response.headers.set('Access-Control-Allow-Credentials', 'true');
-	return response;
-};
-
 const ALLOWED_ORIGINS = ['http://localhost:3000', 'https://app.example.com'];
 
 const handle = createKaitoHandler({
@@ -253,19 +244,24 @@ const handle = createKaitoHandler({
 		message: error.message,
 	}),
 
+	// Runs before the router is called. In this case we are handling OPTIONS requests
+	// If you return a response from this function, it WILL be passed to `.transform()` before being sent to the client
 	before: async req => {
-		const origin = req.headers.get('origin');
-
-		if (req.method === 'OPTIONS' && origin && ALLOWED_ORIGINS.includes(origin)) {
-			return cors(origin, new Response(null, {status: 204}));
+		if (req.method === 'OPTIONS') {
+			return new Response(null, {status: 204});
 		}
 	},
 
-	transform: async (req, res) => {
-		const origin = req.headers.get('origin');
+	transform: async (request, response) => {
+		const origin = request.headers.get('origin');
 
+		// Include CORS headers if the origin is allowed
 		if (origin && ALLOWED_ORIGINS.includes(origin)) {
-			return cors(origin, res);
+			response.headers.set('Access-Control-Allow-Origin', origin);
+			response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+			response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+			response.headers.set('Access-Control-Max-Age', '86400');
+			response.headers.set('Access-Control-Allow-Credentials', 'true');
 		}
 	},
 });

@@ -1,19 +1,26 @@
 import {Callout} from 'nextra/components';
 
-# Introduction
+# Kaito
 
-Kaito is a minimalistic, API-oriented HTTP framework for Node.js and TypeScript.
+Kaito is a seriously good HTTP Server Framework for TypeScript. It works with many runtimes, including Bun, Node, Deno, Cloudflare Workers, Vercel Edge Functions, & more. It's based on the modern Web Fetch API using Request/Response objects.
 
 ### Features
 
-- ✍ Built in zod schema + body validation support
-- ⚡ Ultra quick. Faster than Express
-- 💪 Robust
-- 💨 Extremely easy to use, functional pattern
-- 📦 Tiny, with only 4 small dependencies
+- ✍ Works with any validation library, although we recommend [Zod](https://zod.dev/)
+- 🧑‍💻 Insane TypeScript support, with full e2e type safety to your client
+- ⚡ Stupidly fast, built for performance and is often many times faster than other frameworks
+- 💨 Very intuitive API, only need to learn a few concepts and the rest falls into place
+- 📦 Absolutely tiny package size, making it ideal for serverless environments
+- 🏎️ Streaming support with built-in utilities for doing server-sent events (SSE)
 
-## Principles
+### The client
 
-- No middleware! I've always disliked the middleware pattern, for two reasons. The first is that it's difficult to make guarantees about where and the order that middleware run, and secondly it's hard to provide robust type information for middleware. **Instead**, Kaito offers a `.through()` method that allows you to perform logic and swap out context before the request is handled. Read more about that [here](/documentation/routers#through-middleware-alternative).
-- JSON only. This makes it über easy to build an API without having to think about what's happening behind the scenes
-- e2e types. Kaito supports exporting the entire API as a TypeScript interfaces, including all response types. This allows for easy building of a client
+Kaito has an optional client library that is built on top of the Fetch API. It works great in the browser and also in any server runtime! The client can import the TypeScript definition of your server and allow for full e2e type safety.
+
+This means url paths, query params, request body, and response body are all fully typed. You can break things in the backend and know exactly what needs to be fixed in the frontend. It's truly the best way to build a full stack application with TypeScript everywhere.
+
+[Learn more about the client →](/documentation/client)
+
+### Why Kaito?
+
+The most popular HTTP Server frameworks on npm are all built for Node.js, and are all similar iterations of a very dated pattern that was popularized by Express.js. Kaito is different. We've reimagined what a modern HTTP Server Framework should be, and we've built it from the ground up to be the best possible experience for TypeScript developers.

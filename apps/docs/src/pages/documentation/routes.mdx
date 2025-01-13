@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import {Callout} from 'nextra/components';
 
 # Routes
 
@@ -14,14 +15,49 @@ Here's an extremely basic example of a ping/pong route.
 const app = router().get('/ping', async () => 'pong');
 ```
 
-## Constraints
+<Callout>You must either return something JSON serializable, a `Response` object, or throw an error</Callout>
 
-- Route return types **must** be JSON serializable
-- Route execution logic must be async (return a promise). This might change in the future
+## Request/Response model
 
-## Execution
+Understanding how Kaito handles requests and responses is crucial, so let's cover that first.
 
-Routes are executed by the router. The router is responsible for parsing the request, validating the input, and executing the route. Route run methods must be async. Throwing an error will call your onError handler defined in your server.
+For each incoming request, Kaito creates two important objects:
+
+1. A `KaitoRequest` object - This is a thin wrapper around the standard `Request` object, providing a similar API
+
+2. A `KaitoHead` object - This is a wrapper around a `Headers` object and a status code. It's used so the router knows what changes you might have made to the status code or headers.
+
+And then the router handles requests very similarly to the following:
+
+```ts
+const kaitoRequest = new KaitoRequest(reqFromServer); // reqFromServer is a `Request` instance
+const kaitoHead = new KaitoHead();
+
+const context = await getContext(kaitoRequest, kaitoHead);
+const result = await route(context);
+
+if (result instanceof Response) {
+	return result;
+}
+
+// Create the final response object using the
+// headers and status code from the kaitoHead object
+const response = Response.json(result, {
+	status: kaitoHead.status(), // status will always default to 200
+	headers: kaitoHead.headers,
+});
+
+return response;
+```
+
+So to summarise
+
+- Check if you returned a `Response` instance, and if so, return that
+- Otherwise get the headers and status code from the `KaitoHead` object
+- Automatically set `Content-Type: application/json` if you return a JSON-serializable value
+- Use these to build the final response
+
+Ultimately the important thing to understand here is that if you return a `Response` instance directly, Kaito will use that as-is and ignore any changes made to the `KaitoHead` object. This gives you full control when needed, but means you need to set all headers and status codes on the `Response` object itself.
 
 ## Input
 

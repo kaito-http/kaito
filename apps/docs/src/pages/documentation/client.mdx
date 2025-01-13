@@ -1,0 +1,244 @@
+import {Callout} from 'nextra/components';
+
+<Callout>
+	The Kaito client is a recent addition to the Kaito ecosystem. It's still in the early stages of development. While we
+	think it's definitely stable, there may be missing features or unexpected behaviours.
+</Callout>
+
+# Client
+
+Kaito provides a strongly-typed HTTP client that seamlessly integrates with your Kaito server. The client supports all HTTP methods, streaming responses, and Server-Sent Events (SSE) out of the box.
+
+To ensure compatibility, always use matching versions of the client and server packages, as they are released together.
+
+```bash
+bun i @kaito-http/client
+```
+
+## Basic Usage
+
+Create a client instance by providing your API's type and base URL:
+
+```ts filename="api/index.ts"
+const app = router().merge('/v1', v1);
+
+const handler = createKaitoHTTPHandler({
+	router: app,
+	// ...
+});
+
+export type App = typeof app;
+```
+
+```ts filename="client/index.ts" /type {App}/ /<App>/
+import {createKaitoHTTPClient} from '@kaito-http/client';
+import type {App} from '../api/index.ts'; // Use `import type` to avoid runtime overhead
+
+const api = createKaitoHTTPClient<App>({
+	base: 'http://localhost:3000',
+});
+```
+
+## Making Requests
+
+### Normal Requests
+
+The Kaito client ensures type safety across your entire API. It automatically:
+
+- Validates input data (query parameters, path parameters, and request body)
+- Constructs the correct URL
+- Provides proper TypeScript types for the response
+
+```ts
+// `user` will be fully typed based on your route definition
+const user = await api.get('/v1/users/:id', {
+	params: {
+		id: '123',
+	},
+});
+
+console.log(user);
+
+await api.post('/v1/users/@me', {
+	body: {
+		name: 'John Doe', // Body schema is enforced by TypeScript
+	},
+});
+```
+
+### Non-JSON Responses
+
+For endpoints that return a `Response` instance, you must pass `response: true` to the request options. This is enforced for you at a compile time type level, so you
+can't accidentally forget to pass it. The option is needed so the runtime JavaScript doesn't assume the response is JSON.
+
+```ts
+const response = await api.get('/v1/response/', {
+	response: true,
+});
+
+const text = await response.text(); // or you could use .arrayBuffer() or .blob(), etc
+```
+
+### Server-Sent Events (SSE)
+
+The client provides built-in support for SSE streams. You can iterate over the events using a `for await...of` loop:
+
+```ts
+// GET request with SSE
+const stream = await api.get('/v1/sse_stream', {
+	sse: true, // sse: true is enforced at a compile time type level
+	query: {
+		content: 'Your streaming content',
+	},
+});
+
+for await (const event of stream) {
+	console.log('event', event.data);
+}
+
+// POST request with SSE
+const postStream = await api.post('/v1/sse_stream', {
+	sse: true,
+	body: {
+		count: 20,
+	},
+});
+
+for await (const event of postStream) {
+	// Handle different event types
+	switch (event.event) {
+		case 'numbers':
+			console.log(event.data.digits); // TypeScript knows this is a number
+			break;
+		case 'data':
+			console.log(event.data.obj); // TypeScript knows this is an object
+			break;
+		case 'text':
+			console.log(event.data.text); // TypeScript knows this is a string
+			break;
+	}
+}
+```
+
+## Cancelling Requests
+
+You can use an `AbortSignal` to cancel a request
+
+```ts
+// Cancel requests using AbortSignal
+const controller = new AbortController();
+const user = await api.get('/v1/users/:id', {
+	params: {id: '123'},
+	signal: controller.signal,
+});
+```
+
+## Error Handling
+
+When a route throws an error, the client throws a `KaitoClientHTTPError` with detailed information about what went wrong:
+
+- `.request`: The original `Request` object
+- `.response`: The `Response` object containing status code and headers
+- `.body`: The error response with this structure:
+  ```ts
+  {
+    success: false,
+    message: string,
+    // Additional error details may be included
+  }
+  ```
+
+Here's how to handle errors effectively:
+
+```ts
+import {isKaitoClientHTTPError} from '@kaito-http/client';
+
+try {
+	const response = await api.get('/v1/this-will-throw');
+} catch (error: unknown) {
+	if (isKaitoClientHTTPError(error)) {
+		console.log('Error message:', error.message);
+		console.log('Status code:', error.response.status);
+		console.log('Error details:', error.body);
+	}
+}
+```
+
+## Customizing Request Behavior
+
+The client provides two powerful options for customizing how requests are made: `fetch` and `before`.
+
+### Request Preprocessing
+
+The `before` option lets you modify requests before they are sent. This is perfect for:
+
+- Adding authentication headers
+- Setting up request tracking
+- Modifying request parameters
+
+```ts
+const api = createKaitoHTTPClient<App>({
+	base: 'http://localhost:3000',
+	before: async (url, init) => {
+		// Set credentials
+		const request = new Request(url, {
+			...init,
+			credentials: 'include',
+		});
+
+		// Add authentication
+		request.headers.set('Authorization', `Bearer ${getToken()}`);
+
+		// Add tracking headers
+		request.headers.set('X-Request-ID', generateRequestId());
+
+		return request;
+	},
+});
+```
+
+You can combine both options for maximum flexibility:
+
+```ts
+const api = createKaitoHTTPClient<App>({
+	base: 'http://localhost:3000',
+	before: async (url, init) => {
+		const request = new Request(url, init);
+		request.headers.set('Authorization', `Bearer ${getToken()}`);
+		return request;
+	},
+	fetch: async request => {
+		const response = await fetch(request);
+		// Add response processing here
+		return response;
+	},
+});
+```
+
+### Custom Fetch Implementation
+
+You can provide a custom `fetch` implementation to override the default global `fetch`. This is useful when you need to:
+
+- Use a different fetch implementation
+- Add global request interceptors
+- Modify how requests are made
+
+```ts
+const api = createKaitoHTTPClient<App>({
+	base: 'http://localhost:3000',
+	fetch: async request => {
+		// Use a custom fetch implementation
+		return await customFetch(request);
+
+		// Or modify the response if you really want to
+		const response = await fetch(request);
+		return new Response(response.body, {
+			status: response.status,
+			headers: {
+				...Object.fromEntries(response.headers),
+				'X-Custom-Header': 'value',
+			},
+		});
+	},
+});
+```

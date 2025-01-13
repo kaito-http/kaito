@@ -3,20 +3,24 @@ title: Context
 description: Context is a way to pass common data to all routes
 ---
 
+import {Callout} from 'nextra/components';
+
 # Context
 
 In Kaito, context is information shared to every single route. It's provided at the root of your application and is generated on every single request.
 
-For example, if you want to provide the `req` and `res` objects to each route, you should add it to your context.
-
 Below is an example of things that you could include, but it's really up to you and what you would find useful to include in your app.
 
-In the documentation about routers, you'll learn about how routers can create their own context, enabling powerful separation of concerns.
+In the documentation about routers, you'll learn about how routers can create their own context for enabling powerful separation of concerns.
 
-It's important to note that passing the response object is potentially harmful. This is because a developer could misuse it and start overwriting headers or sending data to the client in a way that you didn't intend. Instead, I'd recommend only passing as few values as needed. If you needed access to cookies, perhaps provide a `getCookie(name: string)` method, or something similar. This is by principle of least privilege.
+<Callout>
+	Passing the request/response objects to context is ok, but we firmly recommend you read the
+	[routes](/documentation/routes) documentation for information on the Request/Response model.
+</Callout>
 
-```ts
+```ts filename="context.ts"
 import {createUtilities} from '@kaito-http/core';
+import {db} from './db.ts';
 
 // Use the `createUtilities` helper to also create a strongly typed `router` function
 export const {getContext, router} = createUtilities(async (req, res) => {
@@ -47,13 +51,13 @@ export const {getContext, router} = createUtilities(async (req, res) => {
 
 You can then use this context, when setup correctly with a router, inside every single route. E.g.
 
-```ts
+```ts filename="routes/users.ts"
 import {z} from 'zod';
-import {router} from './context';
+import {router} from '../context.ts';
 
-export const users = router().get('/users', {
+export const users = router().get('/users/search', {
 	query: {
-		search: z.string(),
+		search: z.string().max(200),
 	},
 
 	async run({ctx, query}) {

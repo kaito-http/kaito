@@ -1,10 +1,14 @@
 # Handling cookies with Kaito
 
-Kaito removed cookie serialization in v3. It's easy to reimplement, and we suggest you do this inside of your context.
+Kaito removed all cookie-related functionality in v3. It's easy to reimplement, and we suggest you do this inside of your context.
 
 ## Example
 
-While you do not need to follow this 1:1, we do recommend the package [`cookie`](https://www.npmjs.com/package/cookie) for its simplicity and package size.
+We recommend using the package [`cookie`](https://www.npmjs.com/package/cookie). It's simple and has a tiny footprint & zero dependencies.
+
+```bash
+bun i cookie
+```
 
 ```ts
 import {serialize, parse, type SerializeOptions} from 'cookie';
@@ -14,11 +18,11 @@ export const {getContext, router} = createUtilities(async (req, res) => {
 		req,
 		res,
 		get cookies() {
-			const header = req.headers.cookie;
+			const header = req.headers.get('cookie');
 			return header ? parse(header) : {};
 		},
 		setCookie(name: string, value: string, options: SerializeOptions) {
-			res.setHeader('Set-Cookie', serialize(name, value, options));
+			res.headers.set('Set-Cookie', serialize(name, value, options));
 		},
 	};
 });
@@ -27,4 +31,3 @@ export const {getContext, router} = createUtilities(async (req, res) => {
 ## References
 
 - [MDN: Cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cookie)
-- [NPM: Cookie](https://www.npmjs.com/package/cookie)

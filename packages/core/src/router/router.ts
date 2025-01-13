@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/member-ordering */
 import {KaitoError, WrappedError} from '../error.ts';
+import type {HandlerConfig} from '../handler.ts';
+import {KaitoHead} from '../head.ts';
 import {KaitoRequest} from '../request.ts';
-import {KaitoResponse} from '../response.ts';
 import type {AnyQueryDefinition, AnyRoute, Route} from '../route.ts';
-import type {ServerConfig} from '../server.ts';
-import type {ErroredAPIResponse, Parsable} from '../util.ts';
+import {isNodeLikeDev, type ErroredAPIResponse, type Parsable} from '../util.ts';
 import type {KaitoMethod} from './types.ts';
 
 type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
@@ -112,7 +111,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		});
 	};
 
-	public freeze = (server: Omit<ServerConfig<ContextFrom>, 'router'>) => {
+	public freeze = (server: Omit<HandlerConfig<ContextFrom>, 'router'>) => {
 		const routes = new Map<string, Map<KaitoMethod, AnyRoute>>();
 
 		for (const route of this.state.routes) {
@@ -171,13 +170,13 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 			}
 
 			const request = new KaitoRequest(url, req);
-			const response = new KaitoResponse();
+			const head = new KaitoHead();
 
 			try {
 				const body = route.body ? await route.body.parse(await req.json()) : undefined;
 				const query = Router.parseQuery(route.query, url);
 
-				const rootCtx = await server.getContext(request, response);
+				const rootCtx = await server.getContext(request, head);
 				const ctx = await route.through(rootCtx);
 
 				const result = await route.run({
@@ -188,10 +187,23 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 				});
 
 				if (result instanceof Response) {
+					if (isNodeLikeDev) {
+						if (head.touched) {
+							const msg = [
+								'Kaito detected that you used the KaitoHead object to modify the headers or status, but then returned a Response in the route',
+								'This is usually a mistake, as your Response object will override any changes you made to the headers or status code.',
+								'',
+								'This warning was shown because `process.env.NODE_ENV=development`',
+							].join('\n');
+
+							console.warn(msg);
+						}
+					}
+
 					return result;
 				}
 
-				return response.toResponse({
+				return head.toResponse({
 					success: true,
 					data: result,
 					message: 'OK',
@@ -200,7 +212,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 				const error = WrappedError.maybe(e);
 
 				if (error instanceof KaitoError) {
-					return response.status(error.status).toResponse({
+					return head.status(error.status).toResponse({
 						success: false,
 						data: null,
 						message: error.message,
@@ -211,7 +223,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 					.onError({error, req: request})
 					.catch(() => ({status: 500, message: 'Internal Server Error'}));
 
-				return response.status(status).toResponse({
+				return head.status(status).toResponse({
 					success: false,
 					data: null,
 					message,
@@ -242,13 +254,11 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 	public options = this.method('OPTIONS');
 
 	public through = <NextContext>(
-		transform: (context: ContextTo) => Promise<NextContext>,
-	): Router<ContextFrom, NextContext, R> =>
-		new Router<ContextFrom, NextContext, R>({
-			routes: this.state.routes,
-			through: async context => {
-				const fromCurrentRouter = await this.state.through(context);
-				return transform(fromCurrentRouter);
-			},
+		through: (context: ContextTo) => Promise<NextContext>,
+	): Router<ContextFrom, NextContext, R> => {
+		return new Router<ContextFrom, NextContext, R>({
+			...this.state,
+			through: async context => through(await this.state.through(context)),
 		});
+	};
 }

@@ -1,11 +1,14 @@
-export class KaitoStreamResponse<R> extends Response {
-	constructor(body: ReadableStream<R>) {
+export class KaitoSSEResponse<_T> extends Response {
+	constructor(body: ReadableStream<string>, init?: ResponseInit) {
+		const headers = new Headers(init?.headers);
+
+		headers.set('Content-Type', 'text/event-stream');
+		headers.set('Cache-Control', 'no-cache');
+		headers.set('Connection', 'keep-alive');
+
 		super(body, {
-			headers: {
-				'Content-Type': 'text/event-stream',
-				'Cache-Control': 'no-cache',
-				Connection: 'keep-alive',
-			},
+			...init,
+			headers,
 		});
 	}
 
@@ -14,12 +17,6 @@ export class KaitoStreamResponse<R> extends Response {
 			yield chunk;
 		}
 	}
-}
-
-export class KaitoSSEResponse<_ClientType> extends KaitoStreamResponse<string> {}
-
-export function stream<R>(body: UnderlyingDefaultSource<R>): KaitoStreamResponse<R> {
-	return new KaitoStreamResponse<R>(new ReadableStream(body));
 }
 
 export type SSEEvent<T, E extends string> = (
