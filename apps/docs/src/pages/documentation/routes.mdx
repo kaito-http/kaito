@@ -62,10 +62,6 @@ So to summarise
 
 Ultimately the important thing to understand here is that if you return a `Response` instance directly, Kaito will use that as-is and ignore any changes made to the `KaitoHead` object. This gives you full control when needed, but means you need to set all headers and status codes on the `Response` object itself.
 
-## Execution
-
-Routes are executed by the router. The router is responsible for parsing the request, validating the input, and executing the route. Route run methods must be async. Throwing an error will call your onError handler defined in your server.
-
 ## Input
 
 Routes can also take a query and body schema provided by Zod. Internally, Kaito wil validate all request bodies and query params so you can be absolutely certain you are processing the right data.
