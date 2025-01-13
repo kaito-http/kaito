@@ -1,0 +1,107 @@
+# Client
+
+Kaito provides a strongly-typed HTTP client that works seamlessly with your Kaito server. The client supports all HTTP methods, streaming, and SSE out of the box.
+
+Kaito releases versions of all packages together, so make sure to use the same version of the client and server. They will be guaranteed to work together.
+
+```bash
+bun i @kaito-http/client
+```
+
+## Basic Usage
+
+To use the Kaito HTTP client, first create a client instance by providing your API's type and base URL:
+
+```ts filename="api/index.ts"
+const app = router().merge('/v1', v1);
+
+const handler = createKaitoHTTPHandler({
+	router: app,
+	// ...
+});
+
+export type App = typeof app;
+```
+
+```ts filename="client/index.ts" {2}
+import {createKaitoHTTPClient} from '@kaito-http/client';
+import type {App} from '../api/index.ts'; // Make sure to use `import type` here!!
+
+// Pass `App` as the type parameter so the client knows about all your routes
+const api = createKaitoHTTPClient<App>({
+	base: 'http://localhost:3000', // The URL your server runs at
+});
+```
+
+## Making Requests
+
+```ts
+// `user` will be correctly typed! No extra type definitions needed!!
+const user = await api.get('/v1/users/:id', {
+	params: {
+		// Params will be correctly enforced
+		id: '123',
+	},
+});
+
+console.log(user);
+
+await api.post('/v1/users/@me', {
+	body: {
+		name: 'John Doe', // body will be correctly typed based on the route's body schema! Amazing!
+	},
+});
+```
+
+### Text Responses
+
+For endpoints that return Responses, you must pass `response: true` to the request options. This is enforced for you at a compile time type level, so you
+can't accidentally forget to pass it. The option is needed so the runtime JavaScript can correctly handle the value you're expecting.
+
+```ts
+const response = await api.get('/v1/response/', {
+	response: true,
+});
+const text = await response.text();
+```
+
+### Server-Sent Events (SSE)
+
+The client provides built-in support for SSE streams. You can iterate over the events using a `for await...of` loop:
+
+```ts
+// GET request with SSE
+const stream = await api.get('/v1/sse_stream', {
+	sse: true, // sse: true is enforced at a compile time type level
+	query: {
+		content: 'Your streaming content',
+	},
+});
+
+for await (const event of stream) {
+	console.log('event', event.data);
+}
+
+// POST request with SSE
+const postStream = await api.post('/v1/sse_stream', {
+	sse: true,
+	body: {
+		count: 20,
+	},
+});
+
+for await (const event of postStream) {
+	// Handle different event types
+	switch (event.event) {
+		case 'numbers':
+			console.log(event.data.digits); // TypeScript knows this is a number
+			break;
+		case 'data':
+			console.log(event.data.obj); // TypeScript knows this is an object
+			break;
+		case 'text':
+			console.log(event.data.text); // TypeScript knows this is a string
+			break;
+	}
+}
+```
