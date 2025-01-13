@@ -7,7 +7,7 @@ import {getContext, router} from './context.ts';
 import {randomEvent} from './data.ts';
 
 async function sleep(ms: number) {
-	await new Promise(resolve => setTimeout(resolve, ms));
+	await new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
 const users = router()

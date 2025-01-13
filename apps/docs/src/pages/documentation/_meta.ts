@@ -5,6 +5,7 @@ const meta: Meta = {
 	routes: 'Routes',
 	routers: 'Routers',
 	handler: 'Handler',
+	streaming: 'Streaming',
 	'error-handling': 'Error Handling',
 };
 

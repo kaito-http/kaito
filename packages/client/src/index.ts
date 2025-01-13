@@ -244,39 +244,6 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 	};
 }
 
-export async function safe<T>(
-	promise: Promise<T>,
-	fallbackErrorMessage: ((error: unknown) => string) | string = 'Something went wrong',
-): Promise<
-	| {
-			success: true;
-			data: T;
-	  }
-	| {
-			success: false;
-			error: unknown;
-			message: string;
-	  }
-> {
-	return promise
-		.then(res => ({success: true as const, data: res}))
-		.catch((error: unknown) => {
-			if (error instanceof KaitoClientHTTPError) {
-				return {
-					success: false as const,
-					error,
-					message: error.message,
-				};
-			}
-
-			console.warn(error);
-
-			const message = typeof fallbackErrorMessage === 'function' ? fallbackErrorMessage(error) : fallbackErrorMessage;
-
-			return {
-				success: false as const,
-				error,
-				message,
-			};
-		});
+export function isKaitoClientHTTPError(error: unknown): error is KaitoClientHTTPError {
+	return error instanceof KaitoClientHTTPError;
 }
