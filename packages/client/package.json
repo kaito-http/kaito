@@ -31,6 +31,7 @@
 	],
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.17.2",
+		"@kaito-http/core": "workspace:^",
 		"tsup": "^8.3.5"
 	},
 	"dependencies": {
