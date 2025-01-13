@@ -23,17 +23,21 @@ const handler = createKaitoHTTPHandler({
 export type App = typeof app;
 ```
 
-```ts filename="client/index.ts" {2}
+```ts filename="client/index.ts" /type {App}/ /<App>/
 import {createKaitoHTTPClient} from '@kaito-http/client';
 import type {App} from '../api/index.ts'; // Make sure to use `import type` here!!
 
 // Pass `App` as the type parameter so the client knows about all your routes
 const api = createKaitoHTTPClient<App>({
-	base: 'http://localhost:3000', // The URL your server runs at
+	base: 'http://localhost:3000',
 });
 ```
 
 ## Making Requests
+
+### Normal requests
+
+Kaito's client will make sure that you pass all the correct input data for your routes. That includes query parameters, path parameters, and body data. It will also autofill the URL for you, and also will include the correct return type.
 
 ```ts
 // `user` will be correctly typed! No extra type definitions needed!!
@@ -103,6 +107,24 @@ for await (const event of postStream) {
 		case 'text':
 			console.log(event.data.text); // TypeScript knows this is a string
 			break;
+	}
+}
+```
+
+## Errors
+
+If the route throws an error, the client will know and will throw a `KaitoClientHTTPError`. This error has a `.request`, `.response` and `.body` property which you can use to debug the error.
+
+We also export a `isKaitoClientHTTPError` function that you can use to check if an error is a Kaito client HTTP error. This just does an `instanceof` check.
+
+```ts
+import {isKaitoClientHTTPError} from '@kaito-http/client';
+
+try {
+	const response = await api.get('/v1/this-will-throw');
+} catch (error: unknown) {
+	if (isKaitoClientHTTPError(error)) {
+		console.log(error.request, error.response, error.body);
 	}
 }
 ```
