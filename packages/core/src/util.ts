@@ -29,7 +29,7 @@ export type GetContext<Result> = (req: KaitoRequest, res: KaitoResponse) => Prom
  *
  * const app = router().get('/', async () => "hello");
  *
- * const server = createServer({
+ * const server = createKaitoHandler({
  *   router: app,
  *   getContext,
  *   // ...

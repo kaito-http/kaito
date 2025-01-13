@@ -35,44 +35,39 @@ const handler = createKaitoHandler({
 });
 ```
 
-## Before/After
+## Before/Transform
 
-Kaito has a concept of before and after hooks, which are executed before and after the router. This is useful for things like logging etc. Personally, I use it to add CORS headers.
+Kaito has a basic lifecycle for transform/intercepting requests and responses. The most common use case is to add CORS headers.
+
+- `.before()` runs before the router is handled. You can return early here to stop the request from being handled by the router.
+- `.transform()` runs on EVERY response. That includes ones from `.before()` and ones from the router.
 
 ```ts
-const server = createServer({
+const ALLOWED_ORIGINS = ['http://localhost:3000', 'https://app.example.com'];
+
+const server = createKaitoHandler({
 	getContext,
 	router,
-	onError: async ({error, req, res}) => {
-		// ...
-	},
-	// Before runs code before every request. This is helpful for setting things like CORS.
-	// You can return a value from before, and it will be passed to the after call.
-	// If you end the response in `before`, the router will not be called.
-	before: async (req, res) => {
-		res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
-		res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-		res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-		res.setHeader('Access-Control-Max-Age', '86400');
-		res.setHeader('Access-Control-Allow-Credentials', 'true');
 
+	before: async req => {
 		if (req.method === 'OPTIONS') {
-			res.statusCode = 204;
-			// This is safe, because the router will know that the response is ended.
-			res.end();
+			return new Response(null, {status: 204}); // Return early to skip the router. This response will be passed to `.transform()`
 		}
-
-		// Return something from `before`, and it will be passed to `after`.
-		return {
-			now: Date.now(),
-		};
 	},
 
-	// Access the return value from `before` in `after`.
-	// If the before function ends the response, this *will* be called!
-	// So be careful about logging request durations etc
-	after: async ({now}) => {
-		console.log(`Request took ${Date.now() - now}ms`);
+	transform: async (request, response) => {
+		const origin = request.headers.get('origin');
+
+		// Include CORS headers if the origin is allowed
+		if (origin && ALLOWED_ORIGINS.includes(origin)) {
+			response.headers.set('Access-Control-Allow-Origin', origin);
+			response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+			response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+			response.headers.set('Access-Control-Max-Age', '86400');
+			response.headers.set('Access-Control-Allow-Credentials', 'true');
+		}
 	},
 });
 ```
+
+This feature was called Before/After in Kaito v2. The functionality has changed a little bit, so migrating to v3 might require some changes.

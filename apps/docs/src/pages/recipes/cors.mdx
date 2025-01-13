@@ -1,28 +1,33 @@
 # Handling CORS with Kaito
 
-Kaito does not include any CORS handling out of the box. This is by design to keep the library lightweight and unopinionated. You can easily implement CORS handling in your server by using the [`before`](/documentation/server#beforeafter) hook.
+Kaito does not include any CORS handling out of the box. This is by design to keep the library lightweight and unopinionated. You can easily implement CORS handling in your server by using the [`before`](/documentation/server#beforetransform) hook.
 
 ## Example
 
 ```ts
-const ALLOWED_ORIGINS = ['http://localhost:3000'];
+const ALLOWED_ORIGINS = ['http://localhost:3000', 'https://app.example.com'];
 
-const server = createServer({
+const server = createKaitoHandler({
 	getContext,
 	router,
-	onError: async ({error, req, res}) => {
-		// ...
-	},
-	before: async (req, res) => {
-		if (typeof req.headers.origin === 'string' && ALLOWED_ORIGINS.includes(req.headers.origin)) {
-			res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
-			res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-			res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-			res.setHeader('Access-Control-Max-Age', '86400');
-			res.setHeader('Access-Control-Allow-Credentials', 'true');
-		}
 
-		// ...
+	before: async req => {
+		if (req.method === 'OPTIONS') {
+			return new Response(null, {status: 204}); // Return early to skip the router. This response will be passed to `.transform()`
+		}
+	},
+
+	transform: async (request, response) => {
+		const origin = request.headers.get('origin');
+
+		// Include CORS headers if the origin is allowed
+		if (origin && ALLOWED_ORIGINS.includes(origin)) {
+			response.headers.set('Access-Control-Allow-Origin', origin);
+			response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+			response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+			response.headers.set('Access-Control-Max-Age', '86400');
+			response.headers.set('Access-Control-Allow-Credentials', 'true');
+		}
 	},
 });
 ```
