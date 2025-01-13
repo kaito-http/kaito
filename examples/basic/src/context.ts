@@ -1,5 +1,3 @@
-/* eslint-disable arrow-body-style */
-
 import {createUtilities} from '@kaito-http/core';
 import {getRemoteAddress} from '@kaito-http/uws';
 import {serialize, type SerializeOptions} from 'cookie';

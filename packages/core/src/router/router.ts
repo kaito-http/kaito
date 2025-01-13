@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/member-ordering */
 import {KaitoError, WrappedError} from '../error.ts';
 import type {HandlerConfig} from '../handler.ts';
 import {KaitoHead} from '../head.ts';

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type {KaitoMethod} from './router/types.ts';
 import type {ExtractRouteParams, InferParsable, Parsable} from './util.ts';
 
