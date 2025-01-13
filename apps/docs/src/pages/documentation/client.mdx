@@ -53,16 +53,17 @@ await api.post('/v1/users/@me', {
 });
 ```
 
-### Text Responses
+### Non-JSON Responses
 
-For endpoints that return Responses, you must pass `response: true` to the request options. This is enforced for you at a compile time type level, so you
+For endpoints that return a `Response` instance, you must pass `response: true` to the request options. This is enforced for you at a compile time type level, so you
 can't accidentally forget to pass it. The option is needed so the runtime JavaScript can correctly handle the value you're expecting.
 
 ```ts
 const response = await api.get('/v1/response/', {
 	response: true,
 });
-const text = await response.text();
+
+const text = await response.text(); // or you could use .arrayBuffer() or .blob(), etc
 ```
 
 ### Server-Sent Events (SSE)
