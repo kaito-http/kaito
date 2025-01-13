@@ -16,7 +16,7 @@
 			"require": "./dist/index.cjs"
 		},
 		"./stream": {
-			"import": "./src/stream/stream.ts",
+			"import": "./dist/stream/stream.js",
 			"require": "./dist/stream/stream.cjs"
 		}
 	},
