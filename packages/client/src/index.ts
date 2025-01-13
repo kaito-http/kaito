@@ -254,6 +254,29 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 				rootOptions.before ? await rootOptions.before(url, init) : request,
 			);
 
+			if (!response.ok) {
+				if (response.headers.get('content-type')?.includes('application/json')) {
+					// Try to assume non-ok responses are from `.onError()` and so therefore do have a body
+					// but in the case we somehow got a non-ok response without a body, we'll just throw
+					// an error with the status text and status code
+
+					const json = await response.json().then(
+						data => data as ErroredAPIResponse,
+						() => null,
+					);
+
+					if (json) {
+						throw new KaitoClientHTTPError(request, response, json);
+					}
+				}
+
+				throw new KaitoClientHTTPError(request, response, {
+					message: `Request to ${url} failed with status ${response.status} and no obvious body`,
+					success: false,
+					data: null,
+				});
+			}
+
 			if ('response' in options && options.response) {
 				return response as never;
 			}
@@ -269,6 +292,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			const result = (await response.json()) as APIResponse<never>;
 
 			if (!result.success) {
+				// In theory success is always true because we've already checked the response status
 				throw new KaitoClientHTTPError(request, response, result);
 			}
 

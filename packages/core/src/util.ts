@@ -1,5 +1,5 @@
+import type {KaitoHead} from './head.ts';
 import type {KaitoRequest} from './request.ts';
-import type {KaitoResponse} from './response.ts';
 import {Router} from './router/router.ts';
 
 export type ErroredAPIResponse = {success: false; data: null; message: string};
@@ -16,7 +16,18 @@ export type ExtractRouteParams<T extends string> = string extends T
 			? {[k in Param]: string}
 			: {};
 
-export type GetContext<Result> = (req: KaitoRequest, res: KaitoResponse) => Promise<Result>;
+/**
+ * A function that is called to get the context for a request.
+ *
+ * This is useful for things like authentication, to pass in a database connection, etc.
+ *
+ * It's fine for this function to throw; if it does, the error is passed to the `onError` function.
+ *
+ * @param req - The kaito request object, which contains the request method, url, headers, etc
+ * @param head - The kaito head object, which contains getters and setters for headers and status
+ * @returns The context for your routes
+ */
+export type GetContext<Result> = (req: KaitoRequest, head: KaitoHead) => Promise<Result>;
 
 /**
  * A helper function to create typed necessary functions

@@ -26,7 +26,7 @@ export type HandlerConfig<ContextFrom> = {
 	 * environments here, and this would also be a good place to include error tracking
 	 * like Sentry or Rollbar.
 	 *
-	 * @param arg - The error and the request
+	 * @param arg - The error thrown, and the KaitoRequest instance
 	 * @returns A KaitoError or an object with a status and message
 	 */
 	onError: (arg: {error: Error; req: KaitoRequest}) => Promise<KaitoError | {status: number; message: string}>;
