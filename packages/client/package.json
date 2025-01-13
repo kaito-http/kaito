@@ -12,10 +12,7 @@
 	"exports": {
 		"./package.json": "./package.json",
 		".": {
-			"import": {
-				"types": "./src/index.ts",
-				"default": "./dist/index.js"
-			},
+			"import": "./dist/index.js",
 			"require": "./dist/index.cjs"
 		}
 	},
@@ -30,8 +27,7 @@
 	"files": [
 		"package.json",
 		"README.md",
-		"dist",
-		"src"
+		"dist"
 	],
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.17.2",
