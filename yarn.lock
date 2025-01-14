@@ -871,6 +871,7 @@ __metadata:
   resolution: "@kaito-http/client@workspace:packages/client"
   dependencies:
     "@arethetypeswrong/cli": "npm:^0.17.2"
+    "@kaito-http/core": "workspace:^"
     pathcat: "npm:^1.4.0"
     tsup: "npm:^8.3.5"
   languageName: unknown
