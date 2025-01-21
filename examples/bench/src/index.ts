@@ -33,6 +33,9 @@ const server = await KaitoServer.serve({
 	fetch,
 	port: 3000,
 	host: '127.0.0.1',
+	// static: {
+	// 	'/static/file.txt': new Response('Hello, world!'),
+	// },
 });
 
 console.log('Server listening at', server.url);
