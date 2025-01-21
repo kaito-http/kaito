@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import {describe, it} from 'node:test';
-import {createCORSTransform, createOriginMatcher} from './cors.ts';
+import {experimental_createCORSTransform, experimental_createOriginMatcher} from './cors.ts';
 
 describe('CORS', () => {
 	describe('createOriginMatcher', () => {
 		it('should match exact origins', () => {
-			const matcher = createOriginMatcher(['https://example.com']);
+			const matcher = experimental_createOriginMatcher(['https://example.com']);
 
 			assert.equal(matcher('https://example.com'), true);
 			assert.equal(matcher('http://example.com'), false);
@@ -13,7 +13,7 @@ describe('CORS', () => {
 		});
 
 		it('should match wildcard subdomains', () => {
-			const matcher = createOriginMatcher(['*.example.com']);
+			const matcher = experimental_createOriginMatcher(['*.example.com']);
 
 			assert.equal(matcher('https://app.example.com'), true);
 			assert.equal(matcher('http://staging.example.com'), true);
@@ -22,7 +22,11 @@ describe('CORS', () => {
 		});
 
 		it('should handle multiple patterns', () => {
-			const matcher = createOriginMatcher(['https://example.com', '*.trusted.com', 'http://localhost:3000']);
+			const matcher = experimental_createOriginMatcher([
+				'https://example.com',
+				'*.trusted.com',
+				'http://localhost:3000',
+			]);
 
 			assert.equal(matcher('https://example.com'), true);
 			assert.equal(matcher('https://app.trusted.com'), true);
@@ -31,7 +35,10 @@ describe('CORS', () => {
 		});
 
 		it('should escape special regex characters', () => {
-			const matcher = createOriginMatcher(['https://special-chars.com?test=1', '*.special-chars.com+test']);
+			const matcher = experimental_createOriginMatcher([
+				'https://special-chars.com?test=1',
+				'*.special-chars.com+test',
+			]);
 
 			assert.equal(matcher('https://special-chars.com?test=1'), true);
 			assert.equal(matcher('https://app.special-chars.com+test'), true);
@@ -39,14 +46,14 @@ describe('CORS', () => {
 		});
 
 		it('should handle empty origins array', () => {
-			const matcher = createOriginMatcher([]);
+			const matcher = experimental_createOriginMatcher([]);
 			assert.equal(matcher('https://example.com'), false);
 		});
 	});
 
 	describe('createCORSTransform', () => {
 		it('should set CORS headers for allowed origins', () => {
-			const corsTransform = createCORSTransform(['https://example.com']);
+			const corsTransform = experimental_createCORSTransform(['https://example.com']);
 			const request = new Request('https://api.example.com', {
 				headers: {Origin: 'https://example.com'},
 			});
@@ -64,7 +71,7 @@ describe('CORS', () => {
 		});
 
 		it('should not set CORS headers for disallowed origins', () => {
-			const corsTransform = createCORSTransform(['https://example.com']);
+			const corsTransform = experimental_createCORSTransform(['https://example.com']);
 			const request = new Request('https://api.example.com', {
 				headers: {Origin: 'https://evil.com'},
 			});
@@ -82,7 +89,7 @@ describe('CORS', () => {
 		});
 
 		it('should handle requests without Origin header', () => {
-			const corsTransform = createCORSTransform(['https://example.com']);
+			const corsTransform = experimental_createCORSTransform(['https://example.com']);
 			const request = new Request('https://api.example.com');
 			const response = new Response(null, {
 				headers: new Headers(),
@@ -94,7 +101,7 @@ describe('CORS', () => {
 		});
 
 		it('should support wildcard origins in transform', () => {
-			const corsTransform = createCORSTransform(['*.example.com']);
+			const corsTransform = experimental_createCORSTransform(['*.example.com']);
 			const request = new Request('https://api.example.com', {
 				headers: {Origin: 'https://app.example.com'},
 			});
@@ -108,7 +115,7 @@ describe('CORS', () => {
 		});
 
 		it('should preserve existing headers not related to CORS', () => {
-			const corsTransform = createCORSTransform(['https://example.com']);
+			const corsTransform = experimental_createCORSTransform(['https://example.com']);
 			const request = new Request('https://api.example.com', {
 				headers: {Origin: 'https://example.com'},
 			});

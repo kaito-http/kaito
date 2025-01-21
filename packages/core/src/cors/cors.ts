@@ -2,6 +2,8 @@
  * Creates a function that matches origins against a predefined set of patterns, supporting wildcards.
  * The matcher handles both exact matches and wildcard subdomain patterns (e.g., '*.example.com').
  *
+ * **⚠️ This API is experimental and may change or even be removed in the future. ⚠️**
+ *
  * @param origins Array of origin patterns to match against.
  * Patterns can be exact origins (e.g., 'https://example.com') or wildcard patterns (e.g., '*.example.com') that match subdomains.
  * @returns A function that tests if an origin matches any of the patterns
@@ -26,7 +28,7 @@
  * console.log(matcher('https://evil-domain.com')); // false
  * ```
  */
-export function createOriginMatcher(origins: string[]) {
+export function experimental_createOriginMatcher(origins: string[]) {
 	if (origins.length === 0) {
 		return () => false; //lol
 	}
@@ -50,6 +52,9 @@ export function createOriginMatcher(origins: string[]) {
 
 /**
  * Create a function to apply CORS headers with sane defaults for most apps.
+ *
+ * **⚠️ This API is experimental and may change or even be removed in the future. ⚠️**
+ *
  * @param options Options object
  * @returns A function that will mutate the Response object by applying the CORS headers
  * @example
@@ -66,8 +71,8 @@ export function createOriginMatcher(origins: string[]) {
  * });
  * ```
  */
-export function createCORSTransform(origins: string[]) {
-	const matcher = createOriginMatcher(origins);
+export function experimental_createCORSTransform(origins: string[]) {
+	const matcher = experimental_createOriginMatcher(origins);
 
 	return (request: Request, response: Response) => {
 		const origin = request.headers.get('Origin');
