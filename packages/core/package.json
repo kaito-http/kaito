@@ -18,6 +18,10 @@
 		"./stream": {
 			"import": "./dist/stream/stream.js",
 			"require": "./dist/stream/stream.cjs"
+		},
+		"./cors": {
+			"import": "./dist/cors/cors.js",
+			"require": "./dist/cors/cors.cjs"
 		}
 	},
 	"homepage": "https://github.com/kaito-http/kaito",

@@ -13,8 +13,7 @@
 		"start": "node --import=tsx src/index.ts"
 	},
 	"dependencies": {
-		"@kaito-http/core": "workspace:^",
-		"@kaito-http/llhttp-wasm": "workspace:^"
+		"@kaito-http/core": "workspace:^"
 	},
 	"devDependencies": {
 		"tsx": "^4.19.2",

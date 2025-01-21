@@ -43,7 +43,7 @@ export type HandlerConfig<ContextFrom> = {
 	 * }
 	 * ```
 	 */
-	before?: (req: Request) => Promise<Response | void | undefined>;
+	before?: (req: Request) => Promise<Response | void | undefined> | Response | void | undefined;
 
 	/**
 	 * Transforms the response before it is sent to the client. Very useful for settings headers like CORS.
@@ -64,7 +64,7 @@ export type HandlerConfig<ContextFrom> = {
 	 * }
 	 * ```
 	 */
-	transform?: (req: Request, res: Response) => Promise<Response | void | undefined>;
+	transform?: (req: Request, res: Response) => Promise<Response | void | undefined> | Response | void | undefined;
 };
 
 export function createKaitoHandler<Context>(config: HandlerConfig<Context>) {

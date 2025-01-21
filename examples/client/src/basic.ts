@@ -34,11 +34,6 @@ const postSSE = await api.post('/v1/sse_stream', {
 });
 
 for await (const event of postSSE) {
-	if (!event.data) {
-		// data missing and event set is legal in SSE but not in this api
-		throw new Error('missing data');
-	}
-
 	switch (event.event) {
 		case 'numbers':
 			const foo: number = event.data.digits;

@@ -5,17 +5,19 @@ import {getContext, router} from './context.ts';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const root = router().get('/stream', async () => {
-	const text = "This is an example of text being streamed every 100ms by using Kaito's sse() function";
+const root = router()
+	.get('/hello', () => 'hi' as const)
+	.get('/stream', async () => {
+		const text = "This is an example of text being streamed every 100ms by using Kaito's sse() function";
 
-	return sse(async function* () {
-		for (const word in text.split(' ')) {
-			yield {data: word, event: 'cool', retry: 1000};
+		return sse(async function* () {
+			for (const word in text.split(' ')) {
+				yield {data: word, event: 'cool', retry: 1000};
 
-			await sleep(100);
-		}
+				await sleep(100);
+			}
+		});
 	});
-});
 
 const fetch = createKaitoHandler({
 	router: root,

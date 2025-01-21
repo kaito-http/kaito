@@ -241,4 +241,30 @@ describe('KaitoServer', () => {
 			server.close();
 		}
 	});
+
+	// test('static routes', async () => {
+	// 	const server = await createTestServer({
+	// 		static: {
+	// 			'/static/file.txt': new Response('Hello, world!'),
+	// 			'/static/stream': new Response(
+	// 				new ReadableStream({
+	// 					async start(controller) {
+	// 						controller.enqueue(new TextEncoder().encode('Hello, world!'));
+	// 						controller.close();
+	// 					},
+	// 				}),
+	// 			),
+	// 		},
+	// 	});
+
+	// 	try {
+	// 		const res = await fetch(server.url + '/static/file.txt');
+	// 		assert.equal(await res.text(), 'Hello, world!');
+
+	// 		const streamed = await fetch(server.url + '/static/file.txt');
+	// 		assert.equal(await streamed.text(), 'Hello, world!');
+	// 	} finally {
+	// 		server.close();
+	// 	}
+	// });
 });

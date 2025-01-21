@@ -9,9 +9,6 @@
 			"path": "./packages/core"
 		},
 		{
-			"path": "./packages/llhttp-wasm"
-		},
-		{
 			"path": "./packages/uws"
 		},
 		{

@@ -38,7 +38,7 @@ export type Route<
 			},
 			InferParsable<Body>['output']
 		>,
-	): Promise<Result>;
+	): Promise<Result> | Result;
 };
 
 export type AnyRoute<ContextFrom = any, ContextTo = any> = Route<

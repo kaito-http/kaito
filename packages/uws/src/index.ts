@@ -4,6 +4,7 @@ import uWS from 'uWebSockets.js';
 export interface ServeOptions {
 	port: number;
 	host: string;
+	// static?: Record<`/${string}`, Response>;
 	fetch: (request: Request) => Promise<Response>;
 }
 
@@ -95,7 +96,7 @@ export class KaitoServer {
 		});
 	}
 
-	public static serve(options: ServeUserOptions) {
+	public static async serve(options: ServeUserOptions) {
 		const fullOptions: ServeOptions = {
 			host: '0.0.0.0',
 			...options,
@@ -103,7 +104,23 @@ export class KaitoServer {
 
 		const {origin} = new URL('http://' + fullOptions.host + ':' + fullOptions.port);
 
-		const app = uWS.App().any('/*', async (res, req) => {
+		const app = uWS.App();
+
+		// for await (const [path, response] of Object.entries(fullOptions.static ?? {})) {
+		// 	const buffer = await response.arrayBuffer();
+		// 	const statusAsBuffer = Buffer.from(response.status.toString().concat(SPACE, response.statusText));
+		// 	const headersFastArray = Array.from(response.headers.entries());
+
+		// 	app.any(path, res => {
+		// 		res.writeStatus(statusAsBuffer);
+		// 		for (const [header, value] of headersFastArray) {
+		// 			res.writeHeader(header, value);
+		// 		}
+		// 		res.end(buffer);
+		// 	});
+		// }
+
+		app.any('/*', async (res, req) => {
 			let aborted = false;
 			res.onAborted(() => {
 				aborted = true;
@@ -217,17 +234,17 @@ export class KaitoServer {
 			}
 		});
 
-		const instance = new KaitoServer(app, fullOptions);
-
-		return new Promise<KaitoServer>((resolve, reject) => {
+		await new Promise<void>((resolve, reject) => {
 			app.listen(fullOptions.host, fullOptions.port, ok => {
 				if (ok) {
-					resolve(instance);
+					resolve();
 				} else {
 					reject(new Error('Failed to listen on port ' + fullOptions.port));
 				}
 			});
 		});
+
+		return new KaitoServer(app, fullOptions);
 	}
 
 	private readonly app: ReturnType<typeof uWS.App>;

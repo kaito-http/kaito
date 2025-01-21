@@ -5,6 +5,9 @@ const api = createKaitoHTTPClient<App>({
 	base: 'http://localhost:3000',
 });
 
+const test = await api.get('/hello');
+console.log(test);
+
 const stream = await api.get('/stream', {
 	sse: true,
 });
