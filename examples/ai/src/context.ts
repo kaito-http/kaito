@@ -4,10 +4,10 @@ import {getRemoteAddress} from '@kaito-http/uws';
 const serverStarted = Date.now();
 
 export const router = create({
-	getContext: async (req, _res) => {
+	getContext: async (req, head) => {
 		// Use `getRemoteAddress()` in Kaito 3.0.0+ in Node.js. Can only be called
 		// inside this getContext function, or inside of a route (or the callstack of a route)
-		const ip = getRemoteAddress();
+		const ip = getRemoteAddress(req);
 
 		// Passing req is OK, but I personally prefer to avoid it.
 		// Instead, the logic I would have used req for should be
@@ -17,6 +17,7 @@ export const router = create({
 		return {
 			req,
 			ip,
+			head,
 			uptime: Date.now() - serverStarted,
 		};
 	},
