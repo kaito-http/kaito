@@ -8,8 +8,8 @@ import {Router} from './router.ts';
 import type {KaitoMethod} from './types.ts';
 
 const router = create({
-	getContext: async req => ({req}),
-	onError: async () => ({status: 500, message: 'Internal Server Error'}),
+	getContext: req => ({req}),
+	onError: () => ({status: 500, message: 'Internal Server Error'}),
 });
 
 describe('Router', () => {
@@ -105,8 +105,8 @@ describe('Router', () => {
 		});
 	});
 
-	describe('middleware and context', () => {
-		it('should transform context through middleware', async () => {
+	describe('.through() and context', () => {
+		it('should transform context with .through()', async () => {
 			const r = router()
 				.through(ctx => ({
 					...ctx,
@@ -156,7 +156,7 @@ describe('Router', () => {
 
 		it('should handle generic errors with server error handler', async () => {
 			const r = create({
-				onError: async () => ({status: 500, message: 'Custom Error Message'}),
+				onError: () => ({status: 500, message: 'Custom Error Message'}),
 			})().get('/error', {
 				run: async () => {
 					throw new Error('Something went wrong');
@@ -180,7 +180,7 @@ describe('Router', () => {
 	describe('router merging', () => {
 		it('should merge routers with prefix', async () => {
 			const userRouter = router().get('/:user_id', {
-				run: async ({params}) => ({id: params.user_id}),
+				run: ({params}) => ({id: params.user_id}),
 			});
 
 			const mainRouter = router().merge('/api', userRouter);
@@ -235,9 +235,9 @@ describe('Router', () => {
 	});
 
 	describe('findRoute', () => {
-		const dummyHandler = async () => {};
+		const dummyHandler = () => {};
 
-		const routes = new Map<KaitoMethod, Map<string, () => Promise<void>>>([
+		const routes = new Map<KaitoMethod, Map<string, () => void>>([
 			[
 				'GET',
 				new Map([
@@ -358,12 +358,10 @@ describe('Router', () => {
 		});
 	});
 
-	describe('Middleware hooks', () => {
+	describe('Lifecycle hooks', () => {
 		it('should short-circuit route execution when before hook returns a Response', async () => {
 			const beforeRouter = create({
-				getContext: async req => ({req}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-				before: async _req => Response.json({blocked: true}, {status: 403}),
+				before: () => Response.json({blocked: true}, {status: 403}),
 			})().get('/should-not-run', {
 				run: async () => ({should: 'not-run'}),
 			});
@@ -378,8 +376,6 @@ describe('Router', () => {
 
 		it('should modify the route response using transform hook', async () => {
 			const transformRouter = create({
-				getContext: async req => ({req}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
 				transform: async (_req, res) => {
 					const originalData = await res.json();
 					return Response.json({...originalData, transformed: true});
@@ -402,13 +398,9 @@ describe('Router', () => {
 
 		it('should not apply transform hook to a before hook response', async () => {
 			const beforeTransformRouter = create({
-				getContext: async req => ({req}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-				before: async _req => Response.json({blocked: true}, {status: 403}),
-				transform: async (_req, _res) => {
-					// Even though transform returns a new response, its return is ignored in the "before" branch.
-					return Response.json({shouldNot: 'modify'}, {status: 200});
-				},
+				before: () => Response.json({blocked: true}, {status: 403}),
+				// Even though transform returns a new response, its return is ignored because the before hook short-circuits.
+				transform: () => Response.json({shouldNot: 'modify'}, {status: 200}),
 			})().get('/no-run', {
 				run: async () => ({should: 'not-run'}),
 			});
@@ -473,6 +465,9 @@ describe('Router', () => {
 					title: apiTitle,
 					version: apiVersion,
 					description: 'This is a test API',
+				},
+				servers: {
+					'http://localhost': 'Localhost development server',
 				},
 			});
 

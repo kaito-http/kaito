@@ -3,7 +3,7 @@ import type {KaitoRequest} from './request.ts';
 import {Router} from './router/router.ts';
 import type {GetContext, MaybePromise} from './util.ts';
 
-export type KaitoConfig<ContextFrom = null> = {
+export type KaitoConfig<ContextFrom> = {
 	/**
 	 * A function that is called to get the context for a request.
 	 *

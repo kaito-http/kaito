@@ -23,7 +23,18 @@ export type RouterState<ContextFrom, ContextTo, Routes extends AnyRoute> = {
 	config: KaitoConfig<ContextFrom>;
 };
 
-export type InferRoutes<R extends Router<any, any, any>> = R extends Router<any, any, infer R> ? R : never;
+/**
+ * Accepts a router instance, and returns a union of all the routes in the router
+ *
+ * @example
+ * ```ts
+ * const app = router().get('/', () => 'Hello, world!');
+ *
+ * type Routes = InferRoutes<typeof app>;
+ * ```
+ */
+export type InferRoutes<R extends Router<any, any, any>> =
+	R extends Router<any, any, infer R extends AnyRoute> ? R : never;
 
 export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 	private readonly state: RouterState<ContextFrom, ContextTo, R>;
@@ -35,8 +46,8 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 			config,
 		});
 
-	public constructor(options: RouterState<ContextFrom, ContextTo, R>) {
-		this.state = options;
+	public constructor(state: RouterState<ContextFrom, ContextTo, R>) {
+		this.state = state;
 	}
 
 	public get routes() {

@@ -1,9 +1,8 @@
-import {AsyncLocalStorage} from 'node:async_hooks';
 import uWS from 'uWebSockets.js';
 
 export interface ServeOptions {
 	port: number;
-	host: string;
+	host?: string;
 	static?: Record<`/${string}`, Response>;
 	fetch: (request: Request) => Promise<Response>;
 }
@@ -15,7 +14,7 @@ const GET = 'get';
 const HEAD = 'head';
 const CONTENT_LENGTH = 'content-length';
 
-function lazyRemoteAddress(res: uWS.HttpResponse) {
+function inflightRequestStore(res: uWS.HttpResponse) {
 	return {
 		get remoteAddress() {
 			const value = Buffer.from(res.getRemoteAddressAsText()).toString('ascii');
@@ -25,45 +24,49 @@ function lazyRemoteAddress(res: uWS.HttpResponse) {
 	};
 }
 
-const STORE = new AsyncLocalStorage<{remoteAddress: string}>();
+export type RequestMetadata = ReturnType<typeof inflightRequestStore>;
+
+const inflightRequestMetadataMap = new WeakMap<Request, RequestMetadata>();
+
+// technically kaito's uws server could be used without using kaito core.
+// so we should support the case where a user is trying to resolve a kaito request, or an actual request
+export type RequestOrKaitoRequest = Request | {request: Request};
+const requestFrom = (request: RequestOrKaitoRequest) => (request instanceof Request ? request : request.request);
+
+export function getRequestMetadata(request: RequestOrKaitoRequest) {
+	const metadata = inflightRequestMetadataMap.get(requestFrom(request));
+
+	if (!metadata) {
+		throw new Error('Request not found or used after request finished.');
+	}
+
+	return metadata;
+}
 
 /**
  * Get the remote address (ip address) of the request
  *
- * You can only use this function inside of getContext(), or inside of a route handler.
- * This function will throw if called outside of either of those.
+ * You can only use this function while a request is in flight.
  *
- * Be warned that if you are serving behind a reverse proxy (like Cloudflare, nginx, etc), this will return the ip address of the proxy, not the client.
+ * Be warned that if you a serving behind a reverse proxy (like Cloudflare, nginx, etc), this will return the ip address of the proxy, not the client.
  * You should consult the docs of your reverse proxy to see how to get the client's ip address. Usually that is
  * done by looking at a header like `x-forwarded-for` or `cf-connecting-ip`.
- *
- * This uses AsyncLocalStorage under the hood, so if the constraints of how this function works are confusing, or
- * if you are just wondering how it works, you should look at the AsyncLocalStorage docs: https://nodejs.org/api/async_context.html
  *
  * @returns The remote address of the request
  * @example
  * ```typescript
  * import {getRemoteAddress} from '@kaito-http/uws';
  *
- * // Ok to use `getRemoteAddress()` inside of this function, since we are calling it from inside a route handler.
- * // Just be aware that it will throw if called outside of a route handler or outside of getContext()
- * function printUserIp() {
- *   return `Your IP is ${getRemoteAddress()}`;
- * }
- *
- * router().get('/ip', async () => printUserIp());
+ * await KaitoServer.serve({
+ * 	port: 3000,
+ * 	fetch: async (request, server) => {
+ * 		return new Response(`Your IP is ${server.getRemoteAddress(request)}`);
+ * 	}
+ * });
  * ```
  */
-export function getRemoteAddress() {
-	const store = STORE.getStore();
-
-	if (!store) {
-		throw new Error(
-			'You can only called getRemoteAddress() inside of getContext() or somewhere nested inside of a route handler',
-		);
-	}
-
-	return store.remoteAddress;
+export function getRemoteAddress(request: RequestOrKaitoRequest) {
+	return getRequestMetadata(request).remoteAddress;
 }
 
 export class KaitoServer {
@@ -98,10 +101,10 @@ export class KaitoServer {
 	}
 
 	public static async serve(options: ServeUserOptions) {
-		const fullOptions: ServeOptions = {
+		const fullOptions = {
 			host: '0.0.0.0',
 			...options,
-		};
+		} satisfies ServeOptions;
 
 		const {origin} = new URL('http://' + fullOptions.host + ':' + fullOptions.port);
 
@@ -164,7 +167,8 @@ export class KaitoServer {
 				duplex: 'half',
 			});
 
-			const response = await STORE.run(lazyRemoteAddress(res), options.fetch, request);
+			inflightRequestMetadataMap.set(request, inflightRequestStore(res));
+			const response = await options.fetch(request);
 
 			res.cork(() => {
 				res.writeStatus(response.status.toString().concat(SPACE, response.statusText));
