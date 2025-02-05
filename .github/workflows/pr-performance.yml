@@ -17,9 +17,9 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install Rust
-      uses: actions-rust-lang/setup-rust@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        rust-version: stable
+        toolchain: stable
 
     - name: Install oha
       run: cargo install oha
@@ -50,7 +50,7 @@ jobs:
         kill $(cat server.pid)
 
     - name: Upload results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: oha-results
         path: |
