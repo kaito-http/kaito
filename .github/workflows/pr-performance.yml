@@ -16,27 +16,27 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # - name: Install Rust
-    #   uses: dtolnay/rust-toolchain@stable
-    #   with:
-    #     toolchain: stable
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
 
-    # - name: "Cache cargo"
-    #   id: cache-cargo
-    #   uses: "actions/cache@v4"
-    #   with:
-    #     path: |
-    #       ~/.cargo/bin/
-    #       ~/.cargo/registry/index/
-    #       ~/.cargo/registry/cache/
-    #       ~/.cargo/git/db/
-    #       target/
-    #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    #     restore-keys: |
-    #       ${{ runner.os }}-cargo-
+    - name: "Cache cargo"
+      id: cache-cargo
+      uses: "actions/cache@v4"
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
 
-    # - name: Install oha
-    #   run: cargo install oha
+    - name: Install oha
+      run: cargo install oha
 
     - name: Install Node.js and Yarn
       uses: actions/setup-node@v3
@@ -58,7 +58,7 @@ jobs:
         SERVER_PID=$!
         
         # Wait and check if server is running
-        
+
         sleep 5
         if ! ps -p $SERVER_PID > /dev/null; then
           echo "Server failed to start"
