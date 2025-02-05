@@ -36,7 +36,7 @@ jobs:
           ${{ runner.os }}-cargo-
 
     - name: Install oha
-      run: cargo install oha
+      run: command -v oha || cargo install oha
 
     - name: Install Node.js and Yarn
       uses: actions/setup-node@v3
