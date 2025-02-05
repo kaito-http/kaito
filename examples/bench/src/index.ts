@@ -1,4 +1,4 @@
-import {create, type InferRoutes} from '@kaito-http/core';
+import {create} from '@kaito-http/core';
 import {sse} from '@kaito-http/core/stream';
 import {KaitoServer} from '@kaito-http/uws';
 import {setTimeout as sleep} from 'node:timers/promises';
@@ -28,4 +28,3 @@ const server = await KaitoServer.serve({
 console.log('Server listening at', server.url);
 
 export type App = typeof app;
-type G = InferRoutes<App>;
