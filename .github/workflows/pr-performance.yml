@@ -2,7 +2,7 @@ name: OHA Performance Test
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize, reopened]
   push:
     branches:
       - 'landon/oha-perf'
@@ -85,6 +85,11 @@ jobs:
       run: |
         RESULTS=$(cat examples/basic/oha-results.json)
         
+        # Get system specifications
+        CPU_INFO=$(lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g')
+        TOTAL_MEM=$(free -h | awk '/^Mem:/ {print $2}')
+        CPU_CORES=$(nproc)
+        
         # Extract key metrics using jq
         AVG_LATENCY=$(echo "$RESULTS" | jq -r '.summary.average * 1000 | floor / 1000')
         RPS=$(echo "$RESULTS" | jq -r '.summary.requestsPerSec | floor')
@@ -92,9 +97,17 @@ jobs:
         P95_LATENCY=$(echo "$RESULTS" | jq -r '.latencyPercentiles.p95 * 1000 | floor / 1000')
         P99_LATENCY=$(echo "$RESULTS" | jq -r '.latencyPercentiles.p99 * 1000 | floor / 1000')
         
+        # Get status code distribution
+        STATUS_CODES=$(echo "$RESULTS" | jq -r '.statusCodeDistribution | to_entries | map("- **\(.key)**: \(.value) requests") | join("\n")')
+        
         # Format the message with more details
         echo "MESSAGE<<EOF" >> $GITHUB_ENV
         echo "📊 **Performance Test Results**" >> $GITHUB_ENV
+        echo "" >> $GITHUB_ENV
+        echo "**Runner Specifications:**" >> $GITHUB_ENV
+        echo "- CPU: ${CPU_INFO}" >> $GITHUB_ENV
+        echo "- CPU Cores: ${CPU_CORES}" >> $GITHUB_ENV
+        echo "- Memory: ${TOTAL_MEM}" >> $GITHUB_ENV
         echo "" >> $GITHUB_ENV
         echo "| Metric | Value |" >> $GITHUB_ENV
         echo "| --- | --- |" >> $GITHUB_ENV
@@ -103,6 +116,9 @@ jobs:
         echo "| P99 Latency | ${P99_LATENCY}ms |" >> $GITHUB_ENV
         echo "| Requests/sec | ${RPS} |" >> $GITHUB_ENV
         echo "| Success Rate | ${SUCCESS_RATE}% |" >> $GITHUB_ENV
+        echo "" >> $GITHUB_ENV
+        echo "**Status Code Distribution:**" >> $GITHUB_ENV
+        echo "${STATUS_CODES}" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
 
     - name: Comment on PR
