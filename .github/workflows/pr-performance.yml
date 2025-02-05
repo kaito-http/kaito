@@ -47,19 +47,25 @@ jobs:
     - name: Start web server and run tests
       run: |
         cd examples/basic
-        yarn install --frozen-lockfile
+        yarn install --immutable
         
-        # Start server in background
-        nohup yarn start > server.log 2>&1 &
+        # Start server in background and capture PID
+        yarn start &
+        SERVER_PID=$!
         
-        # Simple sleep to allow server to start
+        # Wait and check if server is running
         sleep 5
+        if ! ps -p $SERVER_PID > /dev/null; then
+          echo "Server failed to start"
+          cat server.log
+          exit 1
+        fi
         
-        # Run performance test for 5 seconds
-        oha http://127.0.0.1:3000 -z 5sec --json --no-tui > oha-results.json
+        # Run performance test
+        oha http://127.0.0.1:3000 -z 5sec --json --no-tui > oha-results.json || true
         
-        # Kill all node processes (more reliable than pid file)
-        pkill node
+        # Kill server
+        kill $SERVER_PID || true
 
     - name: Upload results
       uses: actions/upload-artifact@v4
