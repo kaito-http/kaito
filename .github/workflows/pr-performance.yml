@@ -21,6 +21,20 @@ jobs:
       with:
         toolchain: stable
 
+    - name: "Cache cargo"
+      id: cache-cargo
+      uses: "actions/cache@v4"
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        save-always: true
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-cargo-
+
     - name: Install oha
       run: cargo install oha
 
@@ -37,17 +51,15 @@ jobs:
         
         # Start server in background
         nohup yarn start > server.log 2>&1 &
-        echo $! > server.pid
         
-        # Wait for server to start
-        sleep 1
-        curl --retry 5 --retry-all-errors --retry-delay 1 --max-time 10 --retry-max-time 30 http://127.0.0.1:3000
+        # Simple sleep to allow server to start
+        sleep 5
         
-        # Run performance test
-        oha http://127.0.0.1:3000 -z 10sec --json --no-tui > oha-results.json
+        # Run performance test for 5 seconds
+        oha http://127.0.0.1:3000 -z 5sec --json --no-tui > oha-results.json
         
-        # Kill server process
-        kill $(cat server.pid)
+        # Kill all node processes (more reliable than pid file)
+        pkill node
 
     - name: Upload results
       uses: actions/upload-artifact@v4
