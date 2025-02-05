@@ -46,18 +46,19 @@ jobs:
 
     - name: Start web server and run tests
       run: |
-        # Build the package first
+        yarn install
         yarn build
         
         # Now move to examples and start server
         cd examples/basic
-        yarn install --immutable
+        yarn install
         
         # Start server in background and redirect output to log file
         yarn start > server.log 2>&1 &
         SERVER_PID=$!
         
         # Wait and check if server is running
+        
         sleep 5
         if ! ps -p $SERVER_PID > /dev/null; then
           echo "Server failed to start"
