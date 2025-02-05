@@ -383,18 +383,16 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		return this.add('GET', '/openapi.json', async () => Response.json(doc));
 	};
 
-	private readonly method =
-		<M extends KaitoMethod>(method: M) =>
-		<Result, Path extends string, Query extends AnyQuery = {}, Body = never>(
+	private readonly method = <M extends KaitoMethod>(method: M) => {
+		return <Result, Path extends string, Query extends AnyQuery = {}, Body = never>(
 			path: Path,
 			route:
 				| (M extends 'GET'
 						? Omit<Route<ContextTo, Result, Path, M, Query, Body>, 'body' | 'path' | 'method' | 'through'>
 						: Omit<Route<ContextTo, Result, Path, M, Query, Body>, 'path' | 'method' | 'through'>)
 				| Route<ContextTo, Result, Path, M, Query, Body>['run'],
-		) => {
-			return this.add<Result, Path, M, Query, Body>(method, path, route);
-		};
+		) => this.add<Result, Path, M, Query, Body>(method, path, route);
+	};
 
 	public get = this.method('GET');
 	public post = this.method('POST');
