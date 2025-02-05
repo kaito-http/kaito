@@ -8,13 +8,8 @@ jobs:
   test-oha:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # none of this worked 🫡
-    # permissions:
-    #   contents: write
-    #   pull-requests: write
-    #   issues: write
-    #   repository-projects: write
-    #   id-token: write
+    permissions:
+      pull-requests: write
 
     steps:
     - name: Checkout code
