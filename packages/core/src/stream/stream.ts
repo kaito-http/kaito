@@ -1,5 +1,5 @@
 export class KaitoSSEResponse<_T> extends Response {
-	constructor(body: ReadableStream<string>, init?: ResponseInit) {
+	public constructor(body: ReadableStream<string>, init?: ResponseInit) {
 		const headers = new Headers(init?.headers);
 
 		headers.set('Content-Type', 'text/event-stream');
@@ -10,6 +10,10 @@ export class KaitoSSEResponse<_T> extends Response {
 			...init,
 			headers,
 		});
+	}
+
+	public get [Symbol.toStringTag](): string {
+		return 'KaitoSSEResponse';
 	}
 }
 

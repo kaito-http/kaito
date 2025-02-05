@@ -26,7 +26,7 @@ export type UndefinedKeysToOptional<T> = {
 	[K in keyof T as undefined extends T[K] ? never : K]: T[K];
 };
 
-export type IsExactly<T, A, True, False> = T extends A ? (A extends T ? True : False) : False;
+export type IsExactly<T, A, True = true, False = false> = T extends A ? (A extends T ? True : False) : False;
 
 export type AlwaysEnabledOptions = {
 	signal?: AbortSignal | null | undefined;
@@ -181,6 +181,10 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 ) {
 	type ROUTES = InferRoutes<APP>;
 
+	type ReturnTypeFor<M extends KaitoMethod, Path extends Extract<ROUTES, {method: M}>['path']> = Awaited<
+		ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>
+	>;
+
 	type RequestOptionsFor<M extends KaitoMethod, Path extends Extract<ROUTES, {method: M}>['path']> = {
 		body: IfNeverThenUndefined<NonNullable<Extract<ROUTES, {method: M; path: Path}>['body']>['_input']>;
 
@@ -196,15 +200,9 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			>
 		>;
 
-		sse: IfNeverThenUndefined<
-			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<any>
-				? true
-				: never
-		>;
+		sse: IfNeverThenUndefined<ReturnTypeFor<M, Path> extends KaitoSSEResponse<any> ? true : never>;
 
-		response: IfNeverThenUndefined<
-			IsExactly<JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>, Response, true, never>
-		>;
+		response: IfNeverThenUndefined<IsExactly<ReturnTypeFor<M, Path>, Response, true, never>>;
 	};
 
 	const create = <M extends KaitoMethod>(method: M) => {
@@ -214,7 +212,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 				? [options?: AlwaysEnabledOptions]
 				: [options: RemoveOnlyUndefinedKeys<UndefinedKeysToOptional<RequestOptionsFor<M, Path>>> & AlwaysEnabledOptions]
 		): Promise<
-			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<
+			Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>> extends KaitoSSEResponse<
 				infer U extends SSEEvent<unknown, string>
 			>
 				? KaitoSSEStream<U>
