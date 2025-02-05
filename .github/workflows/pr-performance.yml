@@ -1,0 +1,58 @@
+name: OHA Performance Test
+
+on:
+  pull_request:
+    types: [opened]
+  push:
+    branches:
+      - 'landon/v4/oha-perf'
+
+jobs:
+  test-oha:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust
+      uses: actions-rust-lang/setup-rust@v1
+      with:
+        rust-version: stable
+
+    - name: Install oha
+      run: cargo install oha
+
+    - name: Install Node.js and Yarn
+      uses: actions/setup-node@v3
+      with:
+        node-version: 22
+        cache: 'yarn'
+
+    - name: Start web server and run tests
+      run: |
+        cd examples/basic
+        yarn install --frozen-lockfile
+        
+        # Start server in background
+        nohup yarn start > server.log 2>&1 &
+        echo $! > server.pid
+        
+        # Wait for server to start
+        sleep 1
+        curl --retry 5 --retry-all-errors --retry-delay 1 --max-time 10 --retry-max-time 30 http://127.0.0.1:3000
+        
+        # Run performance test
+        oha http://127.0.0.1:3000 -z 10sec --json --no-tui > oha-results.json
+        
+        # Kill server process
+        kill $(cat server.pid)
+
+    - name: Upload results
+      uses: actions/upload-artifact@v3
+      with:
+        name: oha-results
+        path: |
+          examples/basic/oha-results.json
+          examples/basic/server.log
