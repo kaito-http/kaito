@@ -1,41 +1,32 @@
 import assert from 'node:assert';
 import {describe, it} from 'node:test';
 import {z} from 'zod';
+import {create} from '../create.ts';
 import {KaitoError} from '../error.ts';
 import type {AnyRoute} from '../route.ts';
 import {Router} from './router.ts';
 import type {KaitoMethod} from './types.ts';
 
-class TestRouter<ContextFrom, ContextTo, R extends AnyRoute> extends Router<ContextFrom, ContextTo, R> {
-	public static override getFindRoute = Router.getFindRoute;
-}
-
-type Context = {
-	userId: string;
-};
-
-type AuthContext = Context & {
-	isAdmin: boolean;
-};
+const router = create({
+	getContext: async req => ({req}),
+	onError: async () => ({status: 500, message: 'Internal Server Error'}),
+});
 
 describe('Router', () => {
 	describe('create', () => {
 		it('should create an empty router', () => {
-			const router = Router.create<Context>();
-			assert.strictEqual(router.routes.size, 0);
+			const r = router();
+			assert.strictEqual(r.routes.size, 0);
 		});
 	});
 
 	describe('route handling', () => {
 		it('should handle GET requests', async () => {
-			const router = Router.create<Context>().get('/users', {
+			const r = router().get('/users', {
 				run: async () => ({users: []}),
 			});
 
-			const handler = router.serve({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(new Request('http://localhost/users', {method: 'GET'}));
 			const data = await response.json();
@@ -44,20 +35,16 @@ describe('Router', () => {
 			assert.deepStrictEqual(data, {
 				success: true,
 				data: {users: []},
-				message: 'OK',
 			});
 		});
 
 		it('should handle POST requests with body parsing', async () => {
-			const router = Router.create<Context>().post('/users', {
+			const r = router().post('/users', {
 				body: z.object({name: z.string()}),
 				run: async ({body}) => ({id: '1', name: body.name}),
 			});
 
-			const handler = router.serve({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(
 				new Request('http://localhost/users', {
@@ -72,19 +59,15 @@ describe('Router', () => {
 			assert.deepStrictEqual(data, {
 				success: true,
 				data: {id: '1', name: 'John'},
-				message: 'OK',
 			});
 		});
 
 		it('should handle URL parameters', async () => {
-			const router = Router.create<Context>().get('/users/:id', {
+			const r = router().get('/users/:id', {
 				run: async ({params}) => ({id: params.id}),
 			});
 
-			const handler = router.serve({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(new Request('http://localhost/users/456', {method: 'GET'}));
 			const data = await response.json();
@@ -93,12 +76,18 @@ describe('Router', () => {
 			assert.deepStrictEqual(data, {
 				success: true,
 				data: {id: '456'},
-				message: 'OK',
 			});
 		});
 
 		it('should handle query parameters', async () => {
-			const router = Router.create<Context>().get('/search', {
+			const router = create({
+				onError: async e => {
+					console.log(e);
+					return {status: 500, message: 'Internal Server Error'};
+				},
+			});
+
+			const r = router().get('/search', {
 				query: {
 					q: z.string(),
 					limit: z
@@ -112,10 +101,7 @@ describe('Router', () => {
 				}),
 			});
 
-			const handler = router.serve({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(new Request('http://localhost/search?q=test&limit=10', {method: 'GET'}));
 			const data = await response.json();
@@ -124,53 +110,51 @@ describe('Router', () => {
 			assert.deepStrictEqual(data, {
 				success: true,
 				data: {query: 'test', limit: 10},
-				message: 'OK',
 			});
 		});
 	});
 
 	describe('middleware and context', () => {
 		it('should transform context through middleware', async () => {
-			const router = Router.create<Context>()
+			const r = router()
 				.through(async ctx => ({
 					...ctx,
-					isAdmin: ctx.userId === 'admin',
+					isAdmin: ctx.req.headers.get('Authorization') === 'Bearer admin-token',
 				}))
 				.get('/admin', {
 					run: async ({ctx}) => ({
-						isAdmin: (ctx as AuthContext).isAdmin,
+						isAdmin: ctx.isAdmin,
 					}),
 				});
 
-			const handler = router.serve({
-				getContext: async () => ({userId: 'admin'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
-			const response = await handler(new Request('http://localhost/admin', {method: 'GET'}));
+			const response = await handler(
+				new Request('http://localhost/admin', {
+					method: 'GET',
+					headers: {Authorization: 'Bearer admin-token'},
+				}),
+			);
+
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
 			assert.deepStrictEqual(data, {
 				success: true,
 				data: {isAdmin: true},
-				message: 'OK',
 			});
 		});
 	});
 
 	describe('error handling', () => {
 		it('should handle KaitoError with custom status', async () => {
-			const router = Router.create<Context>().get('/error', {
+			const r = router().get('/error', {
 				run: async () => {
 					throw new KaitoError(403, 'Forbidden');
 				},
 			});
 
-			const handler = router.serve({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(new Request('http://localhost/error', {method: 'GET'}));
 			const data = await response.json();
@@ -184,16 +168,15 @@ describe('Router', () => {
 		});
 
 		it('should handle generic errors with server error handler', async () => {
-			const router = Router.create<Context>().get('/error', {
+			const r = create({
+				onError: async () => ({status: 500, message: 'Custom Error Message'}),
+			})().get('/error', {
 				run: async () => {
 					throw new Error('Something went wrong');
 				},
 			});
 
-			const handler = router.serve({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Custom Error Message'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(new Request('http://localhost/error', {method: 'GET'}));
 			const data = await response.json();
@@ -209,36 +192,30 @@ describe('Router', () => {
 
 	describe('router merging', () => {
 		it('should merge routers with prefix', async () => {
-			const userRouter = Router.create<Context>().get('/me', {
-				run: async ({ctx}) => ({id: ctx.userId}),
+			const userRouter = router().get('/:user_id', {
+				run: async ({params}) => ({id: params.user_id}),
 			});
 
-			const mainRouter = Router.create<Context>().merge('/api', userRouter);
+			const mainRouter = router().merge('/api', userRouter);
 
-			const handler = mainRouter.serve({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = mainRouter.serve();
 
-			const response = await handler(new Request('http://localhost/api/me', {method: 'GET'}));
+			const response = await handler(new Request('http://localhost/api/1', {method: 'GET'}));
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
 			assert.deepStrictEqual(data, {
 				success: true,
-				data: {id: '123'},
-				message: 'OK',
+				data: {id: '1'},
 			});
 		});
 	});
 
 	describe('404 handling', () => {
 		it('should return 404 for non-existent routes', async () => {
-			const router = Router.create<Context>();
-			const handler = router.serve({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const r = router();
+
+			const handler = r.serve();
 
 			const response = await handler(new Request('http://localhost/not-found', {method: 'GET'}));
 			const data = await response.json();
@@ -252,14 +229,11 @@ describe('Router', () => {
 		});
 
 		it('should return 404 for wrong method on existing path', async () => {
-			const router = Router.create<Context>().get('/users', {
+			const r = router().get('/users', {
 				run: async () => ({users: []}),
 			});
 
-			const handler = router.serve({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(new Request('http://localhost/users', {method: 'POST'}));
 			const data = await response.json();
@@ -276,27 +250,31 @@ describe('Router', () => {
 	describe('findRoute', () => {
 		const dummyHandler = async () => {};
 
-		const routes = new Map<string, Map<KaitoMethod, () => Promise<void>>>([
+		const routes = new Map<KaitoMethod, Map<string, () => Promise<void>>>([
 			[
-				'/users/:id',
+				'GET',
 				new Map([
-					['GET', dummyHandler],
-					['PUT', dummyHandler],
+					['/users/:id', dummyHandler],
+					['/health', dummyHandler],
+					['/', dummyHandler],
+					['/users/:id/posts/:slug', dummyHandler],
 				]),
 			],
 			[
-				'/posts/:postId/comments/:commentId',
+				'DELETE',
 				new Map([
-					['GET', dummyHandler],
-					['DELETE', dummyHandler],
+					['/users/:id/posts/:slug', dummyHandler],
+					['/posts/:postId/comments/:commentId', dummyHandler],
 				]),
 			],
-			['/health', new Map([['GET', dummyHandler]])],
-			['/', new Map([['GET', dummyHandler]])],
-			['/users/:id/posts/:slug', new Map([['GET', dummyHandler]])],
+			['PUT', new Map([['/users/:id', dummyHandler]])],
 		]);
 
-		const findRoute = TestRouter.getFindRoute(routes);
+		class ExposedInternalsRouter<ContextFrom, ContextTo, R extends AnyRoute> extends Router<ContextFrom, ContextTo, R> {
+			public static override getFindRoute = Router.getFindRoute;
+		}
+
+		const findRoute = ExposedInternalsRouter.getFindRoute(routes);
 
 		it('should match exact routes', () => {
 			const result = findRoute('GET', '/health');
@@ -372,6 +350,7 @@ describe('Router', () => {
 
 		it('should match numeric and special character parameters', () => {
 			const result = findRoute('GET', '/users/123/posts/hello-world@2');
+
 			assert.deepStrictEqual(result, {
 				route: dummyHandler,
 				params: {

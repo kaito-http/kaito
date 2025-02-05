@@ -85,21 +85,25 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 	};
 
 	protected static getFindRoute =
-		<R>(routes: Map<string, Map<KaitoMethod, R>>) =>
+		<R>(routes: Map<KaitoMethod, Map<string, R>>) =>
 		(method: KaitoMethod, path: string) => {
 			const params: Record<string, string> = {};
 			const pathParts = path.split('/').filter(Boolean);
 
-			for (const [routePath, methodHandlers] of routes) {
+			const methodRoutes = routes.get(method);
+			if (!methodRoutes) return {};
+
+			for (const [routePath, route] of methodRoutes) {
 				const routeParts = routePath.split('/').filter(Boolean);
 
-				if (routeParts.length !== pathParts.length) continue;
+				if (routeParts.length !== pathParts.length) {
+					continue;
+				}
 
 				let matches = true;
 				for (let i = 0; i < routeParts.length; i++) {
 					const routePart = routeParts[i];
 					const pathPart = pathParts[i];
-
 					if (routePart && pathPart && routePart.startsWith(':')) {
 						params[routePart.slice(1)] = pathPart;
 					} else if (routePart !== pathPart) {
@@ -108,29 +112,54 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 					}
 				}
 
-				if (matches) {
-					const route = methodHandlers.get(method);
-					if (route) return {route, params};
-				}
+				if (matches) return {route, params};
 			}
 
 			return {};
 		};
 
+	private static buildQuerySchema = (schema: Record<string, z.Schema>) => {
+		const keys = Object.keys(schema);
+		return z
+			.instanceof(URLSearchParams)
+			.transform(params => {
+				const result: Record<string, unknown> = {};
+
+				for (const key of keys) {
+					result[key] = params.get(key);
+				}
+
+				return result;
+			})
+			.pipe(z.object(schema));
+	};
+
 	public serve = () => {
-		const routes = new Map<string, Map<KaitoMethod, AnyRoute>>();
+		const methodToRoutesMap = new Map<
+			KaitoMethod,
+			Map<
+				string,
+				AnyRoute & {
+					fastQuerySchema: z.Schema<Record<string, unknown>, z.ZodTypeDef, URLSearchParams> | undefined;
+				}
+			>
+		>();
 
 		for (const route of this.state.routes) {
-			if (!routes.has(route.path)) {
-				routes.set(route.path, new Map());
+			if (!methodToRoutesMap.has(route.method)) {
+				methodToRoutesMap.set(route.method, new Map());
 			}
 
-			routes.get(route.path)!.set(route.method, route);
+			methodToRoutesMap.get(route.method)!.set(route.path, {
+				...route,
+				fastQuerySchema: route.query ? Router.buildQuerySchema(route.query) : undefined,
+			});
 		}
 
-		const findRoute = Router.getFindRoute(routes);
+		const findRoute = Router.getFindRoute(methodToRoutesMap);
 
-		return async (req: Request): Promise<Response> => {
+		// We don't return this function directly, because we wrap it below with the `.before()` and `.transform()` methods
+		const handle = async (req: Request): Promise<Response> => {
 			const url = new URL(req.url);
 			const method = req.method as KaitoMethod;
 
@@ -151,7 +180,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 
 			try {
 				const body = route.body ? await route.body.parseAsync(await req.json()) : undefined;
-				const query = route.query ? await z.object(route.query).parseAsync(url.searchParams) : {};
+				const query = route.fastQuerySchema ? await route.fastQuerySchema.parseAsync(url.searchParams) : {};
 
 				const ctx = await route.through((await this.state.config.getContext?.(request, head)) ?? null);
 
@@ -221,6 +250,36 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 					});
 				}
 			}
+		};
+
+		return async (request: Request): Promise<Response> => {
+			if (this.state.config.before) {
+				const result = await this.state.config.before(request);
+
+				if (result instanceof Response) {
+					if (this.state.config.transform) {
+						const transformed = await this.state.config.transform(request, result);
+
+						if (transformed instanceof Response) {
+							return result;
+						}
+					}
+
+					return result;
+				}
+			}
+
+			const response = await handle(request);
+
+			if (this.state.config.transform) {
+				const transformed = await this.state.config.transform(request, response);
+
+				if (transformed instanceof Response) {
+					return transformed;
+				}
+			}
+
+			return response;
 		};
 	};
 
