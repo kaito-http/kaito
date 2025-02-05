@@ -5,7 +5,7 @@ on:
     types: [opened]
   push:
     branches:
-      - 'landon/v4/oha-perf'
+      - 'landon/oha-perf'
 
 jobs:
   test-oha:
