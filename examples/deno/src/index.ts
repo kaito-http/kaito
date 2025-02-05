@@ -1,21 +1,43 @@
 // fake typing deno
 declare const Deno: {serve: (options: {port: number}, handler: (req: Request) => Promise<Response>) => {}};
 
-import {createKaitoHandler} from '@kaito-http/core';
-import {getContext, router} from './context.ts';
+import {create} from '@kaito-http/core';
 
-const root = router().get('/', async () => 'hello from Deno.serve()');
+const start = performance.now();
 
-const fetch = createKaitoHandler({
-	router: root,
-	getContext,
-
-	onError: async ({error}) => ({
+const router = create({
+	getContext: req => ({
+		req,
+		uptime: performance.now() - start,
+	}),
+	onError: error => ({
 		status: 500,
 		message: error.message,
 	}),
 });
 
-Deno.serve({port: 3000}, fetch);
+const fetch = router()
+	.get('/', () => 'hey')
+	.post('/', () => 'hey2')
+	.post('/2', () => 'hey2')
+	.openapi({
+		info: {
+			version: '1.0.0',
+			title: 'My API',
+			description: 'My API description',
+		},
+		servers: {
+			'http://localhost:3000': 'Localhost',
+		},
+	})
+	.serve();
 
-export type App = typeof root;
+const response = await fetch(new Request('http://localhost:3000/openapi.json'));
+
+console.log(await response.json());
+
+// const app = router().get('/', () => 'hello from Deno.serve()');
+
+// Deno.serve({port: 3000}, app.serve());
+
+// export type App = typeof app;

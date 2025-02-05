@@ -1,4 +1,4 @@
-import type {APIResponse, ErroredAPIResponse, InferParsable, InferRoutes, KaitoMethod, Router} from '@kaito-http/core';
+import type {APIResponse, ErroredAPIResponse, InferRoutes, KaitoMethod, Router} from '@kaito-http/core';
 import type {KaitoSSEResponse, SSEEvent} from '@kaito-http/core/stream';
 import {pathcat} from 'pathcat';
 import pkg from '../package.json' with {type: 'json'};
@@ -182,16 +182,16 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 	type ROUTES = InferRoutes<APP>;
 
 	type RequestOptionsFor<M extends KaitoMethod, Path extends Extract<ROUTES, {method: M}>['path']> = {
-		body: IfNeverThenUndefined<InferParsable<NonNullable<Extract<ROUTES, {method: M; path: Path}>['body']>>['input']>;
+		body: IfNeverThenUndefined<NonNullable<Extract<ROUTES, {method: M; path: Path}>['body']>['_input']>;
 
 		params: IfNoKeysThenUndefined<Record<ExtractRouteParams<Path>, string>>;
 
 		query: MakeQueryUndefinedIfNoRequiredKeys<
 			Prettify<
 				UndefinedKeysToOptional<{
-					[Key in keyof NonNullable<Extract<ROUTES, {method: M; path: Path}>['query']>]: InferParsable<
+					[Key in keyof NonNullable<Extract<ROUTES, {method: M; path: Path}>['query']>]: NonNullable<
 						NonNullable<Extract<ROUTES, {method: M; path: Path}>['query']>[Key]
-					>['input'];
+					>['_input'];
 				}>
 			>
 		>;

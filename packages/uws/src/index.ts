@@ -4,7 +4,7 @@ import uWS from 'uWebSockets.js';
 export interface ServeOptions {
 	port: number;
 	host: string;
-	// static?: Record<`/${string}`, Response>;
+	static?: Record<`/${string}`, Response>;
 	fetch: (request: Request) => Promise<Response>;
 }
 
@@ -85,6 +85,7 @@ export class KaitoServer {
 						if (buffer) {
 							controller.enqueue(buffer);
 						}
+
 						controller.close();
 					}
 				});
@@ -106,19 +107,38 @@ export class KaitoServer {
 
 		const app = uWS.App();
 
-		// for await (const [path, response] of Object.entries(fullOptions.static ?? {})) {
-		// 	const buffer = await response.arrayBuffer();
-		// 	const statusAsBuffer = Buffer.from(response.status.toString().concat(SPACE, response.statusText));
-		// 	const headersFastArray = Array.from(response.headers.entries());
+		const staticPromises = Object.entries(fullOptions.static ?? {}).map(async ([path, response]) => {
+			const timeout = setTimeout(() => {
+				const lines = [
+					'KAITO STARTUP WARNING',
+					`The static path on ${path} is taking more than 10s to load. This suggests you are waiting for a stream to finish.`,
+					'We suggest you do one of the following:',
+					'	1. Use `new Response(new Response(stream).arrayBuffer())` if you really need to wait for a stream',
+					"	2. Don't use a stream in the first place",
+				];
 
-		// 	app.any(path, res => {
-		// 		res.writeStatus(statusAsBuffer);
-		// 		for (const [header, value] of headersFastArray) {
-		// 			res.writeHeader(header, value);
-		// 		}
-		// 		res.end(buffer);
-		// 	});
-		// }
+				console.log(lines.join('\n'));
+			}, 10000);
+
+			const buffer = await response.arrayBuffer();
+
+			clearTimeout(timeout);
+
+			const statusAsBuffer = Buffer.from(response.status.toString().concat(SPACE, response.statusText));
+			const headersFastArray = Array.from(response.headers.entries());
+
+			app.any(path, res => {
+				res.writeStatus(statusAsBuffer);
+
+				for (const [header, value] of headersFastArray) {
+					res.writeHeader(header, value);
+				}
+
+				res.end(buffer);
+			});
+		});
+
+		await Promise.all(staticPromises);
 
 		app.any('/*', async (res, req) => {
 			let aborted = false;

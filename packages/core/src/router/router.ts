@@ -1,62 +1,41 @@
+import {z} from 'zod';
+import {createDocument, type ZodOpenApiOperationObject, type ZodOpenApiPathsObject} from 'zod-openapi';
+import type {KaitoConfig} from '../create.ts';
 import {KaitoError, WrappedError} from '../error.ts';
-import type {HandlerConfig} from '../handler.ts';
 import {KaitoHead} from '../head.ts';
 import {KaitoRequest} from '../request.ts';
-import type {AnyQueryDefinition, AnyRoute, Route} from '../route.ts';
-import {isNodeLikeDev, type ErroredAPIResponse, type Parsable} from '../util.ts';
+import type {AnyQuery, AnyRoute, Route} from '../route.ts';
+import {isNodeLikeDev, type ErroredAPIResponse, type MaybePromise} from '../util.ts';
 import type {KaitoMethod} from './types.ts';
 
 type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
-	R extends Route<
-		infer ContextFrom,
-		infer ContextTo,
-		infer Result,
-		infer Path,
-		infer Method,
-		infer Query,
-		infer BodyOutput
-	>
-		? Route<ContextFrom, ContextTo, Result, `${Prefix}${Path}`, Method, Query, BodyOutput>
+	R extends Route<infer ContextTo, infer Result, infer Path, infer Method, infer Query, infer BodyOutput>
+		? Route<ContextTo, Result, `${Prefix}${Path}`, Method, Query, BodyOutput>
 		: never;
 
 type PrefixRoutesPath<Prefix extends `/${string}`, R extends AnyRoute> = R extends R
 	? PrefixRoutesPathInner<R, Prefix>
 	: never;
 
-export type RouterState<Routes extends AnyRoute, ContextFrom, ContextTo> = {
+export type RouterState<ContextFrom, ContextTo, Routes extends AnyRoute> = {
 	routes: Set<Routes>;
-	through: (context: ContextFrom) => Promise<ContextTo>;
+	through: (context: unknown) => Promise<ContextTo>;
+	config: KaitoConfig<ContextFrom>;
 };
 
 export type InferRoutes<R extends Router<any, any, any>> = R extends Router<any, any, infer R> ? R : never;
 
 export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
-	private readonly state: RouterState<R, ContextFrom, ContextTo>;
+	private readonly state: RouterState<ContextFrom, ContextTo, R>;
 
-	public static create = <Context>(): Router<Context, Context, never> =>
+	public static create = <Context>(config: KaitoConfig<Context>): Router<Context, Context, never> =>
 		new Router<Context, Context, never>({
-			through: async context => context,
+			through: async context => context as Context,
 			routes: new Set(),
+			config,
 		});
 
-	private static parseQuery<T extends AnyQueryDefinition>(schema: T | undefined, url: URL) {
-		if (!schema) {
-			return {};
-		}
-
-		const result: Record<PropertyKey, unknown> = {};
-		for (const key in schema) {
-			if (!schema.hasOwnProperty(key)) continue;
-			const value = url.searchParams.get(key);
-			result[key] = (schema[key] as Parsable).parse(value);
-		}
-
-		return result as {
-			[Key in keyof T]: ReturnType<T[Key]['parse']>;
-		};
-	}
-
-	public constructor(options: RouterState<R, ContextFrom, ContextTo>) {
+	public constructor(options: RouterState<ContextFrom, ContextTo, R>) {
 		this.state = options;
 	}
 
@@ -64,26 +43,16 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		return this.state.routes;
 	}
 
-	public add = <
-		Result,
-		Path extends string,
-		Method extends KaitoMethod,
-		Query extends AnyQueryDefinition = {},
-		Body extends Parsable = never,
-	>(
+	private add = <Result, Path extends string, Method extends KaitoMethod, Query extends AnyQuery, Body>(
 		method: Method,
 		path: Path,
 		route:
 			| (Method extends 'GET'
-					? Omit<
-							Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>,
-							'body' | 'path' | 'method' | 'through'
-						>
-					: Omit<Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>, 'path' | 'method' | 'through'>)
-			| Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>['run'],
-	): Router<ContextFrom, ContextTo, R | Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>> => {
-		const merged: Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body> = {
-			// TODO: Ideally fix the typing here, but this will be replaced in Kaito v4 where all routes must return a Response (which we can type)
+					? Omit<Route<ContextTo, Result, Path, Method, Query, Body>, 'body' | 'path' | 'method' | 'through'>
+					: Omit<Route<ContextTo, Result, Path, Method, Query, Body>, 'path' | 'method' | 'through'>)
+			| Route<ContextTo, Result, Path, Method, Query, Body>['run'],
+	): Router<ContextFrom, ContextTo, R | Route<ContextTo, Result, Path, Method, Query, Body>> => {
+		const merged: Route<ContextTo, Result, Path, Method, Query, Body> = {
 			...((typeof route === 'object' ? route : {run: route}) as {run: never}),
 			method,
 			path,
@@ -99,30 +68,25 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 	public readonly merge = <PathPrefix extends `/${string}`, OtherRoutes extends AnyRoute>(
 		pathPrefix: PathPrefix,
 		other: Router<ContextFrom, unknown, OtherRoutes>,
-	): Router<ContextFrom, ContextTo, Extract<R | PrefixRoutesPath<PathPrefix, OtherRoutes>, AnyRoute>> => {
+	): Router<
+		ContextFrom,
+		ContextTo,
+		Extract<R | PrefixRoutesPath<PathPrefix, Extract<OtherRoutes, AnyRoute>>, AnyRoute>
+	> => {
 		const newRoutes = [...other.state.routes].map(route => ({
 			...route,
 			path: `${pathPrefix}${route.path as string}`,
 		}));
 
-		return new Router<ContextFrom, ContextTo, Extract<R | PrefixRoutesPath<PathPrefix, OtherRoutes>, AnyRoute>>({
+		return new Router({
 			...this.state,
 			routes: new Set([...this.state.routes, ...newRoutes] as never),
 		});
 	};
 
-	public freeze = (server: Omit<HandlerConfig<ContextFrom>, 'router'>) => {
-		const routes = new Map<string, Map<KaitoMethod, AnyRoute>>();
-
-		for (const route of this.state.routes) {
-			if (!routes.has(route.path)) {
-				routes.set(route.path, new Map());
-			}
-
-			routes.get(route.path)!.set(route.method, route);
-		}
-
-		const findRoute = (method: KaitoMethod, path: string): {route?: AnyRoute; params: Record<string, string>} => {
+	protected static getFindRoute =
+		<R>(routes: Map<string, Map<KaitoMethod, R>>) =>
+		(method: KaitoMethod, path: string) => {
 			const params: Record<string, string> = {};
 			const pathParts = path.split('/').filter(Boolean);
 
@@ -150,8 +114,21 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 				}
 			}
 
-			return {params};
+			return {};
 		};
+
+	public serve = () => {
+		const routes = new Map<string, Map<KaitoMethod, AnyRoute>>();
+
+		for (const route of this.state.routes) {
+			if (!routes.has(route.path)) {
+				routes.set(route.path, new Map());
+			}
+
+			routes.get(route.path)!.set(route.method, route);
+		}
+
+		const findRoute = Router.getFindRoute(routes);
 
 		return async (req: Request): Promise<Response> => {
 			const url = new URL(req.url);
@@ -173,11 +150,10 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 			const head = new KaitoHead();
 
 			try {
-				const body = route.body ? await route.body.parse(await req.json()) : undefined;
-				const query = Router.parseQuery(route.query, url);
+				const body = route.body ? await route.body.parseAsync(await req.json()) : undefined;
+				const query = route.query ? await z.object(route.query).parseAsync(url.searchParams) : {};
 
-				const rootCtx = await server.getContext(request, head);
-				const ctx = await route.through(rootCtx);
+				const ctx = await route.through((await this.state.config.getContext?.(request, head)) ?? null);
 
 				const result = await route.run({
 					ctx,
@@ -206,7 +182,6 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 				return head.toResponse({
 					success: true,
 					data: result,
-					message: 'OK',
 				});
 			} catch (e) {
 				const error = WrappedError.maybe(e);
@@ -219,28 +194,134 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 					});
 				}
 
-				const {status, message} = await server
-					.onError({error, req: request})
-					.catch(() => ({status: 500, message: 'Internal Server Error'}));
+				if (!this.state.config.onError) {
+					return head.status(500).toResponse({
+						success: false,
+						data: null,
+						message: 'Internal Server Error',
+					});
+				}
 
-				return head.status(status).toResponse({
-					success: false,
-					data: null,
-					message,
-				});
+				try {
+					const {status, message} = await this.state.config.onError(error, request);
+
+					return head.status(status).toResponse({
+						success: false,
+						data: null,
+						message,
+					});
+				} catch (e) {
+					console.error('KAITO - Failed to handle error inside `.onError()`, returning 500 and Internal Server Error');
+					console.error(e);
+
+					return head.status(500).toResponse({
+						success: false,
+						data: null,
+						message: 'Internal Server Error',
+					});
+				}
 			}
 		};
 	};
 
+	public openapi = (highLevelSpec: {
+		info: {
+			version: string;
+			title: string;
+			description?: string;
+		};
+		servers?: Partial<Record<(`https://` | `http://`) | ({} & string), string>>;
+	}) => {
+		const OPENAPI_VERSION = '3.0.0';
+
+		const paths: ZodOpenApiPathsObject = {};
+
+		for (const route of this.state.routes) {
+			const path = route.path;
+
+			const pathWithColonParamsReplaceWithCurlyBraces = path.replace(/:(\w+)/g, '{$1}');
+
+			if (!paths[pathWithColonParamsReplaceWithCurlyBraces]) {
+				paths[pathWithColonParamsReplaceWithCurlyBraces] = {};
+			}
+
+			const item: ZodOpenApiOperationObject = {
+				description: route.openapi?.description ?? 'Successful response',
+				responses: {
+					200: {
+						description: route.openapi?.description ?? 'Successful response',
+
+						...(route.openapi
+							? {
+									content: {
+										[{
+											json: 'application/json',
+											sse: 'text/event-stream',
+										}[route.openapi.body.type]]: {schema: route.openapi?.body.schema},
+									},
+								}
+							: {}),
+					},
+				},
+			};
+
+			if (route.body) {
+				item.requestBody = {
+					content: {
+						'application/json': {schema: route.body},
+					},
+				};
+			}
+
+			const params: NonNullable<ZodOpenApiOperationObject['requestParams']> = {};
+
+			if (route.query) {
+				params.query = z.object(route.query);
+			}
+
+			const urlParams = path.match(/:(\w+)/g);
+
+			if (urlParams) {
+				const pathParams = {} as Record<string, z.ZodType>;
+
+				for (const param of urlParams) {
+					pathParams[param.slice(1)] = z.string();
+				}
+
+				params.path = z.object(pathParams);
+			}
+
+			item.requestParams = params;
+
+			paths[pathWithColonParamsReplaceWithCurlyBraces][route.method.toLowerCase() as Lowercase<KaitoMethod>] = item;
+		}
+
+		const doc = createDocument({
+			openapi: OPENAPI_VERSION,
+			paths,
+			...highLevelSpec,
+			servers: Object.entries(highLevelSpec.servers ?? {}).map(entry => {
+				const [url, description] = entry as [string, string];
+
+				return {
+					url,
+					description,
+				};
+			}),
+		});
+
+		return this.add('GET', '/openapi.json', async () => Response.json(doc));
+	};
+
 	private readonly method =
 		<M extends KaitoMethod>(method: M) =>
-		<Result, Path extends string, Query extends AnyQueryDefinition = {}, Body extends Parsable = never>(
+		<Result, Path extends string, Query extends AnyQuery = {}, Body = never>(
 			path: Path,
 			route:
 				| (M extends 'GET'
-						? Omit<Route<ContextFrom, ContextTo, Result, Path, M, Query, Body>, 'body' | 'path' | 'method' | 'through'>
-						: Omit<Route<ContextFrom, ContextTo, Result, Path, M, Query, Body>, 'path' | 'method' | 'through'>)
-				| Route<ContextFrom, ContextTo, Result, Path, M, Query, Body>['run'],
+						? Omit<Route<ContextTo, Result, Path, M, Query, Body>, 'body' | 'path' | 'method' | 'through'>
+						: Omit<Route<ContextTo, Result, Path, M, Query, Body>, 'path' | 'method' | 'through'>)
+				| Route<ContextTo, Result, Path, M, Query, Body>['run'],
 		) => {
 			return this.add<Result, Path, M, Query, Body>(method, path, route);
 		};
@@ -254,11 +335,11 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 	public options = this.method('OPTIONS');
 
 	public through = <NextContext>(
-		through: (context: ContextTo) => Promise<NextContext>,
+		through: (context: ContextTo) => MaybePromise<NextContext>,
 	): Router<ContextFrom, NextContext, R> => {
 		return new Router<ContextFrom, NextContext, R>({
 			...this.state,
-			through: async context => through(await this.state.through(context)),
+			through: async context => await through(await this.state.through(context)),
 		});
 	};
 }

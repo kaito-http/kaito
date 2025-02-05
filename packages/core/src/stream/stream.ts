@@ -11,12 +11,6 @@ export class KaitoSSEResponse<_T> extends Response {
 			headers,
 		});
 	}
-
-	async *[Symbol.asyncIterator]() {
-		for await (const chunk of this.body!) {
-			yield chunk;
-		}
-	}
 }
 
 export type SSEEvent<T, E extends string> = (

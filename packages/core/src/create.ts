@@ -1,14 +1,9 @@
 import type {KaitoError} from './error.ts';
 import type {KaitoRequest} from './request.ts';
-import type {Router} from './router/router.ts';
-import type {GetContext} from './util.ts';
+import {Router} from './router/router.ts';
+import type {GetContext, MaybePromise} from './util.ts';
 
-export type HandlerConfig<ContextFrom> = {
-	/**
-	 * The root router to mount on this handler.
-	 */
-	router: Router<ContextFrom, unknown, any>;
-
+export type KaitoConfig<ContextFrom = null> = {
 	/**
 	 * A function that is called to get the context for a request.
 	 *
@@ -16,7 +11,7 @@ export type HandlerConfig<ContextFrom> = {
 	 *
 	 * It's fine for this function to throw; if it does, the error is passed to the `onError` function.
 	 */
-	getContext: GetContext<ContextFrom>;
+	getContext?: GetContext<ContextFrom>;
 
 	/**
 	 * A function that is called when an error occurs inside a route handler.
@@ -29,7 +24,7 @@ export type HandlerConfig<ContextFrom> = {
 	 * @param arg - The error thrown, and the KaitoRequest instance
 	 * @returns A KaitoError or an object with a status and message
 	 */
-	onError: (arg: {error: Error; req: KaitoRequest}) => Promise<KaitoError | {status: number; message: string}>;
+	onError?: (error: Error, req: KaitoRequest) => MaybePromise<KaitoError | {status: number; message: string}>;
 
 	/**
 	 * A function that is called before every request. Most useful for bailing out early in the case of an OPTIONS request.
@@ -43,7 +38,7 @@ export type HandlerConfig<ContextFrom> = {
 	 * }
 	 * ```
 	 */
-	before?: (req: Request) => Promise<Response | void | undefined> | Response | void | undefined;
+	before?: (req: Request) => MaybePromise<Response | void | undefined>;
 
 	/**
 	 * Transforms the response before it is sent to the client. Very useful for settings headers like CORS.
@@ -64,33 +59,17 @@ export type HandlerConfig<ContextFrom> = {
 	 * }
 	 * ```
 	 */
-	transform?: (req: Request, res: Response) => Promise<Response | void | undefined> | Response | void | undefined;
+	transform?: (req: Request, res: Response) => MaybePromise<Response | void | undefined>;
 };
 
-export function createKaitoHandler<Context>(config: HandlerConfig<Context>) {
-	const handle = config.router.freeze(config);
-
-	return async (request: Request): Promise<Response> => {
-		if (config.before) {
-			const result = await config.before(request);
-
-			if (result instanceof Response) {
-				if (config.transform) {
-					const result2 = await config.transform(request, result);
-					if (result2 instanceof Response) return result;
-				}
-
-				return result;
-			}
-		}
-
-		const response = await handle(request);
-
-		if (config.transform) {
-			const result = await config.transform(request, response);
-			if (result instanceof Response) return result;
-		}
-
-		return response;
-	};
+/**
+ * Create a helper function for instantiating a Kaito router
+ *
+ * This is the starting point for any Kaito application
+ *
+ * @param config - The configuration for the router
+ * @returns A new Kaito router
+ */
+export function create<Context = null>(config: KaitoConfig<Context> = {}) {
+	return () => Router.create<Context>(config);
 }
