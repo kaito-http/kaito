@@ -53,6 +53,7 @@ describe('Router', () => {
 					body: JSON.stringify({name: 'John'}),
 				}),
 			);
+
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
@@ -80,20 +81,10 @@ describe('Router', () => {
 		});
 
 		it('should handle query parameters', async () => {
-			const router = create({
-				onError: async e => {
-					console.log(e);
-					return {status: 500, message: 'Internal Server Error'};
-				},
-			});
-
 			const r = router().get('/search', {
 				query: {
 					q: z.string(),
-					limit: z
-						.string()
-						.transform(value => Number(value))
-						.pipe(z.number()),
+					limit: z.coerce.number(),
 				},
 				run: async ({query}) => ({
 					query: query.q,
@@ -117,15 +108,11 @@ describe('Router', () => {
 	describe('middleware and context', () => {
 		it('should transform context through middleware', async () => {
 			const r = router()
-				.through(async ctx => ({
+				.through(ctx => ({
 					...ctx,
 					isAdmin: ctx.req.headers.get('Authorization') === 'Bearer admin-token',
 				}))
-				.get('/admin', {
-					run: async ({ctx}) => ({
-						isAdmin: ctx.isAdmin,
-					}),
-				});
+				.get('/admin', ({ctx}) => ({isAdmin: ctx.isAdmin}));
 
 			const handler = r.serve();
 
@@ -368,6 +355,134 @@ describe('Router', () => {
 		it('should handle empty parameter values', () => {
 			const result = findRoute('GET', '/users//');
 			assert.deepStrictEqual(result, {});
+		});
+	});
+
+	describe('Middleware hooks', () => {
+		it('should short-circuit route execution when before hook returns a Response', async () => {
+			const beforeRouter = create({
+				getContext: async req => ({req}),
+				onError: async () => ({status: 500, message: 'Internal Server Error'}),
+				before: async _req => Response.json({blocked: true}, {status: 403}),
+			})().get('/should-not-run', {
+				run: async () => ({should: 'not-run'}),
+			});
+
+			const handler = beforeRouter.serve();
+			const response = await handler(new Request('http://localhost/should-not-run', {method: 'GET'}));
+			const data = await response.json();
+
+			assert.strictEqual(response.status, 403);
+			assert.deepStrictEqual(data, {blocked: true});
+		});
+
+		it('should modify the route response using transform hook', async () => {
+			const transformRouter = create({
+				getContext: async req => ({req}),
+				onError: async () => ({status: 500, message: 'Internal Server Error'}),
+				transform: async (_req, res) => {
+					const originalData = await res.json();
+					return Response.json({...originalData, transformed: true});
+				},
+			})().get('/transform-test', {
+				run: async () => ({result: 'original'}),
+			});
+
+			const handler = transformRouter.serve();
+			const response = await handler(new Request('http://localhost/transform-test', {method: 'GET'}));
+			const data = await response.json();
+
+			assert.strictEqual(response.status, 200);
+			assert.deepStrictEqual(data, {
+				success: true,
+				data: {result: 'original'},
+				transformed: true,
+			});
+		});
+
+		it('should not apply transform hook to a before hook response', async () => {
+			const beforeTransformRouter = create({
+				getContext: async req => ({req}),
+				onError: async () => ({status: 500, message: 'Internal Server Error'}),
+				before: async _req => Response.json({blocked: true}, {status: 403}),
+				transform: async (_req, _res) => {
+					// Even though transform returns a new response, its return is ignored in the "before" branch.
+					return Response.json({shouldNot: 'modify'}, {status: 200});
+				},
+			})().get('/no-run', {
+				run: async () => ({should: 'not-run'}),
+			});
+
+			const handler = beforeTransformRouter.serve();
+			const response = await handler(new Request('http://localhost/no-run', {method: 'GET'}));
+			const data = await response.json();
+
+			assert.strictEqual(response.status, 403);
+			assert.deepStrictEqual(data, {blocked: true});
+		});
+	});
+
+	describe('Custom Response handling', () => {
+		it('should return the Response object as is if route handler returns a Response', async () => {
+			const customResponseRouter = router().get('/custom', {
+				run: async () => new Response('Custom Response', {status: 201}),
+			});
+
+			const handler = customResponseRouter.serve();
+			const response = await handler(new Request('http://localhost/custom', {method: 'GET'}));
+			const text = await response.text();
+
+			assert.strictEqual(response.status, 201);
+			assert.strictEqual(text, 'Custom Response');
+		});
+	});
+
+	describe('Invalid JSON body handling', () => {
+		it('should return 500 when invalid JSON is provided for a POST request', async () => {
+			const invalidJsonRouter = router().post('/invalid', {
+				body: z.object({name: z.string()}),
+				run: async ({body}) => ({received: body.name}),
+			});
+
+			const handler = invalidJsonRouter.serve();
+			const response = await handler(
+				new Request('http://localhost/invalid', {
+					method: 'POST',
+					headers: {'Content-Type': 'application/json'},
+					body: 'this is not valid json',
+				}),
+			);
+
+			const data = await response.json();
+
+			assert.strictEqual(response.status, 500);
+			assert.deepStrictEqual(data, {
+				success: false,
+				data: null,
+				message: 'Internal Server Error',
+			});
+		});
+	});
+
+	describe('OpenAPI endpoint', () => {
+		it('should serve the OpenAPI documentation at /openapi.json', async () => {
+			const apiTitle = 'Test API';
+			const apiVersion = '1.0.0';
+			const openapiRouter = router().openapi({
+				info: {
+					title: apiTitle,
+					version: apiVersion,
+					description: 'This is a test API',
+				},
+			});
+
+			const handler = openapiRouter.serve();
+			const response = await handler(new Request('http://localhost/openapi.json', {method: 'GET'}));
+			const data = await response.json();
+
+			assert.strictEqual(data.openapi, '3.0.0');
+			assert.strictEqual(data.info.title, apiTitle);
+			assert.strictEqual(data.info.version, apiVersion);
 		});
 	});
 });
