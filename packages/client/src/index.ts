@@ -30,6 +30,7 @@ export type IsExactly<T, A, True = true, False = false> = T extends A ? (A exten
 
 export type AlwaysEnabledOptions = {
 	signal?: AbortSignal | null | undefined;
+	headers?: HeadersInit;
 };
 
 export type ExtractRouteParams<T extends string> = string extends T
@@ -205,6 +206,16 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 		response: IfNeverThenUndefined<IsExactly<ReturnTypeFor<M, Path>, Response, true, never>>;
 	};
 
+	function* iterateHeaders(init: HeadersInit): Generator<[key: string, value: string], void, void> {
+		for (const [key, value] of Array.isArray(init)
+			? init
+			: init instanceof Headers
+				? init.entries()
+				: Object.entries(init)) {
+			yield [key, value];
+		}
+	}
+
 	const create = <M extends KaitoMethod>(method: M) => {
 		return async <Path extends Extract<ROUTES, {method: M}>['path']>(
 			path: Path,
@@ -236,6 +247,12 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 				headers,
 				method,
 			};
+
+			if (options.headers !== undefined) {
+				for (const [key, value] of iterateHeaders(options.headers)) {
+					headers.set(key, value);
+				}
+			}
 
 			if (options.signal !== undefined) {
 				init.signal = options.signal;

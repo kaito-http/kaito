@@ -7,7 +7,7 @@
 	"homepage": "https://github.com/kaito-http/kaito",
 	"repository": "https://github.com/kaito-http/kaito",
 	"license": "MIT",
-	"version": "4.0.0-beta.2",
+	"version": "4.0.0-beta.3",
 	"scripts": {
 		"start": "deno --allow-net src/index.ts"
 	},
