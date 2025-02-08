@@ -13,6 +13,7 @@ export type App = Router<
 				name: string;
 			}[],
 			'/users',
+			{},
 			'GET',
 			{
 				limit: string;
@@ -26,6 +27,7 @@ export type App = Router<
 				name: string;
 			},
 			'/users',
+			{},
 			'POST',
 			{},
 			{
@@ -39,9 +41,11 @@ export type App = Router<
 				name: string;
 			},
 			'/users/:id',
+			{},
 			'GET',
 			{},
 			never
 	  >
-	| Route<Ctx, KaitoSSEResponse<SSEEvent<unknown, string>>, '/stream', 'GET', {}, never>
+	| Route<Ctx, KaitoSSEResponse<SSEEvent<unknown, string>>, '/stream', {}, 'GET', {}, never>,
+	{}
 >;

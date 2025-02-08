@@ -3,11 +3,11 @@ import type {KaitoMethod} from './router/types.ts';
 import type {KaitoSSEResponse} from './stream/stream.ts';
 import type {ExtractRouteParams} from './util.ts';
 
-export type RouteRunData<Path extends string, Context, QueryOutput, BodyOutput> = {
+export type RouteRunData<Params, Context, QueryOutput, BodyOutput> = {
 	ctx: Context;
 	body: BodyOutput;
 	query: QueryOutput;
-	params: ExtractRouteParams<Path>;
+	params: Params;
 };
 
 export type AnyQuery = {[key in string]: any};
@@ -37,6 +37,7 @@ export type Route<
 	// Route information
 	Result,
 	Path extends string,
+	AdditionalParams extends Record<string, string>,
 	Method extends KaitoMethod,
 	// Schemas
 	Query,
@@ -48,7 +49,9 @@ export type Route<
 	path: Path;
 	method: Method;
 	openapi?: OutputSpec<NoInfer<Result>>;
-	run(data: RouteRunData<Path, ContextTo, Query, Body>): Promise<Result> | Result;
+	run(
+		data: RouteRunData<ExtractRouteParams<Path> & AdditionalParams, ContextTo, Query, Body>,
+	): Promise<Result> | Result;
 };
 
-export type AnyRoute = Route<any, any, any, any, any, any>;
+export type AnyRoute = Route<any, any, any, any, any, any, any>;

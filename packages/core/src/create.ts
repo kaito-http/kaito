@@ -71,5 +71,5 @@ export type KaitoConfig<ContextFrom> = {
  * @returns A new Kaito router
  */
 export function create<Context = null>(config: KaitoConfig<Context> = {}) {
-	return () => Router.create<Context>(config);
+	return Router.create<Context>(config);
 }
