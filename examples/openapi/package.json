@@ -1,5 +1,5 @@
 {
-	"name": "@kaito-http-examples/basic",
+	"name": "@kaito-http-examples/openapi",
 	"private": true,
 	"type": "module",
 	"author": "Alistair Smith <hi@alistair.sh>",
@@ -13,11 +13,7 @@
 		"start": "node --import=tsx src/index.ts"
 	},
 	"dependencies": {
-		"@kaito-http/client": "workspace:^",
 		"@kaito-http/core": "workspace:^",
-		"@kaito-http/uws": "workspace:^",
-		"cookie": "^1.0.2",
-		"stripe": "^17.5.0",
 		"zod": "^3.24.1"
 	},
 	"devDependencies": {

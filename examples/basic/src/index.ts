@@ -1,10 +1,10 @@
-import {createKaitoHandler, KaitoError} from '@kaito-http/core';
+import {KaitoError} from '@kaito-http/core';
 import {sse, sseFromAnyReadable} from '@kaito-http/core/stream';
 import {KaitoServer} from '@kaito-http/uws';
 import stripe from 'stripe';
 import {z} from 'zod';
-import {getContext, router} from './context.ts';
 import {randomEvent} from './data.ts';
+import {router} from './router.ts';
 
 async function sleep(ms: number) {
 	await new Promise<void>(resolve => setTimeout(resolve, ms));
@@ -102,6 +102,13 @@ const exampleReturningResponse = router()
 			data: chunk,
 		}));
 	});
+
+router()
+	.get('/', () => 'hi')
+	.merge(
+		'/2',
+		router().get('/', () => 'hi'),
+	);
 
 const v1 = router()
 	// Basic inline route
@@ -204,18 +211,15 @@ const v1 = router()
 	.merge('/users', users);
 
 const exampleOfThrough = router()
-	.through(async old => ({
-		...old,
-		lol: new Date(),
-	}))
-	.get('/test', async ({ctx}) => ctx.lol.getTime());
+	.get('/no-through', ({ctx}) => ctx.uptime)
+	.through(old => ({...old, lol: new Date()}))
+	.get('/has-through', ({ctx}) => ctx.lol.getTime());
 
 const root = router()
 	// Basic inline access context
-	.get('/', async ({ctx}) => ctx.ip)
-	.get('/uptime', async ({ctx}) => ctx.uptime)
-	.post('/uptime', async ({ctx}) => ctx.uptime)
-
+	.get('/', ({ctx}) => ctx.ip)
+	.get('/uptime', ({ctx}) => ctx.uptime)
+	.post('/uptime', ({ctx}) => ctx.uptime)
 	.merge('/through', exampleOfThrough)
 
 	// Accessing query
@@ -233,42 +237,9 @@ const root = router()
 	// Merge this router with another router (v1)
 	.merge('/v1', v1);
 
-const ALLOWED_ORIGINS = ['http://localhost:3000', 'https://app.example.com'];
-
-const handle = createKaitoHandler({
-	router: root,
-	getContext,
-
-	onError: async ({error}) => ({
-		status: 500,
-		message: error.message,
-	}),
-
-	// Runs before the router is called. In this case we are handling OPTIONS requests
-	// If you return a response from this function, it WILL be passed to `.transform()` before being sent to the client
-	before: async req => {
-		if (req.method === 'OPTIONS') {
-			return new Response(null, {status: 204});
-		}
-	},
-
-	transform: async (request, response) => {
-		const origin = request.headers.get('origin');
-
-		// Include CORS headers if the origin is allowed
-		if (origin && ALLOWED_ORIGINS.includes(origin)) {
-			response.headers.set('Access-Control-Allow-Origin', origin);
-			response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-			response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-			response.headers.set('Access-Control-Max-Age', '86400');
-			response.headers.set('Access-Control-Allow-Credentials', 'true');
-		}
-	},
-});
-
 const server = await KaitoServer.serve({
 	port: 3000,
-	fetch: handle,
+	fetch: root.serve(),
 });
 
 console.log('Server listening at', server.url);

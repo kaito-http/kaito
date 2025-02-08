@@ -1,7 +1,7 @@
-import {type Parsable} from '../../src/util.ts';
+import type {z} from 'zod';
 import {router} from './router.ts';
 
-declare const schema: Parsable<{hello: string}, string>;
+declare const schema: z.Schema<{hello: string}>;
 
 export const mountMe = router()
 	.post('/post', {
