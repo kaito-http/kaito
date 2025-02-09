@@ -9,7 +9,7 @@ For example, if you are using a reverse proxy like Cloudflare, you'll need to us
 ## Cloudflare proxy example
 
 ```ts
-export const myRouter = router().get('/ip', async ({ctx}) => {
+export const myRouter = router.get('/ip', async ({ctx}) => {
 	const ip = ctx.req.headers.get('cf-connecting-ip'); // you must pass `.req` in your context object
 
 	if (!ip) {
@@ -35,7 +35,7 @@ import {AsyncLocalStorage} from 'node:async_hooks';
 
 const ipStore = new AsyncLocalStorage<string>();
 
-const app = router().get('/ip', async ({ctx}) => {
+const app = router.get('/ip', async ({ctx}) => {
 	const ip = ipStore.getStore()!;
 	return ip;
 });
@@ -61,7 +61,7 @@ Since you'll be using `@kaito-http/uws` with Node.js, you can use the exported f
 ```ts
 import {getRemoteAddress} from '@kaito-http/uws';
 
-const app = router().get('/ip', async ({ctx}) => {
+const app = router.get('/ip', async ({ctx}) => {
 	const ip = getRemoteAddress(); // Will "just work" in Node.js, as long as you are using KaitoServer
 	return ip;
 });

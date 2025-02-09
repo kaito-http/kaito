@@ -1,8 +1,7 @@
 import {bigrouter} from './big-router.ts';
 import {router} from './router.ts';
 
-export const biggerRouter = router()
-	.merge('/bigrouter', bigrouter)
+export const biggerRouter = router.merge('/bigrouter', bigrouter)
 	.merge('/bigrouter2', bigrouter)
 	.merge('/bigrouter3', bigrouter)
 	.merge('/bigrouter4', bigrouter)

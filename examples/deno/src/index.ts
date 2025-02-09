@@ -16,8 +16,7 @@ const router = create({
 	}),
 });
 
-const fetch = router()
-	.get('/', () => 'hey')
+const fetch = router.get('/', () => 'hey')
 	.post('/', () => 'hey2')
 	.post('/2', () => 'hey2')
 	.openapi({
@@ -36,7 +35,7 @@ const response = await fetch(new Request('http://localhost:3000/openapi.json'));
 
 console.log(await response.json());
 
-// const app = router().get('/', () => 'hello from Deno.serve()');
+// const app = router.get('/', () => 'hello from Deno.serve()');
 
 // Deno.serve({port: 3000}, app.serve());
 

@@ -10,7 +10,7 @@ import {router} from './context.ts';
 const googleAI = createGoogleAI();
 const gemini = googleAI.getGenerativeModel({model: process.env.GEMINI_MODEL ?? 'gemini-1.5-flash'});
 
-const v1 = router()
+const v1 = router
 	.get('/story', {
 		run: async () => {
 			return sse(async function* () {
@@ -50,7 +50,7 @@ const v1 = router()
 		},
 	});
 
-const root = router().merge('/v1', v1);
+const root = router.merge('/v1', v1);
 
 const server = await KaitoServer.serve({
 	port: 3000,

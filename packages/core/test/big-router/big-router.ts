@@ -1,8 +1,7 @@
 import {mountMe} from './mount-me.ts';
 import {router} from './router.ts';
 
-export const bigrouter = router()
-	.merge(
+export const bigrouter = router.merge(
 		'/8',
 		mountMe.get('/test-8', () => 8),
 	)

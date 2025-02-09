@@ -20,7 +20,7 @@ bun i @kaito-http/client
 Create a client instance by providing your API's type and base URL:
 
 ```ts filename="api/index.ts"
-const app = router().merge('/v1', v1);
+const app = router.merge('/v1', v1);
 
 const handler = createKaitoHTTPHandler({
 	router: app,

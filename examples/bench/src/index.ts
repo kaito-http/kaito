@@ -5,7 +5,7 @@ import {setTimeout as sleep} from 'node:timers/promises';
 
 const router = create();
 
-const app = router()
+const app = router
 	.get('/hello', () => 'hi' as const)
 	.get('/stream', () => {
 		const text = "This is an example of text being streamed every 100ms by using Kaito's sse() function";

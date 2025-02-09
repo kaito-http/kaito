@@ -12,7 +12,7 @@ Creating a route requires us to have a router already established. If you don't,
 Here's an extremely basic example of a ping/pong route.
 
 ```ts
-const app = router().get('/ping', async () => 'pong');
+const app = router.get('/ping', async () => 'pong');
 ```
 
 <Callout>You must either return something JSON serializable, a `Response` object, or throw an error</Callout>
@@ -68,7 +68,7 @@ Route query schemas should always take a string, or array of strings as the inpu
 ```ts
 import {z} from 'zod';
 
-const router = router().post('/echo', {
+const router = router.post('/echo', {
 	query: {
 		skip: z.string().transform(value => parseInt(value)),
 		take: z.string().transform(value => parseInt(value)),

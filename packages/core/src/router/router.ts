@@ -25,9 +25,14 @@ type PrefixRoutesPath<Prefix extends `/${string}`, R extends AnyRoute> = R exten
 	? PrefixRoutesPathInner<R, Prefix>
 	: never;
 
-export type RouterState<ContextFrom, ContextTo, Routes extends AnyRoute> = {
+export type RouterState<
+	ContextFrom,
+	ContextTo,
+	Routes extends AnyRoute,
+	RequiredParams extends Record<string, string>,
+> = {
 	routes: Set<Routes>;
-	through: (context: unknown) => Promise<ContextTo>;
+	through: (context: unknown, params: RequiredParams) => Promise<ContextTo>;
 	config: KaitoConfig<ContextFrom>;
 };
 
@@ -36,7 +41,7 @@ export type RouterState<ContextFrom, ContextTo, Routes extends AnyRoute> = {
  *
  * @example
  * ```ts
- * const app = router().get('/', () => 'Hello, world!');
+ * const app = router.get('/', () => 'Hello, world!');
  *
  * type Routes = InferRoutes<typeof app>;
  * ```
@@ -45,7 +50,7 @@ export type InferRoutes<R extends Router<any, any, any, any>> =
 	R extends Router<any, any, infer R extends AnyRoute, any> ? R : never;
 
 export class Router<ContextFrom, ContextTo, R extends AnyRoute, RequiredParams extends Record<string, string>> {
-	private readonly state: RouterState<ContextFrom, ContextTo, R>;
+	private readonly state: RouterState<ContextFrom, ContextTo, R, RequiredParams>;
 
 	public static create = <Context>(config: KaitoConfig<Context>): Router<Context, Context, never, {}> =>
 		new Router({
@@ -54,7 +59,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute, RequiredParams e
 			config,
 		});
 
-	private constructor(state: RouterState<ContextFrom, ContextTo, R>) {
+	protected constructor(state: RouterState<ContextFrom, ContextTo, R, RequiredParams>) {
 		this.state = state;
 	}
 
@@ -227,7 +232,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute, RequiredParams e
 				const body = route.body ? await route.body.parseAsync(await req.json()) : undefined;
 				const query = route.fastQuerySchema ? await route.fastQuerySchema.parseAsync(url.searchParams) : {};
 
-				const ctx = await route.through((await this.state.config.getContext?.(request, head)) ?? null);
+				const ctx = await route.through((await this.state.config.getContext?.(request, head)) ?? null, params);
 
 				const result = await route.run({
 					ctx,
@@ -440,11 +445,11 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute, RequiredParams e
 	public options = this.method('OPTIONS');
 
 	public through = <NextContext>(
-		through: (context: ContextTo) => MaybePromise<NextContext>,
+		through: (context: ContextTo, params: RequiredParams) => MaybePromise<NextContext>,
 	): Router<ContextFrom, NextContext, R, RequiredParams> => {
 		return new Router<ContextFrom, NextContext, R, RequiredParams>({
 			...this.state,
-			through: async context => await through(await this.state.through(context)),
+			through: async (context, params) => await through(await this.state.through(context, params), params),
 		});
 	};
 }

@@ -10,7 +10,7 @@ async function sleep(ms: number) {
 	await new Promise<void>(resolve => setTimeout(resolve, ms));
 }
 
-const users = router()
+const users = router
 	.post('/:id', {
 		body: z.object({
 			name: z.string(),
@@ -40,7 +40,7 @@ const users = router()
 	});
 
 const webCrypto = stripe.createSubtleCryptoProvider();
-const exampleHandlingStripe = router().post('/webhook', async ({ctx}) => {
+const exampleHandlingStripe = router.post('/webhook', async ({ctx}) => {
 	const body = await ctx.req.text();
 
 	const sig = ctx.req.headers.get('stripe-signature');
@@ -60,7 +60,7 @@ const exampleHandlingStripe = router().post('/webhook', async ({ctx}) => {
 	console.log('Stripe event:', event);
 });
 
-const exampleReturningResponse = router()
+const exampleReturningResponse = router
 	.get('/', async () => {
 		return new Response('Hello world', {
 			status: 200,
@@ -103,14 +103,14 @@ const exampleReturningResponse = router()
 		}));
 	});
 
-router()
+router
 	.get('/', () => 'hi')
 	.merge(
 		'/2',
-		router().get('/', () => 'hi'),
+		router.get('/', () => 'hi'),
 	);
 
-const v1 = router()
+const v1 = router
 	// Basic inline route
 	.get('/time', async () => Date.now())
 
@@ -210,12 +210,12 @@ const v1 = router()
 	// Merge this router with another router (users).
 	.merge('/users', users);
 
-const exampleOfThrough = router()
+const exampleOfThrough = router
 	.get('/no-through', ({ctx}) => ctx.uptime)
 	.through(old => ({...old, lol: new Date()}))
 	.get('/has-through', ({ctx}) => ctx.lol.getTime());
 
-const root = router()
+const root = router
 	// Basic inline access context
 	.get('/', ({ctx}) => ctx.ip)
 	.get('/uptime', ({ctx}) => ctx.uptime)

@@ -8,7 +8,7 @@ const router = create({
 	onError: error => ({status: 500, message: error.message}),
 });
 
-const root = router()
+const root = router
 	.post('/hello/:user_id', {
 		openapi: {
 			description: 'Hello world',

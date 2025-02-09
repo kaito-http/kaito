@@ -55,7 +55,7 @@ You can then use this context, when setup correctly with a router, inside every 
 import {z} from 'zod';
 import {router} from '../context.ts';
 
-export const users = router().get('/users/search', {
+export const users = router.get('/users/search', {
 	query: {
 		search: z.string().max(200),
 	},

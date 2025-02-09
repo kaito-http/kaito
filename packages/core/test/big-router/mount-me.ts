@@ -3,8 +3,7 @@ import {router} from './router.ts';
 
 declare const schema: z.Schema<{hello: string}>;
 
-export const mountMe = router()
-	.post('/post', {
+export const mountMe = router.post('/post', {
 		query: {
 			name: schema,
 		},

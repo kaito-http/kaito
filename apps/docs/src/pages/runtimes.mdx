@@ -106,7 +106,7 @@ const storage = new AsyncLocalStorage<{
 	cfCtx: ExecutionContext; // has .waitUntil() and .passThroughOnException()
 }>();
 
-const app = router().get('/', async ({ctx}) => {
+const app = router.get('/', async ({ctx}) => {
 	return {
 		freeStripeKey: ctx.env.STRIPE_SECRET_KEY, // obviously don't send your stripe key to the client lol
 	};

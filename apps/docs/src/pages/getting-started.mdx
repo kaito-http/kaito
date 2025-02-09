@@ -18,7 +18,7 @@ A route is a single HTTP request handler. It accepts your context object, and re
 
 ```ts
 // Return a JSON value...
-export const users = router().get('/users', async ({ctx}) => {
+export const users = router.get('/users', async ({ctx}) => {
 	return [
 		{id: 1, name: 'John Doe'},
 		{id: 2, name: 'Jane Bar'},
@@ -26,7 +26,7 @@ export const users = router().get('/users', async ({ctx}) => {
 });
 
 // ...or return a Response object
-export const images = router().get('/cool.png', async ({ctx}) => {
+export const images = router.get('/cool.png', async ({ctx}) => {
 	return new Response(myImageBuffer, {
 		headers: {'Content-Type': 'image/png'},
 	});
@@ -71,7 +71,7 @@ Secondly, we'll need to create a router, our first route, and a handler function
 import {createKaitoHandler} from '@kaito-http/core';
 import {router, getContext} from './context.ts';
 
-const app = router().get('/', async ({ctx}) => {
+const app = router.get('/', async ({ctx}) => {
 	return {
 		uptime: ctx.uptime,
 		time_now: Date.now(),

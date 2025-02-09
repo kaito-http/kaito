@@ -22,7 +22,7 @@ const webCrypto = stripe.createSubtleCryptoProvider();
 
 // Notice how we don't define a body schema, we're using stripe's webhook logic to parse the body for us
 // which requires the raw body as a string.
-export const stripe = router().post('/webhook', async ({ctx}) => {
+export const stripe = router.post('/webhook', async ({ctx}) => {
 	const body = await ctx.bodyAsText();
 
 	const sig = ctx.req.headers.get('stripe-signature');

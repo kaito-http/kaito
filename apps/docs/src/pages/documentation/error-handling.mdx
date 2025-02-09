@@ -17,7 +17,7 @@ Kaito has a built in error called `KaitoError`. You can throw this error in your
 </Callout>
 
 ```ts filename="routes/users.ts" {8}
-export const users = router().get('/:id', async ({ctx, params}) => {
+export const users = router.get('/:id', async ({ctx, params}) => {
 	const user = await ctx.db.users.findOne({
 		where: {id: params.id},
 	});

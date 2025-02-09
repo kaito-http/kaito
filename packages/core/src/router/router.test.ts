@@ -15,18 +15,13 @@ const router = create({
 describe('Router', () => {
 	describe('create', () => {
 		it('should create an empty router', () => {
-			const r = router();
-			assert.strictEqual(r.routes.size, 0);
+			assert.strictEqual(router.routes.size, 0);
 		});
 	});
 
 	describe('route handling', () => {
 		it('should handle GET requests', async () => {
-			const r = router().get('/users', {
-				run: async () => ({users: []}),
-			});
-
-			const handler = r.serve();
+			const handler = router.get('/users', () => ({users: []})).serve();
 
 			const response = await handler(new Request('http://localhost/users', {method: 'GET'}));
 			const data = await response.json();
@@ -39,7 +34,7 @@ describe('Router', () => {
 		});
 
 		it('should handle POST requests with body parsing', async () => {
-			const r = router().post('/users', {
+			const r = router.post('/users', {
 				body: z.object({name: z.string()}),
 				run: async ({body}) => ({id: '1', name: body.name}),
 			});
@@ -64,7 +59,7 @@ describe('Router', () => {
 		});
 
 		it('should handle URL parameters', async () => {
-			const r = router().get('/users/:id', {
+			const r = router.get('/users/:id', {
 				run: async ({params}) => ({id: params.id}),
 			});
 
@@ -81,7 +76,7 @@ describe('Router', () => {
 		});
 
 		it('should handle query parameters', async () => {
-			const r = router().get('/search', {
+			const r = router.get('/search', {
 				query: {
 					q: z.string(),
 					limit: z.coerce.number(),
@@ -107,7 +102,7 @@ describe('Router', () => {
 
 	describe('.through() and context', () => {
 		it('should transform context with .through()', async () => {
-			const r = router()
+			const r = router
 				.through(ctx => ({
 					...ctx,
 					isAdmin: ctx.req.headers.get('Authorization') === 'Bearer admin-token',
@@ -135,7 +130,7 @@ describe('Router', () => {
 
 	describe('error handling', () => {
 		it('should handle KaitoError with custom status', async () => {
-			const r = router().get('/error', {
+			const r = router.get('/error', {
 				run: async () => {
 					throw new KaitoError(403, 'Forbidden');
 				},
@@ -157,7 +152,7 @@ describe('Router', () => {
 		it('should handle generic errors with server error handler', async () => {
 			const r = create({
 				onError: () => ({status: 500, message: 'Custom Error Message'}),
-			})().get('/error', {
+			}).get('/error', {
 				run: async () => {
 					throw new Error('Something went wrong');
 				},
@@ -179,11 +174,11 @@ describe('Router', () => {
 
 	describe('router merging', () => {
 		it('should merge routers with prefix', async () => {
-			const userRouter = router().get('/:user_id', {
+			const userRouter = router.get('/:user_id', {
 				run: ({params}) => ({id: params.user_id}),
 			});
 
-			const mainRouter = router().merge('/api', userRouter);
+			const mainRouter = router.merge('/api', userRouter);
 
 			const handler = mainRouter.serve();
 
@@ -200,9 +195,7 @@ describe('Router', () => {
 
 	describe('404 handling', () => {
 		it('should return 404 for non-existent routes', async () => {
-			const r = router();
-
-			const handler = r.serve();
+			const handler = router.serve();
 
 			const response = await handler(new Request('http://localhost/not-found', {method: 'GET'}));
 			const data = await response.json();
@@ -216,7 +209,7 @@ describe('Router', () => {
 		});
 
 		it('should return 404 for wrong method on existing path', async () => {
-			const r = router().get('/users', {
+			const r = router.get('/users', {
 				run: async () => ({users: []}),
 			});
 
@@ -257,7 +250,12 @@ describe('Router', () => {
 			['PUT', new Map([['/users/:id', dummyHandler]])],
 		]);
 
-		class ExposedInternalsRouter<ContextFrom, ContextTo, R extends AnyRoute> extends Router<ContextFrom, ContextTo, R> {
+		class ExposedInternalsRouter<ContextFrom, ContextTo, R extends AnyRoute> extends Router<
+			ContextFrom,
+			ContextTo,
+			R,
+			{}
+		> {
 			public static override getFindRoute = Router.getFindRoute;
 		}
 
@@ -362,7 +360,7 @@ describe('Router', () => {
 		it('should short-circuit route execution when before hook returns a Response', async () => {
 			const beforeRouter = create({
 				before: () => Response.json({blocked: true}, {status: 403}),
-			})().get('/should-not-run', {
+			}).get('/should-not-run', {
 				run: async () => ({should: 'not-run'}),
 			});
 
@@ -380,7 +378,7 @@ describe('Router', () => {
 					const originalData = await res.json();
 					return Response.json({...originalData, transformed: true});
 				},
-			})().get('/transform-test', {
+			}).get('/transform-test', {
 				run: async () => ({result: 'original'}),
 			});
 
@@ -401,7 +399,7 @@ describe('Router', () => {
 				before: () => Response.json({blocked: true}, {status: 403}),
 				// Even though transform returns a new response, its return is ignored because the before hook short-circuits.
 				transform: () => Response.json({shouldNot: 'modify'}, {status: 200}),
-			})().get('/no-run', {
+			}).get('/no-run', {
 				run: async () => ({should: 'not-run'}),
 			});
 
@@ -416,7 +414,7 @@ describe('Router', () => {
 
 	describe('Custom Response handling', () => {
 		it('should return the Response object as is if route handler returns a Response', async () => {
-			const customResponseRouter = router().get('/custom', {
+			const customResponseRouter = router.get('/custom', {
 				run: async () => new Response('Custom Response', {status: 201}),
 			});
 
@@ -431,7 +429,7 @@ describe('Router', () => {
 
 	describe('Invalid JSON body handling', () => {
 		it('should return 500 when invalid JSON is provided for a POST request', async () => {
-			const invalidJsonRouter = router().post('/invalid', {
+			const invalidJsonRouter = router.post('/invalid', {
 				body: z.object({name: z.string()}),
 				run: async ({body}) => ({received: body.name}),
 			});
@@ -460,7 +458,7 @@ describe('Router', () => {
 		it('should serve the OpenAPI documentation at /openapi.json', async () => {
 			const apiTitle = 'Test API';
 			const apiVersion = '1.0.0';
-			const openapiRouter = router().openapi({
+			const openapiRouter = router.openapi({
 				info: {
 					title: apiTitle,
 					version: apiVersion,

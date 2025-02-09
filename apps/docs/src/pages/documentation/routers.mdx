@@ -10,7 +10,7 @@ import {Callout} from 'nextra-theme-docs';
 Routers are a collection of routes and their metadata. They can be merged together to allow for separating logic into different files.
 
 - Routers are immutable, and all methods return a new router instance
-- You chain router methods: `router().post().get()`
+- You chain router methods: `router.post().get()`
 - Use `.through()` to change the context instance for all routes defined after the `.through()`
 
 ## Creating a Router
@@ -24,7 +24,7 @@ export const {getContext, router} = createUtilities(async (req, res) => {
 	// ...
 });
 
-const app = router().get(...);
+const app = router.get(...);
 ```
 
 And then you are safe to use the `router` function around your app, which will guarantee context type safety.
@@ -37,7 +37,7 @@ Routers can be merged, which brings one router's routes into another, with a pre
 import {v1} from './routers/v1';
 import {v2} from './routers/v1';
 
-export const api = router().merge('/v1', v1).merge('/v2', v2);
+export const api = router.merge('/v1', v1).merge('/v2', v2);
 ```
 
 You can expect all type information to be carried over as well as the route names and correct prefixes.
@@ -55,7 +55,7 @@ Kaito takes a different approach to traditional express.js style "middleware." T
 Take the following snippet:
 
 ```ts
-const postsRouter = router().post('/', async ({ctx}) => {
+const postsRouter = router.post('/', async ({ctx}) => {
 	// Imagine we wanted to get the current user here. Right now this is not defined anywhere
 	const user = ctx.user;
 
@@ -66,7 +66,7 @@ const postsRouter = router().post('/', async ({ctx}) => {
 One common reason to reach for `.through()` is to append specific properties to the context, and in our example that will be accessing the session.
 
 ```ts
-const postsRouter = router()
+const postsRouter = router
 	.through(async ctx => {
 		// Just an example. This getSession() method would be
 		// defined in the root `getContext` function. Probably
@@ -95,7 +95,7 @@ const postsRouter = router()
 You can call `.through()` multiple times, where each `.through()` will accept the result of the previous call.
 
 ```ts
-const usersRouter = router()
+const usersRouter = router
 	.through(async ctx => {
 		const session = await ctx.getSession();
 
@@ -139,7 +139,7 @@ const usersRouter = router()
 A nice pattern that `.through()` enables is to export a router from another file that already has some 'through-logic' applied to it. This allows for extremely powerful composition of routers.
 
 ```ts filename="routers/authed.ts"
-export const authedRouter = router().through(async ctx => {
+export const authedRouter = router.through(async ctx => {
 	const session = await ctx.getSession();
 
 	if (!session) {

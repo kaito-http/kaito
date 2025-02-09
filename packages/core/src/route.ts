@@ -12,7 +12,10 @@ export type RouteRunData<Params, Context, QueryOutput, BodyOutput> = {
 
 export type AnyQuery = {[key in string]: any};
 
-export type Through<From, To> = (context: From) => Promise<To>;
+export type Through<From, To, RequiredParams extends Record<string, string>> = (
+	context: From,
+	params: RequiredParams,
+) => Promise<To>;
 
 export type SSEOutputSpec<Result> = {
 	type: 'sse';
@@ -43,7 +46,7 @@ export type Route<
 	Query,
 	Body,
 > = {
-	through: Through<unknown, ContextTo>;
+	through: Through<unknown, ContextTo, AdditionalParams>;
 	body?: z.Schema<Body>;
 	query?: {[Key in keyof Query]: z.Schema<Query[Key]>};
 	path: Path;
