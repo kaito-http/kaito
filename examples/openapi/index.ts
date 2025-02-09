@@ -53,13 +53,13 @@ const root = router
 			});
 		},
 	})
-	.through(async ctx => {
-		if (ctx.req.headers.get('x-api-key') !== '123') {
-			throw new Error('No API key provided');
-		}
+	// .through(async ctx => {
+	// 	if (ctx.req.headers.get('x-api-key') !== '123') {
+	// 		throw new Error('No API key provided');
+	// 	}
 
-		return ctx;
-	})
+	// 	return ctx;
+	// })
 	.openapi({
 		info: {
 			version: '1.0.0',

@@ -1,5 +1,11 @@
 import {z} from 'zod';
-import {createDocument, type ZodOpenApiOperationObject, type ZodOpenApiPathsObject} from 'zod-openapi';
+import {
+	createDocument,
+	type ZodOpenApiContentObject,
+	type ZodOpenApiOperationObject,
+	type ZodOpenApiPathsObject,
+} from 'zod-openapi';
+import 'zod-openapi/extend';
 import type {KaitoConfig} from '../create.ts';
 import {KaitoError, WrappedError} from '../error.ts';
 import {KaitoHead} from '../head.ts';
@@ -348,28 +354,41 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute, RequiredParams e
 		for (const route of this.state.routes) {
 			const path = route.path;
 
+			if (!route.openapi) {
+				continue;
+			}
+
 			const pathWithColonParamsReplaceWithCurlyBraces = path.replace(/:(\w+)/g, '{$1}');
 
 			if (!paths[pathWithColonParamsReplaceWithCurlyBraces]) {
 				paths[pathWithColonParamsReplaceWithCurlyBraces] = {};
 			}
 
+			const content: ZodOpenApiContentObject =
+				route.openapi.body.type === 'json'
+					? {
+							'application/json': {
+								schema: z.object({
+									success: z.literal(true).openapi({
+										type: 'boolean',
+										enum: [true], // Need this as zod-openapi doesn't properly work with literals
+									}),
+									data: route.openapi.body.schema,
+								}),
+							},
+						}
+					: {
+							'text/event-stream': {
+								schema: route.openapi.body.schema,
+							},
+						};
+
 			const item: ZodOpenApiOperationObject = {
 				description: route.openapi?.description ?? 'Successful response',
 				responses: {
-					200: {
+					default: {
 						description: route.openapi?.description ?? 'Successful response',
-
-						...(route.openapi
-							? {
-									content: {
-										[{
-											json: 'application/json',
-											sse: 'text/event-stream',
-										}[route.openapi.body.type]]: {schema: route.openapi?.body.schema},
-									},
-								}
-							: {}),
+						content,
 					},
 				},
 			};
@@ -419,7 +438,7 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute, RequiredParams e
 			}),
 		});
 
-		return this.add('GET', '/openapi.json', async () => Response.json(doc));
+		return this.get('/openapi.json', () => Response.json(doc));
 	};
 
 	private readonly method = <M extends KaitoMethod>(method: M) => {
