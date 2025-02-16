@@ -96,7 +96,7 @@ const app = router.get('/', ({ctx}) => {
 });
 
 // handle is typed as `(req: Request) => Promise<Response>
-const handle = router.serve();
+const handle = app.serve();
 
 // Here we are using Bun.serve from the Bun runtime, but
 // Kaito works with any runtime that supports the Fetch API
