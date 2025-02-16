@@ -419,16 +419,17 @@ describe('Router', () => {
 					id: z.string().min(3),
 					slug: z.string().regex(/^[a-z0-9-]+$/),
 				})
-				.get('/posts/:id/:slug', {
+				.get('/', {
 					run: async ({params}) => ({
 						postId: params.id,
 						postSlug: params.slug,
 					}),
 				});
 
-			const handler = r.serve();
+			const root = router.merge('/posts/:id/:slug', r);
 
-			// Test valid params
+			const handler = root.serve();
+
 			const validResponse = await handler(new Request('http://localhost/posts/123/my-post-slug', {method: 'GET'}));
 			const validData = await validResponse.json();
 
@@ -441,14 +442,14 @@ describe('Router', () => {
 				},
 			});
 
-			// Test invalid id (too short)
 			const invalidIdResponse = await handler(new Request('http://localhost/posts/12/my-post-slug', {method: 'GET'}));
+
 			assert.strictEqual(invalidIdResponse.status, 500);
 
-			// Test invalid slug (invalid characters)
 			const invalidSlugResponse = await handler(
 				new Request('http://localhost/posts/123/Invalid_Slug!', {method: 'GET'}),
 			);
+
 			assert.strictEqual(invalidSlugResponse.status, 500);
 		});
 
@@ -457,24 +458,23 @@ describe('Router', () => {
 				.params({
 					userId: z.string().min(3),
 				})
-				.get('/:userId', {
+				.get('/', {
 					run: async ({params}) => ({userId: params.userId}),
 				});
 
 			const postRouter = router
 				.params({
+					userId: z.string().min(3),
 					postId: z.string().regex(/^[0-9]+$/),
 				})
 				.get('/', {
 					run: async ({params}) => ({postId: params.postId}),
 				});
 
-			// Include required params in the path to satisfy type checking
 			const mainRouter = router.merge('/users/:userId', userRouter).merge('/users/:userId/posts/:postId', postRouter);
 
 			const handler = mainRouter.serve();
 
-			// Test valid nested route
 			const validResponse = await handler(new Request('http://localhost/users/123/posts/456', {method: 'GET'}));
 			const validData = await validResponse.json();
 
@@ -484,11 +484,10 @@ describe('Router', () => {
 				data: {postId: '456'},
 			});
 
-			// Test invalid userId
 			const invalidUserResponse = await handler(new Request('http://localhost/users/12/posts/456', {method: 'GET'}));
+			console.log(invalidUserResponse.status, 'bruh');
 			assert.strictEqual(invalidUserResponse.status, 500);
 
-			// Test invalid postId
 			const invalidPostResponse = await handler(new Request('http://localhost/users/123/posts/abc', {method: 'GET'}));
 			assert.strictEqual(invalidPostResponse.status, 500);
 		});

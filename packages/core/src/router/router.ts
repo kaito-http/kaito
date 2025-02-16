@@ -244,14 +244,13 @@ export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string
 				return Response.json(body, {status: 404});
 			}
 
-			const params = route.router.state.paramsSchema ? route.router.state.paramsSchema.parse(rawParams) : rawParams;
-
 			const request = new KaitoRequest(url, req);
 			const head = new KaitoHead();
 
 			try {
 				const body = route.body ? await route.body.parseAsync(await req.json()) : undefined;
 				const query = route.fastQuerySchema ? await route.fastQuerySchema.parseAsync(url.searchParams) : {};
+				const params = route.router.state.paramsSchema ? route.router.state.paramsSchema.parse(rawParams) : rawParams;
 
 				const ctx = await route.router.state.through(
 					(await this.state.config.getContext?.(request, head)) ?? null,
