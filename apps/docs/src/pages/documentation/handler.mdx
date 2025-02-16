@@ -1,29 +1,29 @@
-# The handler
+# The Router
 
-The `createKaitoHandler` function is a very minimal part of Kaito, it simply wraps all your functions together and returns a `request -> response` function.
+The `create()` function is the main entry point to Kaito. It creates a new router instance with your configuration and returns it.
 
 ```ts
-import {createKaitoHandler} from '@kaito-http/core';
+import {create} from '@kaito-http/core';
 
-const handler = createKaitoHandler({
+export const router = create({
 	getContext,
-	router,
 	onError,
 });
 
-Bun.serve({fetch: handler, port: 3000});
+const handle = router.serve();
+Bun.serve({fetch: handle, port: 3000});
 ```
 
 ## `onError`
 
-In the example above, you can see I have included a property called `onError`. This is a function that is called whenever an error is thrown in the request lifecycle. This function should reply with an object that contains a `status` and `message`. These will be used to reply to the client.
+In the example above we have included the property `onError`. This is a function that is called whenever an error is thrown in the request lifecycle. This function should reply with an object that contains a `status` and `message`. These will be used to reply to the client.
 
 ```ts
-import {createKaitoHandler} from '@kaito-http/core';
+import {create} from '@kaito-http/core';
 import {ZodError} from 'zod';
 
-const handler = createKaitoHandler({
-	onError: async ({error, req}) => {
+export const router = create({
+	onError: async (error, req) => {
 		if (error instanceof ZodError) {
 			return {status: 400, message: 'Invalid request'};
 		}
@@ -44,10 +44,8 @@ Kaito has a basic lifecycle for transform/intercepting requests and responses. T
 ```ts
 const ALLOWED_ORIGINS = ['http://localhost:3000', 'https://app.example.com'];
 
-const server = createKaitoHandler({
+export const router = create({
 	getContext,
-	router,
-
 	before: async req => {
 		if (req.method === 'OPTIONS') {
 			return new Response(null, {status: 204}); // Return early to skip the router. This response will be passed to `.transform()`

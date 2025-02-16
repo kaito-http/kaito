@@ -67,7 +67,7 @@ export const router = create({
 	// Define an async `onError` handler, in case something goes wrong inside of the route
 	// This will handle all thrown errors EXCEPT for KaitoError, which is a special error type
 	// you can throw for simple error messages with a status code
-	onError: async ({error}) => {
+	onError: async error => {
 		console.log(error);
 
 		return {
@@ -86,7 +86,6 @@ Secondly, we'll need to create our main app router, our first route, and a handl
 </Callout>
 
 ```typescript
-import {createKaitoHandler} from '@kaito-http/core';
 import {router} from './router.ts';
 
 const app = router.get('/', ({ctx}) => {

@@ -7,11 +7,13 @@ Kaito v3+ was designed to work with any runtime, including serverless runtimes l
 Bun is the runtime most suited for Kaito, as it has the fastest Request/Response server built in.
 
 ```ts
-import {createKaitoHandler} from '@kaito-http/core';
+import {create} from '@kaito-http/core';
 
-const handle = createKaitoHandler({
+export const router = create({
 	// ...
 });
+
+const handle = router.serve();
 
 const server = Bun.serve({
 	fetch: handle,
@@ -36,12 +38,14 @@ To be super clear, `@kaito-http/uws` works with Node.js only, we're only using B
 ### Usage
 
 ```ts
-import {createKaitoHandler} from '@kaito-http/core';
+import {create} from '@kaito-http/core';
 import {KaitoServer} from '@kaito-http/uws';
 
-const handle = createKaitoHandler({
+export const router = create({
 	// ...
 });
+
+const handle = router.serve();
 
 const server = await KaitoServer.serve({
 	fetch: handle,
@@ -56,11 +60,13 @@ console.log(`Listening at ${server.url}`);
 Deno supports the Fetch API natively, so you can use Kaito with Deno without any extra work.
 
 ```ts
-import {createKaitoHandler} from '@kaito-http/core';
+import {create} from '@kaito-http/core';
 
-const handle = createKaitoHandler({
+export const router = create({
 	// ...
 });
+
+const handle = router.serve();
 
 const server = Deno.serve(
 	{
@@ -77,11 +83,13 @@ console.log(`Listening on`, server.addr);
 Cloudflare Workers supports the Fetch API natively, so you can use Kaito with Cloudflare Workers without any extra work.
 
 ```ts
-import {createKaitoHandler} from '@kaito-http/core';
+import {create} from '@kaito-http/core';
 
-const handle = createKaitoHandler({
+export const router = create({
 	// ...
 });
+
+const handle = router.serve();
 
 export default {
 	fetch: handle,
@@ -94,6 +102,7 @@ Cloudflare Workers passes environment variables to the handler function, which i
 
 ```ts
 import {AsyncLocalStorage} from 'node:async_hooks';
+import {create} from '@kaito-http/core';
 
 interface Env {
 	STRIPE_SECRET_KEY: string;
@@ -106,14 +115,7 @@ const storage = new AsyncLocalStorage<{
 	cfCtx: ExecutionContext; // has .waitUntil() and .passThroughOnException()
 }>();
 
-const app = router.get('/', async ({ctx}) => {
-	return {
-		freeStripeKey: ctx.env.STRIPE_SECRET_KEY, // obviously don't send your stripe key to the client lol
-	};
-});
-
-const handle = createKaitoHandler({
-	router: app,
+export const router = create({
 	getContext: async req => {
 		const store = storage.getStore()!;
 		return {
@@ -123,6 +125,14 @@ const handle = createKaitoHandler({
 	},
 	// ...
 });
+
+const app = router.get('/', async ({ctx}) => {
+	return {
+		freeStripeKey: ctx.env.STRIPE_SECRET_KEY, // obviously don't send your stripe key to the client lol
+	};
+});
+
+const handle = app.serve();
 
 export default {
 	fetch: async (request, env, ctx) => {

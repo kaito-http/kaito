@@ -1,3 +1,4 @@
+import {create} from '@kaito-http/core';
 import {Callout} from 'nextra/components';
 
 # Reading the client IP address
@@ -9,6 +10,10 @@ For example, if you are using a reverse proxy like Cloudflare, you'll need to us
 ## Cloudflare proxy example
 
 ```ts
+export const router = create({
+	getContext: async req => ({req}),
+});
+
 export const myRouter = router.get('/ip', async ({ctx}) => {
 	const ip = ctx.req.headers.get('cf-connecting-ip'); // you must pass `.req` in your context object
 
@@ -32,18 +37,18 @@ Bear in mind that you can move the ip property to your context object to make it
 
 ```ts
 import {AsyncLocalStorage} from 'node:async_hooks';
+import {create} from '@kaito-http/core';
 
 const ipStore = new AsyncLocalStorage<string>();
+
+const router = create();
 
 const app = router.get('/ip', async ({ctx}) => {
 	const ip = ipStore.getStore()!;
 	return ip;
 });
 
-const handle = createKaitoHandler({
-	router: app,
-	// ...
-});
+const handle = router.serve();
 
 const server = Bun.serve({
 	port: 3000,

@@ -2,15 +2,13 @@
 
 Kaito does not include any CORS handling out of the box. This is by design to keep the library lightweight and unopinionated. You can easily implement CORS handling in your server by using the [`before & transform`](/documentation/server#beforetransform) lifecycle methods.
 
-## Example
+## Manual Implementation (Recommended)
 
 ```ts
 const ALLOWED_ORIGINS = ['http://localhost:3000', 'https://app.example.com'];
 
-const server = createKaitoHandler({
+export const router = create({
 	getContext,
-	router,
-
 	before: async req => {
 		if (req.method === 'OPTIONS') {
 			return new Response(null, {status: 204}); // Return early to skip the router. This response will be passed to `.transform()`
@@ -31,6 +29,42 @@ const server = createKaitoHandler({
 	},
 });
 ```
+
+## Experimental CORS API
+
+Kaito also provides an experimental CORS API that can simplify the setup. However, please note that this API is **experimental** and may change at any time. We recommend using the manual implementation above for production applications until this API is stabilized.
+
+```ts
+import {create} from '@kaito-http/core';
+import {experimental_createCORSTransform} from '@kaito-http/core/cors';
+
+// The origin matcher supports exact matches and wildcard subdomains
+const ALLOWED_ORIGINS = [
+	'https://example.com', // Exact match
+	'*.trusted-domain.com', // Matches any subdomain
+	'http://localhost:3000', // Local development
+];
+
+const cors = experimental_createCORSTransform(ALLOWED_ORIGINS);
+
+export const router = create({
+	getContext,
+	before: req => {
+		if (req.method === 'OPTIONS') {
+			return new Response(null, {status: 204});
+		}
+	},
+	transform: (request, response) => {
+		cors(request, response);
+	},
+});
+```
+
+The experimental CORS API includes a powerful origin matcher that supports both exact matches and wildcard subdomains. For example:
+
+- `https://example.com` - Matches exactly this origin
+- `*.trusted-domain.com` - Matches any subdomain like `app.trusted-domain.com` or `staging.trusted-domain.com`, but not `trusted-domain.com` itself
+- `http://localhost:3000` - Exact match for local development
 
 ## References
 
