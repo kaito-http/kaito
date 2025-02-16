@@ -41,50 +41,28 @@ The router class holds all of our routes and their type information. Every app m
 
 Context is generated on every single request. It is up to you as the developer to decide what to place inside your context, but it will be available to access in every single route. For example, you could include a method to get the current user session, or a database connection, or anything else you want.
 
+### .onError()
+
+The `onError` option is used to handle errors that are thrown inside of a route. It is a function that takes an error object and returns a status and message.
+
 ## Quickstart Example
 
-We first need to setup our context. You can put this in a `context.ts` file, for example.
+We first need to setup our router. You can put this in a `router.ts` file, for example.
 
 ```typescript
-import {createUtilities} from '@kaito-http/core';
+import {create} from '@kaito-http/core';
 
 const serverStarted = Date.now();
 
-export const {router, getContext} = createUtilities(async (req, head) => {
-	// Our context object will include the request object and the server uptime.
+export const router = create({
+	getContext: async (req, head) => {
+		// Our context object will include the request object and the server uptime.
 
-	return {
-		req,
-		uptime: Date.now() - serverStarted,
-	};
-});
-```
-
-Secondly, we'll need to create a router, our first route, and a handler function to accept requests from the runtime and/or server.
-
-<Callout>
-	We're using `Bun.serve()` in this example, which is an API specific to the Bun runtime. The [runtimes](/runtimes) page
-	will show you how to use Kaito with other runtimes like Node.js, Deno, etc.
-</Callout>
-
-```typescript
-import {createKaitoHandler} from '@kaito-http/core';
-import {router, getContext} from './context.ts';
-
-const app = router.get('/', async ({ctx}) => {
-	return {
-		uptime: ctx.uptime,
-		time_now: Date.now(),
-	};
-});
-
-// handle is typed as `(req: Request) => Promise<Response>
-const handle = createKaitoHandler({
-	// Pass our getContext function to the root server options
-	getContext,
-
-	// And pass our root router
-	router: app,
+		return {
+			req,
+			uptime: Date.now() - serverStarted,
+		};
+	},
 
 	// Define an async `onError` handler, in case something goes wrong inside of the route
 	// This will handle all thrown errors EXCEPT for KaitoError, which is a special error type
@@ -98,6 +76,28 @@ const handle = createKaitoHandler({
 		};
 	},
 });
+```
+
+Secondly, we'll need to create our main app router, our first route, and a handler function to accept requests from the runtime and/or server.
+
+<Callout>
+	We're using `Bun.serve()` in this example, which is an API specific to the Bun runtime. The [runtimes](/runtimes) page
+	will show you how to use Kaito with other runtimes like Node.js, Deno, etc.
+</Callout>
+
+```typescript
+import {createKaitoHandler} from '@kaito-http/core';
+import {router} from './router.ts';
+
+const app = router.get('/', ({ctx}) => {
+	return {
+		uptime: ctx.uptime,
+		time_now: Date.now(),
+	};
+});
+
+// handle is typed as `(req: Request) => Promise<Response>
+const handle = router.serve();
 
 // Here we are using Bun.serve from the Bun runtime, but
 // Kaito works with any runtime that supports the Fetch API
