@@ -92,7 +92,7 @@ export default {
 
 Cloudflare Workers passes environment variables to the handler function, which is a little awkward with Kaito. Our recommendation is to use AsyncLocalStorage to pass info between the handler and the router. This requires you to enable the node compatibility mode on your Cloudflare Worker.
 
-```ts
+```ts filename="router.ts"
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {create} from '@kaito-http/core';
 
@@ -117,8 +117,9 @@ export const router = create({
 	},
 	// ...
 });
+```
 
-// app.ts
+```ts filename="app.ts"
 import {router, storage, type Env} from './router.ts';
 
 const app = router.get('/', async ({ctx}) => {
