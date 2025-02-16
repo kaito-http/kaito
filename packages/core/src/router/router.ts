@@ -121,10 +121,10 @@ export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string
 					[Key in keyof NextParams]: z.ZodType<NextParams[Key], ZodTypeDef, string>;
 				}) => Router<ContextFrom, ContextTo, NextParams, R>
 			: 'You cannot define params() on a router that has already had params defined, as routes that already consume params can break.'
-		: never = ((spec: z.Schema<{}>) =>
+		: never = ((spec: {}) =>
 		new Router({
 			...this.state,
-			paramsSchema: spec,
+			paramsSchema: z.object(spec),
 		} as never)) as never;
 
 	public readonly merge = <
