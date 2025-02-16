@@ -100,8 +100,6 @@ export interface Env {
 	STRIPE_SECRET_KEY: string;
 }
 
-// Recommendation is to move the storage instance to the `context.ts` file
-// and include the value in your context object.
 export const storage = new AsyncLocalStorage<{
 	env: Env;
 	cfCtx: ExecutionContext; // has .waitUntil() and .passThroughOnException()
@@ -110,12 +108,13 @@ export const storage = new AsyncLocalStorage<{
 export const router = create({
 	getContext: async req => {
 		const store = storage.getStore()!;
+
 		return {
 			env: store.env,
-			cfCtx: store.cfCtx,
+			waitUntil: store.cfCtx.waitUntil.bind(store.cfCtx), // use .bind() in case these functions depend on `this` being the cf context
+			passThroughOnException: store.cfCtx.passThroughOnException.bind(store.cfCtx),
 		};
 	},
-	// ...
 });
 ```
 
@@ -123,6 +122,8 @@ export const router = create({
 import {router, storage, type Env} from './router.ts';
 
 const app = router.get('/', async ({ctx}) => {
+	ctx.waitUntil(doSomeWork()); // https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil
+
 	return {
 		freeStripeKey: ctx.env.STRIPE_SECRET_KEY, // obviously don't send your stripe key to the client lol
 	};
@@ -131,8 +132,6 @@ const app = router.get('/', async ({ctx}) => {
 const handle = app.serve();
 
 export default {
-	fetch: async (request, env, ctx) => {
-		return storage.run({env, cfCtx: ctx}, () => handle(request));
-	},
+	fetch: async (request, env, ctx) => storage.run({env, cfCtx: ctx}, () => handle(request)),
 } satisfies ExportedHandler<Env>;
 ```
