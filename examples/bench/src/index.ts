@@ -8,7 +8,7 @@ const router = create();
 
 const sub = router
 	.params({
-		age: z.string().transform(Number),
+		age: z.string().transform(Number).pipe(z.number().positive()),
 	})
 	.get('/', ({params}) => {
 		console.log(params);
