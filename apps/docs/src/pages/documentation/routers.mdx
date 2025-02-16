@@ -47,6 +47,68 @@ export const api = router.merge('/v1', v1).merge('/v2', v2);
 
 You can expect all type information to be carried over as well as the route names and correct prefixes.
 
+## `.params()`
+
+The `.params()` method is a type-safe way to declare what parameters a router expects to receive when it is merged into another router. This is exclusively used with router merging - you cannot use `.params()` effectively without merging the router somewhere that provides those parameters.
+
+### How it works
+
+When you call `.params()` on a router, you're declaring "this router needs these parameters to work". Then, when you merge this router somewhere else, Kaito ensures that the merge path provides all the required parameters:
+
+```ts
+// Declare that this router needs a userId parameter
+const userRouter = router
+	.params({
+		userId: z.string().min(3),
+	})
+	.get('/', async ({params}) => {
+		// params.userId is guaranteed to exist because we can only
+		// mount this router at a path that provides userId
+		return {id: params.userId};
+	});
+
+// This works - we're mounting at a path that provides userId
+const app = router.merge('/users/:userId', userRouter);
+
+// This would be a type error - we're not providing the required userId parameter
+const badApp = router.merge('/users', userRouter);
+```
+
+### Nested Router Parameters
+
+The real power of `.params()` comes when working with deeply nested routers that need parameters from multiple levels up:
+
+```ts
+// This router needs both userId and postId
+const commentsRouter = router
+	.params({
+		userId: z.string(),
+		postId: z.string(),
+	})
+	.get('/', async ({params}) => {
+		// We have access to both userId and postId here
+		return {
+			user: params.userId,
+			post: params.postId,
+		};
+	});
+
+// This router provides postId and forwards userId to commentsRouter
+const postsRouter = router
+	.params({
+		userId: z.string(),
+	})
+	.merge('/posts/:postId/comments', commentsRouter);
+
+// Finally, we provide userId at the top level
+const app = router.merge('/users/:userId', postsRouter);
+```
+
+<Callout>
+	You can only call `.params()` once on a router. Attempting to call it multiple times will result in a type error, as
+	this could break existing routes that consume the parameters.
+</Callout>
+
 ## `.through()`
 
 Kaito takes a different approach to traditional express.js style "middleware." This is mostly because of the inpredictable nature of such a pattern. Kaito offers a superior alternative, `.through()`.
