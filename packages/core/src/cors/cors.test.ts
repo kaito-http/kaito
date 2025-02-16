@@ -13,10 +13,10 @@ describe('CORS', () => {
 		});
 
 		it('should match wildcard subdomains', () => {
-			const matcher = experimental_createOriginMatcher(['*.example.com']);
+			const matcher = experimental_createOriginMatcher(['https://*.example.com']);
 
 			assert.equal(matcher('https://app.example.com'), true);
-			assert.equal(matcher('http://staging.example.com'), true);
+			assert.equal(matcher('http://staging.example.com'), false);
 			assert.equal(matcher('https://example.com'), false);
 			assert.equal(matcher('https://evil-example.com'), false);
 		});
@@ -24,12 +24,13 @@ describe('CORS', () => {
 		it('should handle multiple patterns', () => {
 			const matcher = experimental_createOriginMatcher([
 				'https://example.com',
-				'*.trusted.com',
+				'https://*.trusted.com',
 				'http://localhost:3000',
 			]);
 
 			assert.equal(matcher('https://example.com'), true);
 			assert.equal(matcher('https://app.trusted.com'), true);
+			assert.equal(matcher('http://app.trusted.com'), false);
 			assert.equal(matcher('http://localhost:3000'), true);
 			assert.equal(matcher('https://untrusted.com'), false);
 		});
@@ -37,11 +38,12 @@ describe('CORS', () => {
 		it('should escape special regex characters', () => {
 			const matcher = experimental_createOriginMatcher([
 				'https://special-chars.com?test=1',
-				'*.special-chars.com+test',
+				'https://*.special-chars.com+test',
 			]);
 
 			assert.equal(matcher('https://special-chars.com?test=1'), true);
 			assert.equal(matcher('https://app.special-chars.com+test'), true);
+			assert.equal(matcher('http://app.special-chars.com+test'), false);
 			assert.equal(matcher('https://special-chars.comtest'), false);
 		});
 
