@@ -50,7 +50,7 @@ import {createUtilities} from '@kaito-http/core';
 
 const serverStarted = Date.now();
 
-export const {router, getContext} = createUtilities(async (req, res) => {
+export const {router, getContext} = createUtilities(async (req, head) => {
 	// Our context object will include the request object and the server uptime.
 
 	return {
