@@ -58,15 +58,26 @@ export function experimental_createOriginMatcher(origins: string[]) {
 		return () => false; //lol
 	}
 
+	const escapedCharsRegex = /[.+?^${}()|[\]\\]/g;
+
 	const source = origins
 		.map(origin => {
 			if (origin.includes('://*.')) {
-				const escapedOrigin = origin.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
-				const [protocol, domain] = escapedOrigin.split('\\://*\\.');
-				return `^${protocol}\\:\\/\\/[^.]+\\.${domain}$`;
+				const parts = origin.split('://');
+
+				if (parts.length !== 2) {
+					throw new Error(`Invalid origin pattern: ${origin}. Must include protocol (e.g., https://*.example.com)`);
+				}
+
+				const [protocol, rest] = parts as [protocol: string, rest: string];
+
+				const domain = rest.slice(2).replace(escapedCharsRegex, '\\$&');
+				const pattern = `^${protocol.replace(escapedCharsRegex, '\\$&')}:\\/\\/[^.]+\\.${domain}$`;
+
+				return pattern;
 			} else {
-				const escapedOrigin = origin.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
-				return `^${escapedOrigin}$`;
+				const pattern = `^${origin.replace(escapedCharsRegex, '\\$&')}$`;
+				return pattern;
 			}
 		})
 		.join('|');

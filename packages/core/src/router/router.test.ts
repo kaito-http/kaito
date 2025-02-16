@@ -485,7 +485,6 @@ describe('Router', () => {
 			});
 
 			const invalidUserResponse = await handler(new Request('http://localhost/users/12/posts/456', {method: 'GET'}));
-			console.log(invalidUserResponse.status, 'bruh');
 			assert.strictEqual(invalidUserResponse.status, 500);
 
 			const invalidPostResponse = await handler(new Request('http://localhost/users/123/posts/abc', {method: 'GET'}));

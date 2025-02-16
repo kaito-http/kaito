@@ -66,7 +66,7 @@ describe('CORS', () => {
 			corsTransform(request, response);
 
 			assert.equal(response.headers.get('Access-Control-Allow-Origin'), 'https://example.com');
-			assert.equal(response.headers.get('Access-Control-Allow-Methods'), 'GET, POST, PUT, DELETE, OPTIONS');
+			assert.equal(response.headers.get('Access-Control-Allow-Methods'), 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
 			assert.equal(response.headers.get('Access-Control-Allow-Headers'), 'Content-Type, Authorization');
 			assert.equal(response.headers.get('Access-Control-Max-Age'), '86400');
 			assert.equal(response.headers.get('Access-Control-Allow-Credentials'), 'true');
@@ -103,7 +103,7 @@ describe('CORS', () => {
 		});
 
 		it('should support wildcard origins in transform', () => {
-			const corsTransform = experimental_createCORSTransform(['*.example.com']);
+			const corsTransform = experimental_createCORSTransform(['https://*.example.com']);
 			const request = new Request('https://api.example.com', {
 				headers: {Origin: 'https://app.example.com'},
 			});
