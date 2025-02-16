@@ -7,13 +7,11 @@ Kaito v3+ was designed to work with any runtime, including serverless runtimes l
 Bun is the runtime most suited for Kaito, as it has the fastest Request/Response server built in.
 
 ```ts
-import {create} from '@kaito-http/core';
+import {router} from './router.ts';
 
-export const router = create({
-	// ...
-});
+const app = router.get('/', () => 'hi' as const);
 
-const handle = router.serve();
+const handle = app.serve();
 
 const server = Bun.serve({
 	fetch: handle,
@@ -38,14 +36,12 @@ To be super clear, `@kaito-http/uws` works with Node.js only, we're only using B
 ### Usage
 
 ```ts
-import {create} from '@kaito-http/core';
+import {router} from './router.ts';
 import {KaitoServer} from '@kaito-http/uws';
 
-export const router = create({
-	// ...
-});
+const app = router.get('/', () => 'hi' as const);
 
-const handle = router.serve();
+const handle = app.serve();
 
 const server = await KaitoServer.serve({
 	fetch: handle,
@@ -60,13 +56,11 @@ console.log(`Listening at ${server.url}`);
 Deno supports the Fetch API natively, so you can use Kaito with Deno without any extra work.
 
 ```ts
-import {create} from '@kaito-http/core';
+import {router} from './router.ts';
 
-export const router = create({
-	// ...
-});
+const app = router.get('/', () => 'hi' as const);
 
-const handle = router.serve();
+const handle = app.serve();
 
 const server = Deno.serve(
 	{
@@ -83,13 +77,11 @@ console.log(`Listening on`, server.addr);
 Cloudflare Workers supports the Fetch API natively, so you can use Kaito with Cloudflare Workers without any extra work.
 
 ```ts
-import {create} from '@kaito-http/core';
+import {router} from './router.ts';
 
-export const router = create({
-	// ...
-});
+const app = router.get('/', () => 'hi' as const);
 
-const handle = router.serve();
+const handle = app.serve();
 
 export default {
 	fetch: handle,
@@ -104,13 +96,13 @@ Cloudflare Workers passes environment variables to the handler function, which i
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {create} from '@kaito-http/core';
 
-interface Env {
+export interface Env {
 	STRIPE_SECRET_KEY: string;
 }
 
 // Recommendation is to move the storage instance to the `context.ts` file
 // and include the value in your context object.
-const storage = new AsyncLocalStorage<{
+export const storage = new AsyncLocalStorage<{
 	env: Env;
 	cfCtx: ExecutionContext; // has .waitUntil() and .passThroughOnException()
 }>();
@@ -125,6 +117,9 @@ export const router = create({
 	},
 	// ...
 });
+
+// app.ts
+import {router, storage, type Env} from './router.ts';
 
 const app = router.get('/', async ({ctx}) => {
 	return {
