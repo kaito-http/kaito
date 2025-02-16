@@ -843,6 +843,7 @@ __metadata:
     "@kaito-http/core": "workspace:^"
     tsx: "npm:^4.19.2"
     typescript: "npm:^5.7.3"
+    zod: "npm:^3.24.1"
   languageName: unknown
   linkType: soft
 

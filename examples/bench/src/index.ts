@@ -2,8 +2,18 @@ import {create} from '@kaito-http/core';
 import {sse} from '@kaito-http/core/stream';
 import {KaitoServer} from '@kaito-http/uws';
 import {setTimeout as sleep} from 'node:timers/promises';
+import {z} from 'zod';
 
 const router = create();
+
+const sub = router
+	.params({
+		age: z.string().transform(Number),
+	})
+	.get('/', ({params}) => {
+		console.log(params);
+		return params.age;
+	});
 
 const app = router
 	.get('/hello', () => 'hi' as const)
@@ -17,7 +27,8 @@ const app = router
 				await sleep(100);
 			}
 		});
-	});
+	})
+	.merge('/:age', sub);
 
 const server = await KaitoServer.serve({
 	fetch: app.serve(),

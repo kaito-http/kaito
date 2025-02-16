@@ -4,8 +4,8 @@ import {z} from 'zod';
 import {create} from '../create.ts';
 import {KaitoError} from '../error.ts';
 import type {AnyRoute} from '../route.ts';
+import type {KaitoMethod} from '../util.ts';
 import {Router} from './router.ts';
-import type {KaitoMethod} from './types.ts';
 
 const router = create({
 	getContext: req => ({req}),
@@ -253,8 +253,8 @@ describe('Router', () => {
 		class ExposedInternalsRouter<ContextFrom, ContextTo, R extends AnyRoute> extends Router<
 			ContextFrom,
 			ContextTo,
-			R,
-			{}
+			{},
+			R
 		> {
 			public static override getFindRoute = Router.getFindRoute;
 		}

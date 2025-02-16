@@ -1,7 +1,7 @@
 import type {z} from 'zod';
-import type {KaitoMethod} from './router/types.ts';
+import type {Router} from './router/router.ts';
 import type {KaitoSSEResponse} from './stream/stream.ts';
-import type {ExtractRouteParams} from './util.ts';
+import type {ExtractRouteParams, KaitoMethod} from './util.ts';
 
 export type RouteRunData<Params, Context, QueryOutput, BodyOutput> = {
 	ctx: Context;
@@ -12,7 +12,7 @@ export type RouteRunData<Params, Context, QueryOutput, BodyOutput> = {
 
 export type AnyQuery = {[key in string]: any};
 
-export type Through<From, To, RequiredParams extends Record<string, string>> = (
+export type Through<From, To, RequiredParams extends Record<string, unknown>> = (
 	context: From,
 	params: RequiredParams,
 ) => Promise<To>;
@@ -40,18 +40,18 @@ export type Route<
 	// Route information
 	Result,
 	Path extends string,
-	AdditionalParams extends Record<string, string>,
+	AdditionalParams extends Record<string, unknown>,
 	Method extends KaitoMethod,
 	// Schemas
 	Query,
 	Body,
 > = {
-	through: Through<unknown, ContextTo, AdditionalParams>;
 	body?: z.Schema<Body>;
 	query?: {[Key in keyof Query]: z.Schema<Query[Key]>};
 	path: Path;
 	method: Method;
 	openapi?: OutputSpec<NoInfer<Result>>;
+	router: Router<unknown, ContextTo, AdditionalParams, AnyRoute>;
 	run(
 		data: RouteRunData<ExtractRouteParams<Path> & AdditionalParams, ContextTo, Query, Body>,
 	): Promise<Result> | Result;
