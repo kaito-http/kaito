@@ -26,7 +26,7 @@ export const myRouter = router.get('/ip', async ({ctx}) => {
 
 Other reverse proxies will have different headers, nginx for example uses `x-forwarded-for`. Consult the docs of your reverse proxy to see how to get the client IP address.
 
-In most cases, apps ARE behind reverse proxies, and it's rare that you'll want the IP address of the connection itself. If you actually do need it, you'll have to consult the docs of your server runtime. Below are a couple snippets that may be helpful, though.
+Most production applications run behind reverse proxies, so you'll typically want the client's original IP address rather than the proxy's connection IP. If you actually do need the direct connection IP, you'll have to consult the docs of your server runtime. Below are a couple snippets that may be helpful, though.
 
 ## Bun
 

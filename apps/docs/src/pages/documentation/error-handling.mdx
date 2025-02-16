@@ -7,7 +7,7 @@ import {Callout} from 'nextra/components';
 
 # Error Handling
 
-Errors are handled very gracefully in Kaito. You can throw anywhere in any route, and it will be caught and handled. This allows you to focus on the happy-paths of your application, and know that errors are handled gracefully. The other advantage to this pattern is that you don't have to worry about error messages that could contain sensitive information, as everything passes through your onError handler.
+Kaito handles errors gracefully throughout your application. You can throw errors anywhere in any route, and they will be automatically caught and processed. This allows you to focus on the happy-paths of your application while ensuring proper error handling. The other advantage to this pattern is that you don't have to worry about error messages that could contain sensitive information, as everything passes through your onError handler.
 
 Kaito has a built in error called `KaitoError`. You can throw this error in your routes, and it will be caught and sent back to the client.
 
