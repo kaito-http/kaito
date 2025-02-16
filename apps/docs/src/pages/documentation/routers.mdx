@@ -40,7 +40,7 @@ Routers can be merged, which brings one router's routes into another, with a pre
 
 ```ts {4}
 import {v1} from './routers/v1';
-import {v2} from './routers/v1';
+import {v2} from './routers/v2';
 
 export const api = router.merge('/v1', v1).merge('/v2', v2);
 ```

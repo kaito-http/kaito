@@ -18,6 +18,7 @@ export const router = create({
 
 ```ts filename="stripe.ts"
 import {router} from './context.ts';
+import {KaitoError} from '@kaito-http/core';
 import stripe from '@stripe/stripe-js';
 
 // Create a crypto provider for stripe to use, required in some runtimes that don't define `crypto.subtle` globally.
@@ -43,6 +44,25 @@ export const stripe = router.post('/webhook', async ({ctx}) => {
 		webCrypto,
 	);
 
-	console.log('Stripe event:', event);
+	// Handle different event types
+	switch (event.type) {
+		case 'payment_intent.succeeded':
+			// Handle successful payment
+			break;
+		// Add other event types as needed
+	}
 });
 ```
+
+<Callout>
+	For production webhooks, always implement proper error handling and logging. Stripe will retry failed webhook
+	deliveries, so make sure your endpoint is idempotent and can handle duplicate events.
+</Callout>
+
+## What did v3 change?
+
+Accessing the request body before Kaito v3 was pretty difficult and required a good understanding of the `node:http` module. Since Stripe's
+APIs expect a raw text body, very delicate code was needed to read the request at the right time, and then pass it to the Stripe library.
+
+The `Request` API in Kaito v3 makes this a lot easier. By not passing a body schema to the route, we can access the raw text body lazily,
+and then pass it to the Stripe library.
