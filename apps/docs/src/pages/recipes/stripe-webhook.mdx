@@ -61,8 +61,15 @@ export const stripe = router.post('/webhook', async ({ctx}) => {
 
 ## What did v3 change?
 
-Accessing the request body before Kaito v3 was pretty difficult and required a good understanding of the `node:http` module. Since Stripe's
-APIs expect a raw text body, very delicate code was needed to read the request at the right time, and then pass it to the Stripe library.
+Prior to Kaito v3, handling raw request bodies (like those required by Stripe webhooks) was challenging. The request object was a Node.js `IncomingMessage`, and body parsing happened automatically before your route code executed. This created problems because:
 
-The `Request` API in Kaito v3 makes this a lot easier. By not passing a body schema to the route, we can access the raw text body lazily,
-and then pass it to the Stripe library.
+1. The request body was already consumed by the time your route code ran
+2. There was no obvious way to access the raw, unparsed body that Stripe's webhook verification requires
+
+Kaito v3 solved this with the Fetch API
+
+- Access the raw request body on demand using `req.text()`
+- Control when and how body parsing happens
+- Work with the raw request data directly when needed
+
+This makes implementing Stripe webhooks (and other services requiring raw body access) much more straightforward and less error-prone.
