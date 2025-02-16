@@ -5,10 +5,14 @@ An advantage of Kaito moving to support Request/Response APIs in v3 is that it m
 ## Example
 
 ```ts filename="context.ts"
-export const {router} = createUtilities(async (req, head) => {
-	return {
-		bodyAsText: async () => await req.text(),
-	};
+import {create} from '@kaito-http/core';
+
+export const router = create({
+	getContext: async (req, head) => {
+		return {
+			bodyAsText: async () => await req.text(),
+		};
+	},
 });
 ```
 

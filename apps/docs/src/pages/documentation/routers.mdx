@@ -15,19 +15,24 @@ Routers are a collection of routes and their metadata. They can be merged togeth
 
 ## Creating a Router
 
-When using `createUtilities`, you get a `router` function that you can use to create a new router. This can be called as many times as you like, and you can merge routers together with a prefix to create a larger router.
+You can create a new router using the `create` function from `@kaito-http/core`. This will give you a router instance that you can use to define routes and their behavior.
 
-```ts {1,3}
-import {createUtilities} from '@kaito-http/core';
+```ts {1,3-11}
+import {create} from '@kaito-http/core';
 
-export const {getContext, router} = createUtilities(async (req, head) => {
-	// ...
+export const router = create({
+	getContext: async (req, head) => {
+		// Your context creation logic here
+		return {
+			// ...context properties
+		};
+	},
 });
 
 const app = router.get(...);
 ```
 
-And then you are safe to use the `router` function around your app, which will guarantee context type safety.
+And then you are safe to use the router around your app, which will guarantee context type safety.
 
 ## Router Merging
 
