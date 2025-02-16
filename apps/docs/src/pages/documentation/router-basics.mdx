@@ -1,0 +1,85 @@
+---
+title: Router Basics & Configuration
+description: Learn how to create and configure Kaito routers, including error handling and request lifecycle
+---
+
+import {Callout} from 'nextra/components';
+
+# Router Basics & Configuration
+
+## Creating a Router
+
+The `create()` function is the main entry point to Kaito. It creates a new router instance with your configuration and returns it.
+
+```ts
+import {create} from '@kaito-http/core';
+
+const router = create(); // Arguments to `create()` are optional
+
+const handle = router.serve();
+
+Bun.serve({
+	fetch: handle,
+	port: 3000,
+});
+```
+
+## Error Handling
+
+The `onError` configuration function is called whenever an error is thrown in the request lifecycle. This function should reply with an object that contains a `status` and `message`. These will be used to reply to the client.
+
+```ts
+import {create} from '@kaito-http/core';
+import {ZodError} from 'zod';
+
+export const router = create({
+	onError: async (error, req) => {
+		if (error instanceof ZodError) {
+			return {status: 400, message: 'Invalid request'};
+		}
+
+		return {status: 500, message: 'Internal Server Error'};
+	},
+});
+```
+
+## Request Lifecycle
+
+Kaito has a basic lifecycle for transforming/intercepting requests and responses:
+
+- `.before()` runs before the router is handled. You can return early here to stop the request from being handled.
+- `.transform()` runs on EVERY response, including those from `.before()` and the router itself.
+
+Here's an example implementing CORS:
+
+```ts
+const ALLOWED_ORIGINS = ['http://localhost:3000', 'https://app.example.com'];
+
+export const router = create({
+	getContext,
+	before: async req => {
+		if (req.method === 'OPTIONS') {
+			// Return early to skip the router
+			return new Response(null, {status: 204});
+		}
+	},
+
+	transform: async (request, response) => {
+		const origin = request.headers.get('origin');
+
+		// Include CORS headers if the origin is allowed
+		if (origin && ALLOWED_ORIGINS.includes(origin)) {
+			response.headers.set('Access-Control-Allow-Origin', origin);
+			response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+			response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+			response.headers.set('Access-Control-Max-Age', '86400');
+			response.headers.set('Access-Control-Allow-Credentials', 'true');
+		}
+	},
+});
+```
+
+<Callout>
+	You can return a response inside `.transform()` as well, but this is less common. Most often you'll only be mutating
+	headers.
+</Callout>
