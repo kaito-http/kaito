@@ -41,9 +41,20 @@ export type StringFormat =
 	| 'ipv4'
 	| 'ipv6';
 
+const STRING_FORMAT_REGEXES = {
+	uuid: /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/i,
+	email: /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i,
+	ipv4: /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/,
+	ipv6: /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/,
+	date: new RegExp(
+		`^((\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-((0[13578]|1[02])-(0[1-9]|[12]\\d|3[01])|(0[469]|11)-(0[1-9]|[12]\\d|30)|(02)-(0[1-9]|1\\d|2[0-8])))$`,
+	),
+	base64: /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/,
+} as const;
+
 export type StringDef = {
-	regex?: RegExp | undefined;
-	regexError?: string | undefined;
+	regex?: RegExp;
+	regexError?: string;
 	format?: StringFormat;
 	minLength?: number;
 	maxLength?: number;
@@ -61,15 +72,102 @@ export class KString extends KBaseSchema<string, string> {
 		if (typeof json !== 'string') {
 			throw new Error('Expected string');
 		}
+
 		if (this.def.regex && !this.def.regex.test(json)) {
-			throw new Error(this.def.regexError);
+			throw new Error(this.def.regexError || 'String does not match pattern');
 		}
+
 		if (this.def.minLength !== undefined && json.length < this.def.minLength) {
 			throw new Error(`String must be at least ${this.def.minLength} characters long`);
 		}
+
 		if (this.def.maxLength !== undefined && json.length > this.def.maxLength) {
 			throw new Error(`String must be at most ${this.def.maxLength} characters long`);
 		}
+
+		if (this.def.format) {
+			switch (this.def.format) {
+				case 'uuid':
+					if (!STRING_FORMAT_REGEXES.uuid.test(json)) {
+						throw new Error('Invalid UUID format');
+					}
+					break;
+
+				case 'email':
+					if (!STRING_FORMAT_REGEXES.email.test(json)) {
+						throw new Error('Invalid email format');
+					}
+					break;
+
+				case 'ipv4':
+					if (!STRING_FORMAT_REGEXES.ipv4.test(json)) {
+						throw new Error('Invalid IPv4 address');
+					}
+					break;
+
+				case 'ipv6':
+					if (!STRING_FORMAT_REGEXES.ipv6.test(json)) {
+						throw new Error('Invalid IPv6 address');
+					}
+					break;
+
+				case 'date':
+					if (!STRING_FORMAT_REGEXES.date.test(json)) {
+						throw new Error('Invalid date format (YYYY-MM-DD)');
+					}
+					break;
+
+				case 'date-time':
+					try {
+						const date = new Date(json);
+						if (isNaN(date.getTime())) {
+							throw new Error();
+						}
+					} catch {
+						throw new Error('Invalid date-time format (ISO 8601)');
+					}
+					break;
+
+				case 'byte':
+					if (!STRING_FORMAT_REGEXES.base64.test(json)) {
+						throw new Error('Invalid base64 format');
+					}
+					break;
+
+				case 'uri':
+					try {
+						new URL(json);
+					} catch {
+						throw new Error('Invalid URI format');
+					}
+					break;
+
+				case 'hostname':
+					// Basic hostname validation
+					if (
+						!/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(
+							json,
+						)
+					) {
+						throw new Error('Invalid hostname format');
+					}
+					break;
+
+				case 'binary':
+					// Binary format is used to describe files, no specific validation needed
+					break;
+
+				case 'password':
+					// Password format doesn't require specific validation
+					break;
+
+				default:
+					// Unknown format, we can't do anything special here
+					this.def.format satisfies never;
+					break;
+			}
+		}
+
 		return json;
 	}
 
@@ -79,7 +177,9 @@ export class KString extends KBaseSchema<string, string> {
 
 	regex(pattern: string | RegExp, error?: string): this {
 		this.def.regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;
-		this.def.regexError = error;
+		if (error) {
+			this.def.regexError = error;
+		}
 		return this;
 	}
 
@@ -145,9 +245,25 @@ export class KNumber extends KBaseSchema<number, number> {
 		if (typeof json !== 'number') {
 			throw new Error('Expected number');
 		}
-		if (this.def.integer && !Number.isInteger(json)) {
-			throw new Error('Expected integer');
+
+		// Check integer format first
+		if (this.def.format === 'int32' || this.def.format === 'int64' || this.def.integer) {
+			if (!Number.isInteger(json)) {
+				throw new Error('Expected integer');
+			}
+
+			// Additional format-specific validations
+			if (this.def.format === 'int32') {
+				if (json < -2147483648 || json > 2147483647) {
+					throw new Error('Integer must be within 32-bit range (-2^31 to 2^31-1)');
+				}
+			} else if (this.def.format === 'int64') {
+				if (json < -9223372036854775808 || json > 9223372036854775807) {
+					throw new Error('Integer must be within 64-bit range (-2^63 to 2^63-1)');
+				}
+			}
 		}
+
 		if (this.def.min !== undefined) {
 			if (this.def.exclusiveMin && json <= this.def.min) {
 				throw new Error(`Number must be greater than ${this.def.min}`);
@@ -204,7 +320,7 @@ export class KNumber extends KBaseSchema<number, number> {
 
 	override toOpenAPI(): SchemaObject {
 		const schema: SchemaObject = {
-			type: this.def.integer ? 'integer' : 'number',
+			type: this.def.format === 'int32' || this.def.format === 'int64' || this.def.integer ? 'integer' : 'number',
 		};
 		if (this.def.format) {
 			schema.format = this.def.format;
@@ -403,7 +519,7 @@ export class KRef<Shape extends Record<string, KBaseSchema<any, any>>> extends K
 		[K in keyof Shape]: KInferOutput<Shape[K]>;
 	} {
 		if (typeof json !== 'object' || json === null) {
-			throw new Error(`Expected object for ref schema: ${this.def.name}`);
+			throw new Error('Expected object');
 		}
 
 		const result: any = {};
@@ -414,7 +530,11 @@ export class KRef<Shape extends Record<string, KBaseSchema<any, any>>> extends K
 				if (value === undefined) {
 					throw new Error(`Missing required property: ${key}`);
 				}
-				result[key] = this.def.shape[key]!.parse(value);
+				try {
+					result[key] = this.def.shape[key]!.parse(value);
+				} catch (error: any) {
+					throw new Error(`Invalid value for property "${key}": ${error.message}`);
+				}
 			}
 		}
 
