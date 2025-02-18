@@ -172,13 +172,13 @@ export class KNumber extends KBaseSchema<number, number> {
 		return this.parse(value);
 	}
 
-	min(min: number, exclusive?: boolean): this {
+	min(min: number, exclusive: boolean = false): this {
 		this.def.min = min;
 		this.def.exclusiveMin = exclusive;
 		return this;
 	}
 
-	max(max: number, exclusive?: boolean): this {
+	max(max: number, exclusive: boolean = false): this {
 		this.def.max = max;
 		this.def.exclusiveMax = exclusive;
 		return this;
