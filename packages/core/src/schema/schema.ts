@@ -75,6 +75,148 @@ export class KString extends KBaseSchema<string, string> {
 	}
 }
 
+export type NumberDef = {
+	min?: number;
+	max?: number;
+	integer?: boolean;
+};
+
+export class KNumber extends KBaseSchema<number, number> {
+	private def: NumberDef;
+
+	constructor(def: NumberDef = {}) {
+		super();
+		this.def = def;
+	}
+
+	override parse(json: unknown): number {
+		if (typeof json !== 'number') {
+			throw new Error('Expected number');
+		}
+		if (this.def.integer && !Number.isInteger(json)) {
+			throw new Error('Expected integer');
+		}
+		if (this.def.min !== undefined && json < this.def.min) {
+			throw new Error(`Number must be greater than or equal to ${this.def.min}`);
+		}
+		if (this.def.max !== undefined && json > this.def.max) {
+			throw new Error(`Number must be less than or equal to ${this.def.max}`);
+		}
+		return json;
+	}
+
+	override serialize(value: number): number {
+		return this.parse(value);
+	}
+
+	min(min: number): this {
+		this.def.min = min;
+		return this;
+	}
+
+	max(max: number): this {
+		this.def.max = max;
+		return this;
+	}
+
+	integer(): this {
+		this.def.integer = true;
+		return this;
+	}
+
+	override toOpenAPI(): SchemaObject {
+		const schema: SchemaObject = {
+			type: this.def.integer ? 'integer' : 'number',
+		};
+		if (this.def.min !== undefined) {
+			schema.minimum = this.def.min;
+		}
+		if (this.def.max !== undefined) {
+			schema.maximum = this.def.max;
+		}
+		if (this._description) {
+			schema.description = this._description;
+		}
+		return schema;
+	}
+}
+
+export class KBoolean extends KBaseSchema<boolean, boolean> {
+	constructor() {
+		super();
+	}
+
+	override parse(json: unknown): boolean {
+		if (typeof json !== 'boolean') {
+			throw new Error('Expected boolean');
+		}
+		return json;
+	}
+
+	override serialize(value: boolean): boolean {
+		return this.parse(value);
+	}
+
+	override toOpenAPI(): SchemaObject {
+		return {
+			type: 'boolean',
+			...(this._description ? {description: this._description} : {}),
+		};
+	}
+}
+
+export type ArrayDef<T> = {
+	items: KBaseSchema<any, T>;
+	minItems?: number;
+	maxItems?: number;
+};
+
+export class KArray<T> extends KBaseSchema<Array<any>, Array<T>> {
+	private def: ArrayDef<T>;
+
+	constructor(def: ArrayDef<T>) {
+		super();
+		this.def = def;
+	}
+
+	override parse(json: unknown): Array<T> {
+		if (!Array.isArray(json)) {
+			throw new Error('Expected array');
+		}
+		if (this.def.minItems !== undefined && json.length < this.def.minItems) {
+			throw new Error(`Array must contain at least ${this.def.minItems} items`);
+		}
+		if (this.def.maxItems !== undefined && json.length > this.def.maxItems) {
+			throw new Error(`Array must contain at most ${this.def.maxItems} items`);
+		}
+		return json.map(item => this.def.items.parse(item));
+	}
+
+	override serialize(value: Array<T>): unknown {
+		return value.map(item => this.def.items.serialize(item));
+	}
+
+	minItems(min: number): this {
+		this.def.minItems = min;
+		return this;
+	}
+
+	maxItems(max: number): this {
+		this.def.maxItems = max;
+		return this;
+	}
+
+	override toOpenAPI(): SchemaObject {
+		return {
+			type: 'array',
+			items: this.def.items.toOpenAPI(),
+			...(this.def.minItems !== undefined ? {minItems: this.def.minItems} : {}),
+			...(this.def.maxItems !== undefined ? {maxItems: this.def.maxItems} : {}),
+			...(this._description ? {description: this._description} : {}),
+		};
+	}
+}
+
 export type ScalarDef<ClientRepresentation extends JSONPrimitive, ServerRepresentation> = {
 	json: KBaseSchema<ClientRepresentation, ClientRepresentation>;
 	parse(jsonValue: ClientRepresentation): ServerRepresentation;
@@ -199,6 +341,18 @@ export const k = {
 	ref<Shape extends Record<string, any>>(name: string, shape: Shape) {
 		const def: RefDef<Shape> = {name, shape};
 		return new KRef(def);
+	},
+
+	number() {
+		return new KNumber();
+	},
+
+	boolean() {
+		return new KBoolean();
+	},
+
+	array<T>(items: KBaseSchema<any, T>) {
+		return new KArray({items});
 	},
 };
 
