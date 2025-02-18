@@ -28,9 +28,25 @@ export type KInferInput<Schema extends KBaseSchema<any, any>> =
 export type KInferOutput<Schema extends KBaseSchema<any, any>> =
 	Schema extends KBaseSchema<any, infer Output> ? Output : never;
 
+export type StringFormat =
+	| 'date'
+	| 'date-time'
+	| 'password'
+	| 'byte'
+	| 'binary'
+	| 'email'
+	| 'uuid'
+	| 'uri'
+	| 'hostname'
+	| 'ipv4'
+	| 'ipv6';
+
 export type StringDef = {
 	regex?: RegExp | undefined;
 	regexError?: string | undefined;
+	format?: StringFormat;
+	minLength?: number;
+	maxLength?: number;
 };
 
 export class KString extends KBaseSchema<string, string> {
@@ -48,6 +64,12 @@ export class KString extends KBaseSchema<string, string> {
 		if (this.def.regex && !this.def.regex.test(json)) {
 			throw new Error(this.def.regexError);
 		}
+		if (this.def.minLength !== undefined && json.length < this.def.minLength) {
+			throw new Error(`String must be at least ${this.def.minLength} characters long`);
+		}
+		if (this.def.maxLength !== undefined && json.length > this.def.maxLength) {
+			throw new Error(`String must be at most ${this.def.maxLength} characters long`);
+		}
 		return json;
 	}
 
@@ -61,12 +83,36 @@ export class KString extends KBaseSchema<string, string> {
 		return this;
 	}
 
+	format(format: StringFormat): this {
+		this.def.format = format;
+		return this;
+	}
+
+	minLength(min: number): this {
+		this.def.minLength = min;
+		return this;
+	}
+
+	maxLength(max: number): this {
+		this.def.maxLength = max;
+		return this;
+	}
+
 	override toOpenAPI(): SchemaObject {
 		const schema: SchemaObject = {
 			type: 'string',
 		};
 		if (this.def.regex) {
 			schema.pattern = this.def.regex.source;
+		}
+		if (this.def.format) {
+			schema.format = this.def.format;
+		}
+		if (this.def.minLength !== undefined) {
+			schema.minLength = this.def.minLength;
+		}
+		if (this.def.maxLength !== undefined) {
+			schema.maxLength = this.def.maxLength;
 		}
 		if (this._description) {
 			schema.description = this._description;
@@ -75,10 +121,16 @@ export class KString extends KBaseSchema<string, string> {
 	}
 }
 
+export type NumberFormat = 'float' | 'double' | 'int32' | 'int64';
+
 export type NumberDef = {
 	min?: number;
 	max?: number;
 	integer?: boolean;
+	format?: NumberFormat;
+	exclusiveMin?: boolean;
+	exclusiveMax?: boolean;
+	multipleOf?: number;
 };
 
 export class KNumber extends KBaseSchema<number, number> {
@@ -96,11 +148,22 @@ export class KNumber extends KBaseSchema<number, number> {
 		if (this.def.integer && !Number.isInteger(json)) {
 			throw new Error('Expected integer');
 		}
-		if (this.def.min !== undefined && json < this.def.min) {
-			throw new Error(`Number must be greater than or equal to ${this.def.min}`);
+		if (this.def.min !== undefined) {
+			if (this.def.exclusiveMin && json <= this.def.min) {
+				throw new Error(`Number must be greater than ${this.def.min}`);
+			} else if (!this.def.exclusiveMin && json < this.def.min) {
+				throw new Error(`Number must be greater than or equal to ${this.def.min}`);
+			}
 		}
-		if (this.def.max !== undefined && json > this.def.max) {
-			throw new Error(`Number must be less than or equal to ${this.def.max}`);
+		if (this.def.max !== undefined) {
+			if (this.def.exclusiveMax && json >= this.def.max) {
+				throw new Error(`Number must be less than ${this.def.max}`);
+			} else if (!this.def.exclusiveMax && json > this.def.max) {
+				throw new Error(`Number must be less than or equal to ${this.def.max}`);
+			}
+		}
+		if (this.def.multipleOf !== undefined && json % this.def.multipleOf !== 0) {
+			throw new Error(`Number must be a multiple of ${this.def.multipleOf}`);
 		}
 		return json;
 	}
@@ -109,13 +172,15 @@ export class KNumber extends KBaseSchema<number, number> {
 		return this.parse(value);
 	}
 
-	min(min: number): this {
+	min(min: number, exclusive?: boolean): this {
 		this.def.min = min;
+		this.def.exclusiveMin = exclusive;
 		return this;
 	}
 
-	max(max: number): this {
+	max(max: number, exclusive?: boolean): this {
 		this.def.max = max;
+		this.def.exclusiveMax = exclusive;
 		return this;
 	}
 
@@ -124,15 +189,42 @@ export class KNumber extends KBaseSchema<number, number> {
 		return this;
 	}
 
+	format(format: NumberFormat): this {
+		this.def.format = format;
+		return this;
+	}
+
+	multipleOf(value: number): this {
+		if (value <= 0) {
+			throw new Error('multipleOf must be a positive number');
+		}
+		this.def.multipleOf = value;
+		return this;
+	}
+
 	override toOpenAPI(): SchemaObject {
 		const schema: SchemaObject = {
 			type: this.def.integer ? 'integer' : 'number',
 		};
+		if (this.def.format) {
+			schema.format = this.def.format;
+		}
 		if (this.def.min !== undefined) {
-			schema.minimum = this.def.min;
+			if (this.def.exclusiveMin) {
+				schema.exclusiveMinimum = this.def.min;
+			} else {
+				schema.minimum = this.def.min;
+			}
 		}
 		if (this.def.max !== undefined) {
-			schema.maximum = this.def.max;
+			if (this.def.exclusiveMax) {
+				schema.exclusiveMaximum = this.def.max;
+			} else {
+				schema.maximum = this.def.max;
+			}
+		}
+		if (this.def.multipleOf !== undefined) {
+			schema.multipleOf = this.def.multipleOf;
 		}
 		if (this._description) {
 			schema.description = this._description;
@@ -169,6 +261,7 @@ export type ArrayDef<T> = {
 	items: KBaseSchema<any, T>;
 	minItems?: number;
 	maxItems?: number;
+	uniqueItems?: boolean;
 };
 
 export class KArray<T> extends KBaseSchema<Array<any>, Array<T>> {
@@ -189,6 +282,16 @@ export class KArray<T> extends KBaseSchema<Array<any>, Array<T>> {
 		if (this.def.maxItems !== undefined && json.length > this.def.maxItems) {
 			throw new Error(`Array must contain at most ${this.def.maxItems} items`);
 		}
+		if (this.def.uniqueItems) {
+			const seen = new Set();
+			for (const item of json) {
+				const key = JSON.stringify(item);
+				if (seen.has(key)) {
+					throw new Error('Array items must be unique');
+				}
+				seen.add(key);
+			}
+		}
 		return json.map(item => this.def.items.parse(item));
 	}
 
@@ -206,12 +309,18 @@ export class KArray<T> extends KBaseSchema<Array<any>, Array<T>> {
 		return this;
 	}
 
+	uniqueItems(): this {
+		this.def.uniqueItems = true;
+		return this;
+	}
+
 	override toOpenAPI(): SchemaObject {
 		return {
 			type: 'array',
 			items: this.def.items.toOpenAPI(),
 			...(this.def.minItems !== undefined ? {minItems: this.def.minItems} : {}),
 			...(this.def.maxItems !== undefined ? {maxItems: this.def.maxItems} : {}),
+			...(this.def.uniqueItems ? {uniqueItems: true} : {}),
 			...(this._description ? {description: this._description} : {}),
 		};
 	}
@@ -250,6 +359,23 @@ export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresent
 			base.description = this._description;
 		}
 		return base;
+	}
+}
+
+export class KNull extends KBaseSchema<null, null> {
+	override parse(json: unknown): null {
+		if (json !== null) {
+			throw new Error('Expected null');
+		}
+		return null;
+	}
+
+	override serialize(value: null): null {
+		return value;
+	}
+
+	override toOpenAPI(): SchemaObject {
+		return {type: 'null'};
 	}
 }
 
@@ -353,6 +479,60 @@ export const k = {
 
 	array<T>(items: KBaseSchema<any, T>) {
 		return new KArray({items});
+	},
+
+	// Convenience methods for common string formats
+	date() {
+		return new KString().format('date');
+	},
+
+	dateTime() {
+		return new KString().format('date-time');
+	},
+
+	email() {
+		return new KString().format('email');
+	},
+
+	uuid() {
+		return new KString().format('uuid');
+	},
+
+	uri() {
+		return new KString().format('uri');
+	},
+
+	hostname() {
+		return new KString().format('hostname');
+	},
+
+	ipv4() {
+		return new KString().format('ipv4');
+	},
+
+	ipv6() {
+		return new KString().format('ipv6');
+	},
+
+	password() {
+		return new KString().format('password');
+	},
+
+	// Convenience methods for common number formats
+	float() {
+		return new KNumber().format('float');
+	},
+
+	double() {
+		return new KNumber().format('double');
+	},
+
+	int32() {
+		return new KNumber().integer().format('int32');
+	},
+
+	int64() {
+		return new KNumber().integer().format('int64');
 	},
 };
 
