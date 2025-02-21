@@ -12,9 +12,9 @@ import {KaitoHead} from '../head.ts';
 import {KaitoRequest} from '../request.ts';
 import type {AnyQuery, AnyRoute, Route} from '../route.ts';
 import {
-	isNodeLikeDev,
 	type ErroredAPIResponse,
 	type ExtractRouteParams,
+	isNodeLikeDev,
 	type KaitoMethod,
 	type MaybePromise,
 } from '../util.ts';
@@ -29,7 +29,7 @@ type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 		infer Query,
 		infer BodyOutput
 	>
-		? Route<ContextTo, Result, `${Prefix}${Path}`, AdditionalParams, Method, Query, BodyOutput>
+		? Route<ContextTo, Result, `${Prefix}${Path extends '/' ? '' : Path}`, AdditionalParams, Method, Query, BodyOutput>
 		: never;
 
 type PrefixRoutesPath<Prefix extends `/${string}`, R extends AnyRoute> = R extends R
@@ -144,7 +144,10 @@ export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string
 	> => {
 		const newRoutes = [...other.state.routes].map(route => ({
 			...route,
-			path: `${pathPrefix}${route.path as string}`,
+			// handle pathPrefix = / & route.path = / case causing //
+			// we intentionally are replacing on the joining path and not the pathPrefix, in case of
+			// /named -> merged to -> / causing /named/ not /named
+			path: `${pathPrefix}${route.path === '/' ? '' : route.path}`,
 		}));
 
 		return new Router({
