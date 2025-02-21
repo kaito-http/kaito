@@ -191,6 +191,34 @@ describe('Router', () => {
 				data: {id: '1'},
 			});
 		});
+
+		it('should handle merging on /', () => {
+			const child = router.get('/', {
+				run: () => 'child',
+			});
+
+			const namedChild = router.get('/', () => 'named child').get('/child', () => 'named child');
+
+			const parent = router
+				.post('/', () => 'parent')
+				.delete('/', () => 'parent')
+				.merge('/', child)
+				.merge('/named', namedChild);
+
+			// Copying into Array.from, easier access methods than the SetIterator
+			const routes = Array.from(parent.routes.values());
+
+			// Ensure that the path of the GET merged is simply /
+			const getChildRoute = routes.find(r => r.method === 'GET' && r.path === '/');
+			assert.strictEqual(getChildRoute?.path, '/');
+
+			// Ensure the named child is unaffected, and not missing any slashes
+			const getNamedChildRoute = routes.find(r => r.method === 'GET' && r.path === '/named');
+			assert.strictEqual(getNamedChildRoute?.path, '/named');
+
+			const getNestedNameChildRoute = routes.find(r => r.method === 'GET' && r.path === '/named/child');
+			assert.strictEqual(getNestedNameChildRoute?.path, '/named/child');
+		});
 	});
 
 	describe('404 handling', () => {
