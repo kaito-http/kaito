@@ -406,7 +406,7 @@ export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string
 			const item: ZodOpenApiOperationObject = {
 				description: route.openapi?.description ?? 'Successful response',
 				responses: {
-					default: {
+					200: {
 						description: route.openapi?.description ?? 'Successful response',
 						content,
 					},
