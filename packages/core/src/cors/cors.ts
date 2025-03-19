@@ -88,54 +88,75 @@ export function experimental_createOriginMatcher(origins: string[]) {
 }
 
 /**
- * Create a function to apply CORS headers with sane defaults for most apps.
+ * Create a CORS handler with sane defaults for most apps.
  *
  * **⚠️ This API is experimental and may change or even be removed in the future. ⚠️**
  *
- * @param options Options object
- * @returns A function that will mutate the Response object by applying the CORS headers
+ * @param origins Array of allowed origin patterns. Each pattern must include protocol (http:// or https://).
+ * Supports both exact matches and wildcard subdomain patterns. See {@link experimental_createOriginMatcher}
+ * for detailed pattern matching rules.
+ *
+ * @returns An object containing:
+ * - `before`: A handler for OPTIONS requests that returns a 204 response
+ * - `transform`: A function that applies CORS headers to the response if origin matches
+ * - `setOrigins`: A function to dynamically update the allowed origins
+ *
  * @example
  * ```ts
- * const cors = experimental_createCORSTransform([
- *  	// Exact matches
- *  	'https://example.com',
- *  	'http://localhost:3000',
+ * const corsHandler = experimental_createCORSTransform([
+ *   // Exact matches
+ *   'https://example.com',
+ *   'http://localhost:3000',
  *
- *  	// Wildcard subdomain matches
- *  	'https://*.myapp.com',      // matches https://dashboard.myapp.com
- *  	'http://*.myapp.com',       // matches http://dashboard.myapp.com
+ *   // Wildcard subdomain matches
+ *   'https://*.myapp.com',      // matches https://dashboard.myapp.com
+ *   'http://*.myapp.com',       // matches http://dashboard.myapp.com
  *
- *  	// Match both subdomain and root domain
- *  	'https://*.staging.com',    // matches https://app.staging.com
- *  	'https://staging.com'       // matches https://staging.com
- *  ]);
+ *   // Match both subdomain and root domain
+ *   'https://*.staging.com',    // matches https://app.staging.com
+ *   'https://staging.com'       // matches https://staging.com
+ * ]);
  *
  * const router = create({
- * 		before: async req => {
- * 			if (req.method === 'OPTIONS') {
- * 				// Return early to skip the router. This response still gets passed to `.transform()`
- * 				// So our CORS headers will still be applied
- * 				return new Response(null, {status: 204});
- * 			}
- * 		},
- * 		transform: async (request, response) => {
- * 			cors(request, response);
- * 		}
+ *   // Handle preflight requests
+ *   before: corsHandler.before,
+ *
+ *   // Or expanded
+ *   before: (request) => {
+ *     const res = cors.before(request);
+ *     if (res) return res;
+ *   },
+ *
+ *   // Apply CORS headers to all responses
+ *   transform: corsHandler.transform,
  * });
+ *
+ * // Optionally update allowed origins later
+ * corsHandler.setOrigins(['https://newdomain.com']);
  * ```
  */
 export function experimental_createCORSTransform(origins: string[]) {
-	const matcher = experimental_createOriginMatcher(origins);
+	let matcher = experimental_createOriginMatcher(origins);
 
-	return (request: Request, response: Response) => {
-		const origin = request.headers.get('Origin');
+	return {
+		before: (request: Request) => {
+			if (request.method === 'OPTIONS') {
+				return new Response(null, {status: 204});
+			}
+		},
+		transform: (request: Request, response: Response) => {
+			const origin = request.headers.get('Origin');
 
-		if (origin && matcher(origin)) {
-			response.headers.set('Access-Control-Allow-Origin', origin);
-			response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-			response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-			response.headers.set('Access-Control-Max-Age', '86400');
-			response.headers.set('Access-Control-Allow-Credentials', 'true');
-		}
+			if (origin && matcher(origin)) {
+				response.headers.set('Access-Control-Allow-Origin', origin);
+				response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+				response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+				response.headers.set('Access-Control-Max-Age', '86400');
+				response.headers.set('Access-Control-Allow-Credentials', 'true');
+			}
+		},
+		setOrigins: (newOrigins: string[]) => {
+			matcher = experimental_createOriginMatcher(newOrigins);
+		},
 	};
 }
