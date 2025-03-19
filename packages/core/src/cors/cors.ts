@@ -4,7 +4,7 @@
  *
  * **⚠️ This API is experimental and may change or even be removed in the future. ⚠️**
  *
- * @param origins Array of origin patterns to match against.
+ * @param originIterator Array of origin patterns to match against.
  * Each pattern MUST include the protocol (http:// or https://).
  * Two types of patterns are supported:
  * 1. Exact matches (e.g., 'https://example.com') - matches only the exact domain with exact protocol
@@ -53,7 +53,9 @@
  * matcher('https://production.com');  // true - matched by exact pattern
  * ```
  */
-export function experimental_createOriginMatcher(origins: string[]) {
+export function experimental_createOriginMatcher(originIterator: Iterable<string>) {
+	const origins = Array.from(originIterator);
+
 	if (origins.length === 0) {
 		return () => false; //lol
 	}
@@ -92,14 +94,17 @@ export function experimental_createOriginMatcher(origins: string[]) {
  *
  * **⚠️ This API is experimental and may change or even be removed in the future. ⚠️**
  *
- * @param origins Array of allowed origin patterns. Each pattern must include protocol (http:// or https://).
+ * @param originsIterator Array of allowed origin patterns. Each pattern must include protocol (http:// or https://).
  * Supports both exact matches and wildcard subdomain patterns. See {@link experimental_createOriginMatcher}
  * for detailed pattern matching rules.
  *
  * @returns An object containing:
  * - `before`: A handler for OPTIONS requests that returns a 204 response
  * - `transform`: A function that applies CORS headers to the response if origin matches
- * - `setOrigins`: A function to dynamically update the allowed origins
+ * - `setOrigins`: A function to replace all allowed origins with a new set
+ * - `appendOrigin`: A function to add a new origin to the allowed list
+ * - `removeOrigin`: A function to remove an origin from the allowed list
+ * - `getOrigins`: A function that returns the current list of allowed origins
  *
  * @example
  * ```ts
@@ -131,19 +136,38 @@ export function experimental_createOriginMatcher(origins: string[]) {
  *   transform: corsHandler.transform,
  * });
  *
- * // Optionally update allowed origins later
- * corsHandler.setOrigins(['https://newdomain.com']);
+ * // Manage origins dynamically
+ * corsHandler.appendOrigin('https://newdomain.com');
+ * corsHandler.removeOrigin('http://localhost:3000');
+ * corsHandler.setOrigins(['https://completely-new-domain.com']);
  * ```
  */
-export function experimental_createCORSTransform(origins: string[]) {
-	let matcher = experimental_createOriginMatcher(origins);
+export function experimental_createCORSTransform(originsIterator: Iterable<string>) {
+	let allowedOrigins = new Set<string>(originsIterator);
+	let matcher = experimental_createOriginMatcher(allowedOrigins);
+
+	const updateMatcher = () => {
+		matcher = experimental_createOriginMatcher(allowedOrigins);
+	};
 
 	return {
+		/**
+		 * Handle OPTIONS requests in Kaito's `before()` hook
+		 *
+		 * @param request - The request object
+		 * @returns A 204 response
+		 */
 		before: (request: Request) => {
 			if (request.method === 'OPTIONS') {
 				return new Response(null, {status: 204});
 			}
 		},
+		/**
+		 * Apply CORS headers to the response if origin matches.
+		 *
+		 * @param request - The request object
+		 * @param response - The response object
+		 */
 		transform: (request: Request, response: Response) => {
 			const origin = request.headers.get('Origin');
 
@@ -155,8 +179,42 @@ export function experimental_createCORSTransform(origins: string[]) {
 				response.headers.set('Access-Control-Allow-Credentials', 'true');
 			}
 		},
-		setOrigins: (newOrigins: string[]) => {
-			matcher = experimental_createOriginMatcher(newOrigins);
+		/**
+		 * Replace all allowed origins with a new set.
+		 *
+		 * @param newOrigins - The new set of allowed origins
+		 */
+		setOrigins: (newOrigins: Iterable<string>) => {
+			allowedOrigins = new Set(newOrigins);
+			updateMatcher();
 		},
+		/**
+		 * Add one or more origins to the allowed list.
+		 *
+		 * @param origins - The origins to add
+		 */
+		addOrigins: (...origins: string[]) => {
+			for (const origin of origins) {
+				allowedOrigins.add(origin);
+			}
+			updateMatcher();
+		},
+		/**
+		 * Remove one or more origins from the allowed list.
+		 *
+		 * @param origins - The origins to remove
+		 */
+		removeOrigins: (...origins: string[]) => {
+			for (const origin of origins) {
+				allowedOrigins.delete(origin);
+			}
+			updateMatcher();
+		},
+		/**
+		 * Clones the current set of allowed origins and returns it
+		 *
+		 * @returns A set of allowed origins
+		 */
+		getOrigins: () => new Set(allowedOrigins),
 	};
 }
