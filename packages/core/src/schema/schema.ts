@@ -49,7 +49,6 @@ const STRING_FORMAT_REGEXES = {
 	date: new RegExp(
 		`^((\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-((0[13578]|1[02])-(0[1-9]|[12]\\d|3[01])|(0[469]|11)-(0[1-9]|[12]\\d|30)|(02)-(0[1-9]|1\\d|2[0-8])))$`,
 	),
-	base64: /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/,
 } as const;
 
 export type StringDef = {
@@ -66,6 +65,79 @@ export class KString extends KBaseSchema<string, string> {
 	constructor(def: StringDef = {}) {
 		super();
 		this.def = def;
+	}
+
+	date(): this {
+		this.def.format = 'date';
+		return this;
+	}
+
+	dateTime(): this {
+		this.def.format = 'date-time';
+		return this;
+	}
+
+	password(): this {
+		this.def.format = 'password';
+		return this;
+	}
+
+	byte(): this {
+		this.def.format = 'byte';
+		return this;
+	}
+
+	binary(): this {
+		this.def.format = 'binary';
+		return this;
+	}
+
+	uri(): this {
+		this.def.format = 'uri';
+		return this;
+	}
+
+	hostname(): this {
+		this.def.format = 'hostname';
+		return this;
+	}
+
+	ipv4(): this {
+		this.def.format = 'ipv4';
+		return this;
+	}
+
+	ipv6(): this {
+		this.def.format = 'ipv6';
+		return this;
+	}
+
+	email(): this {
+		this.def.format = 'email';
+		return this;
+	}
+
+	uuid(): this {
+		this.def.format = 'uuid';
+		return this;
+	}
+
+	regex(pattern: string | RegExp, error?: string): this {
+		this.def.regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;
+		if (error) {
+			this.def.regexError = error;
+		}
+		return this;
+	}
+
+	minLength(min: number): this {
+		this.def.minLength = min;
+		return this;
+	}
+
+	maxLength(max: number): this {
+		this.def.maxLength = max;
+		return this;
 	}
 
 	override parse(json: unknown): string {
@@ -129,7 +201,7 @@ export class KString extends KBaseSchema<string, string> {
 					break;
 
 				case 'byte':
-					if (!STRING_FORMAT_REGEXES.base64.test(json)) {
+					if (!/^[A-Za-z0-9+/]*={0,2}$/.test(json) || json.length % 4 !== 0) {
 						throw new Error('Invalid base64 format');
 					}
 					break;
@@ -143,7 +215,6 @@ export class KString extends KBaseSchema<string, string> {
 					break;
 
 				case 'hostname':
-					// Basic hostname validation
 					if (
 						!/^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(
 							json,
@@ -162,7 +233,6 @@ export class KString extends KBaseSchema<string, string> {
 					break;
 
 				default:
-					// Unknown format, we can't do anything special here
 					this.def.format satisfies never;
 					break;
 			}
@@ -173,29 +243,6 @@ export class KString extends KBaseSchema<string, string> {
 
 	override serialize(value: string): string {
 		return this.parse(value);
-	}
-
-	regex(pattern: string | RegExp, error?: string): this {
-		this.def.regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;
-		if (error) {
-			this.def.regexError = error;
-		}
-		return this;
-	}
-
-	format(format: StringFormat): this {
-		this.def.format = format;
-		return this;
-	}
-
-	minLength(min: number): this {
-		this.def.minLength = min;
-		return this;
-	}
-
-	maxLength(max: number): this {
-		this.def.maxLength = max;
-		return this;
 	}
 
 	override toOpenAPI(): SchemaObject {
@@ -518,7 +565,7 @@ export class KRef<Shape extends Record<string, KBaseSchema<any, any>>> extends K
 	override parse(json: unknown): {
 		[K in keyof Shape]: KInferOutput<Shape[K]>;
 	} {
-		if (typeof json !== 'object' || json === null) {
+		if (typeof json !== 'object' || json === null || Array.isArray(json)) {
 			throw new Error('Expected object');
 		}
 
@@ -601,41 +648,45 @@ export const k = {
 		return new KArray({items});
 	},
 
+	null() {
+		return new KNull();
+	},
+
 	// Convenience methods for common string formats
 	date() {
-		return new KString().format('date');
+		return new KString().date();
 	},
 
 	dateTime() {
-		return new KString().format('date-time');
+		return new KString().dateTime();
 	},
 
 	email() {
-		return new KString().format('email');
+		return new KString().email();
 	},
 
 	uuid() {
-		return new KString().format('uuid');
+		return new KString().uuid();
 	},
 
 	uri() {
-		return new KString().format('uri');
+		return new KString().uri();
 	},
 
 	hostname() {
-		return new KString().format('hostname');
+		return new KString().hostname();
 	},
 
 	ipv4() {
-		return new KString().format('ipv4');
+		return new KString().ipv4();
 	},
 
 	ipv6() {
-		return new KString().format('ipv6');
+		return new KString().ipv6();
 	},
 
 	password() {
-		return new KString().format('password');
+		return new KString().password();
 	},
 
 	// Convenience methods for common number formats

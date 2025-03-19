@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import {describe, it} from 'node:test';
-import {k, KArray, KBoolean, KNull, KNumber, KRef, KString} from './schema.js';
+import {k, KArray, KBoolean, KNull, KNumber, KRef, KString} from './schema.ts';
 
 describe('Schema', () => {
 	describe('KString', () => {
@@ -65,7 +65,7 @@ describe('Schema', () => {
 
 		describe('format validation', () => {
 			describe('email', () => {
-				const schema = k.string().format('email');
+				const schema = k.string().email();
 
 				it('should validate valid email addresses', () => {
 					assert.strictEqual(schema.parse('user@example.com'), 'user@example.com');
@@ -83,7 +83,7 @@ describe('Schema', () => {
 			});
 
 			describe('uuid', () => {
-				const schema = k.string().format('uuid');
+				const schema = k.string().uuid();
 
 				it('should validate valid UUIDs', () => {
 					assert.strictEqual(
@@ -101,7 +101,7 @@ describe('Schema', () => {
 			});
 
 			describe('date', () => {
-				const schema = k.string().format('date');
+				const schema = k.string().date();
 
 				it('should validate valid dates', () => {
 					assert.strictEqual(schema.parse('2024-02-29'), '2024-02-29'); // Leap year
@@ -119,7 +119,7 @@ describe('Schema', () => {
 			});
 
 			describe('date-time', () => {
-				const schema = k.string().format('date-time');
+				const schema = k.string().dateTime();
 
 				it('should validate valid date-times', () => {
 					assert.strictEqual(schema.parse('2023-12-31T23:59:59Z'), '2023-12-31T23:59:59Z');
@@ -134,7 +134,7 @@ describe('Schema', () => {
 			});
 
 			describe('ipv4', () => {
-				const schema = k.string().format('ipv4');
+				const schema = k.string().ipv4();
 
 				it('should validate valid IPv4 addresses', () => {
 					assert.strictEqual(schema.parse('192.168.0.1'), '192.168.0.1');
@@ -151,7 +151,7 @@ describe('Schema', () => {
 			});
 
 			describe('ipv6', () => {
-				const schema = k.string().format('ipv6');
+				const schema = k.string().ipv6();
 
 				it('should validate valid IPv6 addresses', () => {
 					assert.strictEqual(
@@ -170,7 +170,7 @@ describe('Schema', () => {
 			});
 
 			describe('uri', () => {
-				const schema = k.string().format('uri');
+				const schema = k.string().uri();
 
 				it('should validate valid URIs', () => {
 					assert.strictEqual(schema.parse('https://example.com'), 'https://example.com');
@@ -186,7 +186,7 @@ describe('Schema', () => {
 			});
 
 			describe('hostname', () => {
-				const schema = k.string().format('hostname');
+				const schema = k.string().hostname();
 
 				it('should validate valid hostnames', () => {
 					assert.strictEqual(schema.parse('example.com'), 'example.com');
@@ -202,7 +202,7 @@ describe('Schema', () => {
 			});
 
 			describe('byte', () => {
-				const schema = k.string().format('byte');
+				const schema = k.string().byte();
 
 				it('should validate valid base64', () => {
 					assert.strictEqual(schema.parse('aGVsbG8='), 'aGVsbG8=');
@@ -213,7 +213,6 @@ describe('Schema', () => {
 				it('should reject invalid base64', () => {
 					assert.throws(() => schema.parse('invalid'), /Invalid base64 format/);
 					assert.throws(() => schema.parse('a==='), /Invalid base64 format/);
-					assert.throws(() => schema.parse('abc='), /Invalid base64 format/);
 				});
 			});
 		});
@@ -438,7 +437,7 @@ describe('Schema', () => {
 		const userSchema = k.ref('User', {
 			id: k.number(),
 			name: k.string(),
-			email: k.string().format('email'),
+			email: k.string().email(),
 		});
 
 		describe('basic validation', () => {
@@ -455,6 +454,7 @@ describe('Schema', () => {
 				assert.throws(() => userSchema.parse(null), /Expected object/);
 				assert.throws(() => userSchema.parse([]), /Expected object/);
 				assert.throws(() => userSchema.parse('not an object'), /Expected object/);
+				assert.throws(() => userSchema.parse(123), /Expected object/);
 			});
 
 			it('should validate required properties', () => {
@@ -512,7 +512,7 @@ describe('Schema', () => {
 
 	describe('OpenAPI Schema Generation', () => {
 		it('should generate string schema', () => {
-			const schema = k.string().minLength(3).maxLength(10).format('email').description('User email');
+			const schema = k.string().minLength(3).maxLength(10).email().description('User email');
 
 			assert.deepStrictEqual(schema.toOpenAPI(), {
 				type: 'string',
@@ -565,144 +565,145 @@ describe('Schema', () => {
 			});
 		});
 	});
-});
 
-describe('KScalar', () => {
-	describe('basic scalar types', () => {
-		const bigIntSchema = k.scalar({
-			json: k.string(),
-			parse: value => BigInt(value),
-			serialize: value => value.toString(),
-		});
-
-		it('should parse and transform valid values', () => {
-			const result = bigIntSchema.parse('123');
-			assert.strictEqual(typeof result, 'bigint');
-			assert.strictEqual(result, BigInt(123));
-		});
-
-		it('should serialize values back to json format', () => {
-			const parsed = bigIntSchema.parse('123');
-			const serialized = bigIntSchema.serialize(parsed);
-			assert.strictEqual(serialized, '123');
-		});
-
-		it('should reject invalid input types', () => {
-			assert.throws(() => bigIntSchema.parse(123), /Expected string/);
-			assert.throws(() => bigIntSchema.parse(null), /Expected string/);
-		});
-
-		it('should reject invalid string formats', () => {
-			assert.throws(() => bigIntSchema.parse('not a number'), /Cannot convert/);
-			assert.throws(() => bigIntSchema.parse('12.34'), /Cannot convert/);
-		});
-	});
-
-	describe('complex transformations', () => {
-		const dateSchema = k.scalar<string, Date>({
-			json: k.string().format('date'),
-			parse: (value: string) => new Date(value),
-			serialize: (value: Date) => value.toISOString().split('T')[0]!,
-		});
-
-		it('should parse dates from strings', () => {
-			const result = dateSchema.parse('2023-12-31');
-			assert(result instanceof Date);
-			assert.strictEqual(result.getUTCFullYear(), 2023);
-			assert.strictEqual(result.getUTCMonth(), 11); // 0-based
-			assert.strictEqual(result.getUTCDate(), 31);
-		});
-
-		it('should serialize dates back to strings', () => {
-			const date = new Date('2023-12-31');
-			const serialized = dateSchema.serialize(date);
-			assert.strictEqual(serialized, '2023-12-31');
-		});
-
-		it('should validate date format during parsing', () => {
-			assert.throws(() => dateSchema.parse('invalid date'), /Invalid date format/);
-			assert.throws(() => dateSchema.parse('2023/12/31'), /Invalid date format/);
-		});
-	});
-
-	describe('with description and example', () => {
-		const schema = k
-			.scalar({
+	describe('KScalar', () => {
+		describe('basic scalar types', () => {
+			const bigIntSchema = k.scalar({
 				json: k.string(),
 				parse: value => BigInt(value),
 				serialize: value => value.toString(),
-			})
-			.description('A big integer ID')
-			.example('12345');
+			});
 
-		it('should generate correct OpenAPI schema', () => {
-			const openapi = schema.toOpenAPI();
-			if ('description' in openapi) {
-				assert.deepStrictEqual(openapi, {
-					type: 'string',
-					description: 'A big integer ID',
-				});
-			}
+			it('should parse and transform valid values', () => {
+				const result = bigIntSchema.parse('123');
+				assert.strictEqual(typeof result, 'bigint');
+				assert.strictEqual(result, BigInt(123));
+			});
+
+			it('should serialize values back to json format', () => {
+				const parsed = bigIntSchema.parse('123');
+				const serialized = bigIntSchema.serialize(parsed);
+				assert.strictEqual(serialized, '123');
+			});
+
+			it('should reject invalid input types', () => {
+				assert.throws(() => bigIntSchema.parse(123), /Expected string/);
+				assert.throws(() => bigIntSchema.parse(null), /Expected string/);
+			});
+
+			it('should reject invalid string formats', () => {
+				assert.throws(() => bigIntSchema.parse('not a number'), /Cannot convert/);
+				assert.throws(() => bigIntSchema.parse('12.34'), /Cannot convert/);
+			});
 		});
-	});
-});
 
-describe('KNull', () => {
-	const schema = new KNull();
+		describe('complex transformations', () => {
+			const dateSchema = k.scalar<string, Date>({
+				json: k.string().date(),
+				parse: (value: string) => new Date(value),
+				serialize: (value: Date) => value.toISOString().split('T')[0]!,
+			});
 
-	describe('basic validation', () => {
-		it('should accept null', () => {
-			assert.strictEqual(schema.parse(null), null);
+			it('should parse dates from strings', () => {
+				const result = dateSchema.parse('2023-12-31');
+				assert(result instanceof Date);
+				assert.strictEqual(result.getUTCFullYear(), 2023);
+				assert.strictEqual(result.getUTCMonth(), 11); // 0-based
+				assert.strictEqual(result.getUTCDate(), 31);
+			});
+
+			it('should serialize dates back to strings', () => {
+				const date = new Date('2023-12-31');
+				const serialized = dateSchema.serialize(date);
+				assert.strictEqual(serialized, '2023-12-31');
+			});
+
+			it('should validate date format during parsing', () => {
+				assert.throws(() => dateSchema.parse('invalid date'), /Invalid date format/);
+				assert.throws(() => dateSchema.parse('2023/12/31'), /Invalid date format/);
+			});
 		});
 
-		it('should reject non-null values', () => {
-			assert.throws(() => schema.parse(undefined), /Expected null/);
-			assert.throws(() => schema.parse(''), /Expected null/);
-			assert.throws(() => schema.parse(0), /Expected null/);
-			assert.throws(() => schema.parse(false), /Expected null/);
-			assert.throws(() => schema.parse({}), /Expected null/);
-			assert.throws(() => schema.parse([]), /Expected null/);
-		});
-	});
+		describe('with description and example', () => {
+			const schema = k
+				.scalar({
+					json: k.string(),
+					parse: value => BigInt(value),
+					serialize: value => value.toString(),
+				})
+				.description('A big integer ID')
+				.example('12345');
 
-	describe('serialization', () => {
-		it('should serialize null to null', () => {
-			assert.strictEqual(schema.serialize(null), null);
-		});
-	});
-
-	describe('OpenAPI schema', () => {
-		it('should generate correct OpenAPI schema', () => {
-			assert.deepStrictEqual(schema.toOpenAPI(), {
-				type: 'null',
+			it('should generate correct OpenAPI schema', () => {
+				const openapi = schema.toOpenAPI();
+				if ('description' in openapi) {
+					assert.deepStrictEqual(openapi, {
+						type: 'string',
+						description: 'A big integer ID',
+					});
+				}
 			});
 		});
 	});
-});
 
-describe('k object', () => {
-	it('should provide access to all schema types', () => {
-		assert(k.string() instanceof KString);
-		assert(k.number() instanceof KNumber);
-		assert(k.boolean() instanceof KBoolean);
-		assert(k.array(k.string()) instanceof KArray);
-		assert(k.ref('Test', {}) instanceof KRef);
+	describe('KNull', () => {
+		const schema = new KNull();
 
-		// Test format convenience methods
-		assert(k.date() instanceof KString);
-		assert(k.dateTime() instanceof KString);
-		assert(k.email() instanceof KString);
-		assert(k.uuid() instanceof KString);
-		assert(k.uri() instanceof KString);
-		assert(k.hostname() instanceof KString);
-		assert(k.ipv4() instanceof KString);
-		assert(k.ipv6() instanceof KString);
-		assert(k.password() instanceof KString);
+		describe('basic validation', () => {
+			it('should accept null', () => {
+				assert.strictEqual(schema.parse(null), null);
+			});
 
-		// Test number format convenience methods
-		assert(k.float() instanceof KNumber);
-		assert(k.double() instanceof KNumber);
-		assert(k.int32() instanceof KNumber);
-		assert(k.int64() instanceof KNumber);
+			it('should reject non-null values', () => {
+				assert.throws(() => schema.parse(undefined), /Expected null/);
+				assert.throws(() => schema.parse(''), /Expected null/);
+				assert.throws(() => schema.parse(0), /Expected null/);
+				assert.throws(() => schema.parse(false), /Expected null/);
+				assert.throws(() => schema.parse({}), /Expected null/);
+				assert.throws(() => schema.parse([]), /Expected null/);
+			});
+		});
+
+		describe('serialization', () => {
+			it('should serialize null to null', () => {
+				assert.strictEqual(schema.serialize(null), null);
+			});
+		});
+
+		describe('OpenAPI schema', () => {
+			it('should generate correct OpenAPI schema', () => {
+				assert.deepStrictEqual(schema.toOpenAPI(), {
+					type: 'null',
+				});
+			});
+		});
+	});
+
+	describe('k object', () => {
+		it('should provide access to all schema types', () => {
+			assert(k.string() instanceof KString);
+			assert(k.number() instanceof KNumber);
+			assert(k.boolean() instanceof KBoolean);
+			assert(k.array(k.string()) instanceof KArray);
+			assert(k.ref('Test', {}) instanceof KRef);
+			assert(k.null() instanceof KNull);
+
+			// Test format convenience methods
+			assert(k.date() instanceof KString);
+			assert(k.dateTime() instanceof KString);
+			assert(k.email() instanceof KString);
+			assert(k.uuid() instanceof KString);
+			assert(k.uri() instanceof KString);
+			assert(k.hostname() instanceof KString);
+			assert(k.ipv4() instanceof KString);
+			assert(k.ipv6() instanceof KString);
+			assert(k.password() instanceof KString);
+
+			// Test number format convenience methods
+			assert(k.float() instanceof KNumber);
+			assert(k.double() instanceof KNumber);
+			assert(k.int32() instanceof KNumber);
+			assert(k.int64() instanceof KNumber);
+		});
 	});
 });
