@@ -51,7 +51,7 @@ export type Route<
 	path: Path;
 	method: Method;
 	openapi?: OutputSpec<NoInfer<Result>>;
-	router: Router<unknown, ContextTo, AdditionalParams, AnyRoute>;
+	router: Router<unknown, ContextTo, AdditionalParams, AnyRoute, any>;
 	run(
 		data: RouteRunData<ExtractRouteParams<Path> & AdditionalParams, ContextTo, Query, Body>,
 	): Promise<Result> | Result;

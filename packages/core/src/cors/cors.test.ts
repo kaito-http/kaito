@@ -55,7 +55,7 @@ describe('CORS', () => {
 
 	describe('createCORSTransform', () => {
 		it('should set CORS headers for allowed origins', () => {
-			const corsTransform = experimental_createCORSTransform(['https://example.com']);
+			const corsTransform = experimental_createCORSTransform(['https://example.com']).transform;
 			const request = new Request('https://api.example.com', {
 				headers: {Origin: 'https://example.com'},
 			});
@@ -73,7 +73,7 @@ describe('CORS', () => {
 		});
 
 		it('should not set CORS headers for disallowed origins', () => {
-			const corsTransform = experimental_createCORSTransform(['https://example.com']);
+			const corsTransform = experimental_createCORSTransform(['https://example.com']).transform;
 			const request = new Request('https://api.example.com', {
 				headers: {Origin: 'https://evil.com'},
 			});
@@ -91,7 +91,7 @@ describe('CORS', () => {
 		});
 
 		it('should handle requests without Origin header', () => {
-			const corsTransform = experimental_createCORSTransform(['https://example.com']);
+			const corsTransform = experimental_createCORSTransform(['https://example.com']).transform;
 			const request = new Request('https://api.example.com');
 			const response = new Response(null, {
 				headers: new Headers(),
@@ -103,7 +103,7 @@ describe('CORS', () => {
 		});
 
 		it('should support wildcard origins in transform', () => {
-			const corsTransform = experimental_createCORSTransform(['https://*.example.com']);
+			const corsTransform = experimental_createCORSTransform(['https://*.example.com']).transform;
 			const request = new Request('https://api.example.com', {
 				headers: {Origin: 'https://app.example.com'},
 			});
@@ -117,7 +117,7 @@ describe('CORS', () => {
 		});
 
 		it('should preserve existing headers not related to CORS', () => {
-			const corsTransform = experimental_createCORSTransform(['https://example.com']);
+			const corsTransform = experimental_createCORSTransform(['https://example.com']).transform;
 			const request = new Request('https://api.example.com', {
 				headers: {Origin: 'https://example.com'},
 			});
@@ -133,6 +133,53 @@ describe('CORS', () => {
 			assert.equal(response.headers.get('Content-Type'), 'application/json');
 			assert.equal(response.headers.get('X-Custom-Header'), 'test');
 			assert.equal(response.headers.get('Access-Control-Allow-Origin'), 'https://example.com');
+		});
+
+		it('should allow dynamic origin management', () => {
+			const corsHandler = experimental_createCORSTransform(['https://example.com']);
+
+			// Test initial state
+			assert.deepEqual(Array.from(corsHandler.getOrigins()), ['https://example.com']);
+
+			// Test adding origins
+			corsHandler.addOrigins('https://new.com', 'https://*.subdomain.com');
+			assert.deepEqual(Array.from(corsHandler.getOrigins()), [
+				'https://example.com',
+				'https://new.com',
+				'https://*.subdomain.com',
+			]);
+
+			// Test that new origins work in transform
+			const request1 = new Request('https://api.com', {
+				headers: {Origin: 'https://app.subdomain.com'},
+			});
+			const response1 = new Response(null, {headers: new Headers()});
+			corsHandler.transform(request1, response1);
+			assert.equal(response1.headers.get('Access-Control-Allow-Origin'), 'https://app.subdomain.com');
+
+			// Test removing origins
+			corsHandler.removeOrigins('https://example.com', 'https://new.com');
+			assert.deepEqual(Array.from(corsHandler.getOrigins()), ['https://*.subdomain.com']);
+
+			// Test that removed origins no longer work
+			const request2 = new Request('https://api.com', {
+				headers: {Origin: 'https://example.com'},
+			});
+			const response2 = new Response(null, {headers: new Headers()});
+			corsHandler.transform(request2, response2);
+			assert.equal(response2.headers.get('Access-Control-Allow-Origin'), null);
+
+			// Test setting entirely new origins
+			corsHandler.setOrigins(['https://completely-new.com']);
+			assert.deepEqual(Array.from(corsHandler.getOrigins()), ['https://completely-new.com']);
+
+			// Test that only new origins work
+			const request3 = new Request('https://api.com', {
+				headers: {Origin: 'https://completely-new.com'},
+			});
+			const response3 = new Response(null, {headers: new Headers()});
+			corsHandler.transform(request3, response3);
+			assert.equal(response3.headers.get('Access-Control-Allow-Origin'), 'https://completely-new.com');
 		});
 	});
 });

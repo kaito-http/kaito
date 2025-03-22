@@ -278,11 +278,12 @@ describe('Router', () => {
 			['PUT', new Map([['/users/:id', dummyHandler]])],
 		]);
 
-		class ExposedInternalsRouter<ContextFrom, ContextTo, R extends AnyRoute> extends Router<
+		class ExposedInternalsRouter<ContextFrom, ContextTo, R extends AnyRoute, WithArgument> extends Router<
 			ContextFrom,
 			ContextTo,
 			{},
-			R
+			R,
+			WithArgument
 		> {
 			public static override getFindRoute = Router.getFindRoute;
 		}

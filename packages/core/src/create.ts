@@ -3,7 +3,7 @@ import type {KaitoRequest} from './request.ts';
 import {Router} from './router/router.ts';
 import type {GetContext, MaybePromise} from './util.ts';
 
-export type KaitoConfig<ContextFrom> = {
+export type KaitoConfig<ContextFrom, WithArgument> = {
 	/**
 	 * A function that is called to get the context for a request.
 	 *
@@ -11,7 +11,7 @@ export type KaitoConfig<ContextFrom> = {
 	 *
 	 * It's fine for this function to throw; if it does, the error is passed to the `onError` function.
 	 */
-	getContext?: GetContext<ContextFrom>;
+	getContext?: GetContext<ContextFrom, WithArgument>;
 
 	/**
 	 * A function that is called when an error occurs inside a route handler.
@@ -63,13 +63,32 @@ export type KaitoConfig<ContextFrom> = {
 };
 
 /**
- * Create a helper function for instantiating a Kaito router
+ * Helper function for instantiating a Kaito router
  *
  * This is the starting point for any Kaito application
  *
  * @param config - The configuration for the router
  * @returns A new Kaito router
  */
-export function create<Context = null>(config: KaitoConfig<Context> = {}) {
+export function create<Context = null>(
+	config: KaitoConfig<Context, never> = {},
+): Router<Context, Context, {}, never, never> {
 	return Router.create<Context>(config);
 }
+
+/**
+ * Helper function for instantiating a Kaito router
+ *
+ * This is the starting point for any Kaito application
+ *
+ * This version of the `create` function allows you to pass in an argument to the router
+ *
+ * @param config - The configuration for the router
+ * @returns A new Kaito router
+ */
+create.withInput = <Input = never>() => {
+	return {
+		create: <Context>(config: KaitoConfig<Context, Input> = {}): Router<Context, Context, {}, never, Input> =>
+			Router.create<Context, Input>(config),
+	};
+};

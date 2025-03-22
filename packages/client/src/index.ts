@@ -177,7 +177,7 @@ export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements Asyn
 	}
 }
 
-export function createKaitoHTTPClient<APP extends Router<any, any, any, any> = never>(
+export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any> = never>(
 	rootOptions: KaitoHTTPClientRootOptions,
 ) {
 	type ROUTES = InferRoutes<APP>;
