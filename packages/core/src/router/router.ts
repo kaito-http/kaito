@@ -1,11 +1,11 @@
 import {z, type ZodTypeDef} from 'zod';
-import {
-	createDocument,
-	type ZodOpenApiContentObject,
-	type ZodOpenApiOperationObject,
-	type ZodOpenApiPathsObject,
-} from 'zod-openapi';
-import 'zod-openapi/extend';
+// import {
+// 	createDocument,
+// 	type ZodOpenApiContentObject,
+// 	type ZodOpenApiOperationObject,
+// 	type ZodOpenApiPathsObject,
+// } from 'zod-openapi';
+// import 'zod-openapi/extend';
 import type {KaitoConfig} from '../create.ts';
 import {KaitoError, WrappedError} from '../error.ts';
 import {KaitoHead} from '../head.ts';

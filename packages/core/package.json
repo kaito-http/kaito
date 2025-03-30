@@ -49,6 +49,6 @@
 		"zod": "^3.24.1"
 	},
 	"dependencies": {
-		"zod-openapi": "^4.2.3"
+		"openapi3-ts": "^4.4.0"
 	}
 }
