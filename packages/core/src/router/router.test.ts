@@ -281,7 +281,7 @@ describe('Router', () => {
 		class ExposedInternalsRouter<ContextFrom, ContextTo, R extends AnyRoute, WithArgument> extends Router<
 			ContextFrom,
 			ContextTo,
-			{},
+			never,
 			R,
 			WithArgument
 		> {

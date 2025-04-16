@@ -1,19 +1,30 @@
+// @ts-nocheck
+
 import {create} from '@kaito-http/core';
 import {sse} from '@kaito-http/core/stream';
 import {KaitoServer} from '@kaito-http/uws';
 import {setTimeout as sleep} from 'node:timers/promises';
-import {z} from 'zod';
 
 const router = create();
 
-const sub = router
-	.params({
-		age: z.string().transform(Number).pipe(z.number().positive()),
-	})
-	.get('/', ({params}) => {
-		console.log(params);
-		return params.age;
-	});
+const sub = router.params().get('/', ({params}) => {
+	console.log(params);
+
+	return params;
+});
+
+router().get('/', ({params}) => params.user_id);
+
+const userRouter = router<'user_id'>(r =>
+	r
+		.get('/', ({params}) => params.user_id)
+		.post('/', ({params}) => params.user_id)
+		.delete('/', ({params}) => params.user_id)
+		.patch('/', ({params}) => params.user_id)
+		.head('/', ({params}) => params.user_id),
+);
+
+router.merge('/users/:user_id', userRouter);
 
 const app = router
 	.get('/hello', () => 'hi' as const)

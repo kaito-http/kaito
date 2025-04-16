@@ -37,8 +37,8 @@ export type ExtractRouteParams<T extends string> = string extends T
  * @param head - The kaito head object, which contains getters and setters for headers and status
  * @returns The context for your routes
  */
-export type GetContext<Result, WithArgument> = (
+export type GetContext<Result, Input> = (
 	req: KaitoRequest,
 	head: KaitoHead,
-	...args: [WithArgument] extends [never] ? [] : [input: WithArgument]
+	...args: [Input] extends [null] ? [] : [input: Input]
 ) => MaybePromise<Result>;

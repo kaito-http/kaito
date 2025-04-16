@@ -3,7 +3,7 @@ import type {KaitoRequest} from './request.ts';
 import {Router} from './router/router.ts';
 import type {GetContext, MaybePromise} from './util.ts';
 
-export type KaitoConfig<ContextFrom, WithArgument> = {
+export type KaitoConfig<ContextFrom, Input> = {
 	/**
 	 * A function that is called to get the context for a request.
 	 *
@@ -11,7 +11,7 @@ export type KaitoConfig<ContextFrom, WithArgument> = {
 	 *
 	 * It's fine for this function to throw; if it does, the error is passed to the `onError` function.
 	 */
-	getContext?: GetContext<ContextFrom, WithArgument>;
+	getContext?: GetContext<ContextFrom, Input>;
 
 	/**
 	 * A function that is called when an error occurs inside a route handler.
@@ -72,7 +72,7 @@ export type KaitoConfig<ContextFrom, WithArgument> = {
  */
 export function create<Context = null>(
 	config: KaitoConfig<Context, never> = {},
-): Router<Context, Context, {}, never, never> {
+): Router<Context, Context, never, never, never> {
 	return Router.create<Context>(config);
 }
 
@@ -86,9 +86,8 @@ export function create<Context = null>(
  * @param config - The configuration for the router
  * @returns A new Kaito router
  */
-create.withInput = <Input = never>() => {
-	return {
-		create: <Context>(config: KaitoConfig<Context, Input> = {}): Router<Context, Context, {}, never, Input> =>
-			Router.create<Context, Input>(config),
-	};
-};
+create.withInput = <Input = never>() => ({
+	create: <Context = null>(config: KaitoConfig<Context, Input> = {}): Router<Context, Context, never, never, Input> => {
+		return Router.create<Context, Input>(config);
+	},
+});
