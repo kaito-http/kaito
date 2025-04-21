@@ -146,6 +146,11 @@ export class KaitoServer {
 
 			const response = await STORE.run(lazyRemoteAddress(res), options.fetch, request);
 
+			// request was aborted before the handler was finished
+			if (aborted) {
+				return;
+			}
+
 			res.cork(() => {
 				res.writeStatus(response.status.toString().concat(SPACE, response.statusText));
 
