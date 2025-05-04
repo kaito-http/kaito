@@ -121,11 +121,6 @@ export class KaitoServer {
 		// }
 
 		app.any('/*', async (res, req) => {
-			let aborted = false;
-			res.onAborted(() => {
-				aborted = true;
-			});
-
 			const headers = new Headers();
 			req.forEach((k, v) => headers.set(k, v));
 
@@ -135,13 +130,21 @@ export class KaitoServer {
 
 			const url = origin.concat(req.getUrl(), query ? '?' + query : '');
 
+			const controller = new AbortController();
+
 			const request = new Request(url, {
 				headers,
 				method,
 				body: method === GET || method === HEAD ? null : this.getRequestBodyStream(res),
-
+				signal: controller.signal,
 				// @ts-expect-error undici in Node.js doesn't define the types
 				duplex: 'half',
+			});
+
+			let aborted = false;
+			res.onAborted(() => {
+				aborted = true;
+				controller.abort();
 			});
 
 			const response = await STORE.run(lazyRemoteAddress(res), options.fetch, request);
