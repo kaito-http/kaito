@@ -170,6 +170,11 @@ export class KaitoServer {
 			inflightRequestMetadataMap.set(request, inflightRequestStore(res));
 			const response = await options.fetch(request);
 
+			// request was aborted before the handler was finished
+			if (aborted) {
+				return;
+			}
+
 			res.cork(() => {
 				res.writeStatus(response.status.toString().concat(SPACE, response.statusText));
 
