@@ -3,7 +3,7 @@ import type {ReferenceObject, SchemaObject} from 'openapi3-ts/oas31';
 export type JSONPrimitive = string | number | boolean | null;
 export type JSONValue = JSONPrimitive | JSONValue[] | {[key: string]: JSONValue};
 
-export interface BaseSchemaDef<Input extends JSONValue, _Output> {
+export interface BaseSchemaDef<Input extends JSONValue> {
 	example?: Input | undefined;
 	description?: string | undefined;
 }
@@ -93,7 +93,7 @@ export class ParseContext {
 	}
 }
 
-export abstract class BaseSchema<Input extends JSONValue, Output, Def extends BaseSchemaDef<Input, Output>> {
+export abstract class BaseSchema<Input extends JSONValue, Output, Def extends BaseSchemaDef<Input>> {
 	abstract parse(json: unknown): Output;
 	abstract parseSafe(json: unknown): ParseResult<Output>;
 	abstract serialize(value: Output): Input;
@@ -171,7 +171,7 @@ export interface StringChecks {
 	format?: Check<'format', {format: StringFormat}>;
 }
 
-export interface StringDef extends BaseSchemaDef<string, string>, StringChecks {}
+export interface StringDef extends BaseSchemaDef<string>, StringChecks {}
 
 export class KString extends BaseSchema<string, string, StringDef> {
 	public static create = () => new KString({});
@@ -406,7 +406,7 @@ export interface NumberChecks {
 	format?: Check<'format', {format: NumberFormat}>;
 }
 
-export interface NumberDef extends BaseSchemaDef<number, number>, NumberChecks {}
+export interface NumberDef extends BaseSchemaDef<number>, NumberChecks {}
 
 export class KNumber extends BaseSchema<number, number, NumberDef> {
 	public static create = () => new KNumber({});
@@ -518,7 +518,7 @@ export class KNumber extends BaseSchema<number, number, NumberDef> {
 ////////////////////// KBOOLEAN //////////////////////
 /////////////////////////////////////////////////////
 
-export interface BooleanDef extends BaseSchemaDef<boolean, boolean> {}
+export interface BooleanDef extends BaseSchemaDef<boolean> {}
 
 export class KBoolean extends BaseSchema<boolean, boolean, BooleanDef> {
 	public static create = () => new KBoolean({});
@@ -564,16 +564,12 @@ export interface ArrayChecks {
 	uniqueItems?: Check<'uniqueItems', {val: boolean}>;
 }
 
-export interface ArrayDef<Input extends JSONValue, Output> extends BaseSchemaDef<Input[], Output[]>, ArrayChecks {
-	items: BaseSchema<Input, Output, BaseSchemaDef<Input, Output>>;
+export interface ArrayDef<Input extends JSONValue, Output> extends BaseSchemaDef<Input[]>, ArrayChecks {
+	items: BaseSchema<Input, Output, BaseSchemaDef<Input>>;
 }
 
 export class KArray<Input extends JSONValue, Output> extends BaseSchema<Input[], Output[], ArrayDef<Input, Output>> {
-	public static create = <
-		ItemsInput extends JSONValue,
-		ItemsOutput,
-		Def extends BaseSchemaDef<ItemsInput, ItemsOutput>,
-	>(
+	public static create = <ItemsInput extends JSONValue, ItemsOutput, Def extends BaseSchemaDef<ItemsInput>>(
 		items: BaseSchema<ItemsInput, ItemsOutput, Def>,
 	) => new KArray({items});
 
@@ -661,7 +657,7 @@ export class KArray<Input extends JSONValue, Output> extends BaseSchema<Input[],
 ////////////////////// KNULL //////////////////////
 /////////////////////////////////////////////////////
 
-export interface NullDef extends BaseSchemaDef<null, null> {}
+export interface NullDef extends BaseSchemaDef<null> {}
 
 export class KNull extends BaseSchema<null, null, NullDef> {
 	public static create = () => new KNull({});
@@ -700,10 +696,11 @@ export class KNull extends BaseSchema<null, null, NullDef> {
 /////////////////////////////////////////////////////
 
 export interface RefDef<Input extends Record<keyof Output, JSONValue>, Output extends Record<keyof Input, JSONValue>>
-	extends BaseSchemaDef<Input, Output> {
+	extends BaseSchemaDef<Input> {
 	name: string;
+	summary?: string | undefined;
 	shape: {
-		[K in keyof Input]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K], Output[K]>>;
+		[K in keyof Input]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K]>>;
 	};
 }
 
@@ -714,18 +711,21 @@ export class KRef<
 	public static create = <Input extends Record<keyof Output, JSONValue>, Output extends Record<keyof Input, JSONValue>>(
 		name: string,
 		shape: {
-			[K in keyof Input | keyof Output]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K], Output[K]>>;
+			[K in keyof Input | keyof Output]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K]>>;
 		},
 	) => new KRef({name, shape});
 
 	override serialize(value: Output): Input {
 		const result: Record<string, unknown> = {};
+
 		for (const key in this.def.shape) {
 			if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
-				const fieldValue = (value as any)[key];
+				const fieldValue = value[key];
+
 				if (fieldValue === undefined) {
 					throw new Error(`Missing required property: ${key}`);
 				}
+
 				result[key] = this.def.shape[key].serialize(fieldValue);
 			}
 		}
@@ -737,20 +737,21 @@ export class KRef<
 		return {
 			$ref: `#/components/schemas/${this.def.name}`,
 			...(this.def.description ? {description: this.def.description} : {}),
+			...(this.def.summary ? {summary: this.def.summary} : {}),
 		};
 	}
 
 	public parseSafe(json: unknown): ParseResult<Output> {
 		return ParseContext.result<Output>(ctx => {
 			if (typeof json !== 'object' || json === null || Array.isArray(json)) {
-				return ctx.addIssue('Expected object', []);
+				return ctx.addIssue(`Expected object, got ${typeof json}`, []);
 			}
 
 			const result: Output = {} as Output;
 
 			for (const key in this.def.shape) {
 				if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
-					const value = (json as any)[key];
+					const value = (json as {[key: string]: unknown})[key];
 					if (value === undefined) {
 						return ctx.addIssue(`Missing required property: ${key}`, [key]);
 					}
@@ -777,6 +778,15 @@ export class KRef<
 		return result.result;
 	}
 
+	public summary(): string | undefined;
+	public summary(summary: string): this;
+	public summary(summary?: string) {
+		if (summary === undefined) {
+			return this.def.summary;
+		}
+		return this.clone({summary} as Partial<RefDef<Input, Output>>);
+	}
+
 	get shape() {
 		return this.def.shape;
 	}
@@ -787,17 +797,13 @@ export class KRef<
 }
 
 export interface ScalarOptions<ClientRepresentation extends JSONPrimitive, ServerRepresentation> {
-	schema: BaseSchema<
-		ClientRepresentation,
-		ClientRepresentation,
-		BaseSchemaDef<ClientRepresentation, ClientRepresentation>
-	>;
+	schema: BaseSchema<ClientRepresentation, ClientRepresentation, BaseSchemaDef<ClientRepresentation>>;
 	toServer: (jsonValue: ClientRepresentation) => ServerRepresentation;
 	toClient: (clientValue: ServerRepresentation) => ClientRepresentation;
 }
 
 export interface ScalarDef<ClientRepresentation extends JSONPrimitive, ServerRepresentation>
-	extends BaseSchemaDef<ClientRepresentation, ServerRepresentation>,
+	extends BaseSchemaDef<ClientRepresentation>,
 		ScalarOptions<ClientRepresentation, ServerRepresentation> {}
 
 export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresentation> extends BaseSchema<
