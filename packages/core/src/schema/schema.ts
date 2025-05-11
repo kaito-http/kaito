@@ -50,6 +50,13 @@ export class ParseContext {
 		return ParseContext.ISSUE;
 	}
 
+	addIssues(issues: Iterable<Issue>, path: string[]): typeof ParseContext.ISSUE {
+		for (const issue of issues) {
+			this.#issues.add({...issue, path: [...path, ...issue.path]});
+		}
+		return ParseContext.ISSUE;
+	}
+
 	get issues() {
 		return this.#issues;
 	}
@@ -233,8 +240,19 @@ export class KString extends BaseSchema<StringDef> {
 		return this.setCheck({type: 'format', format, message});
 	}
 
-	public url(message?: string): this {
+	public uri(message?: string): this {
 		return this.format('uri', message);
+	}
+
+	/**
+	 * Deprecated because OpenAPI uses the term "uri"
+	 * but this method exists for making migration from
+	 * Zod easier.
+	 *
+	 * @deprecated Use {@link uri} instead
+	 */
+	public url(message?: string): this {
+		return this.uri(message);
 	}
 
 	public email(message?: string): this {
@@ -499,9 +517,245 @@ export class KNumber extends BaseSchema<NumberDef> {
 	}
 }
 
+/////////////////////////////////////////////////////
+////////////////////// KBOOLEAN //////////////////////
+/////////////////////////////////////////////////////
+
+export interface BooleanDef extends BaseSchemaDef<boolean, boolean> {}
+
+export class KBoolean extends BaseSchema<BooleanDef> {
+	public static create = () => new KBoolean({});
+
+	public serialize(value: boolean): boolean {
+		return value;
+	}
+
+	public toOpenAPI(): SchemaObject | ReferenceObject {
+		return {
+			type: 'boolean',
+			...(this.def.description ? {description: this.def.description} : {}),
+		};
+	}
+
+	public parseSafe(json: unknown): ParseResult<boolean> {
+		return ParseContext.result(ctx => {
+			if (typeof json !== 'boolean') {
+				return ctx.addIssue('Expected boolean', []);
+			}
+			return json;
+		});
+	}
+
+	public parse(json: unknown): boolean {
+		const result = this.parseSafe(json);
+
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+
+		return result.result;
+	}
+}
+
+/////////////////////////////////////////////////////
+////////////////////// KARRAY //////////////////////
+/////////////////////////////////////////////////////
+
+export interface ArrayDef<T extends JSONValue> extends BaseSchemaDef<T[], T[]> {
+	items: BaseSchema<BaseSchemaDef<T, T>>;
+}
+
+export class KArray<T extends JSONValue> extends BaseSchema<ArrayDef<T>> {
+	public static create = <T extends JSONValue>(items: BaseSchema<BaseSchemaDef<T, T>>) => new KArray({items});
+
+	public serialize(value: T[]): T[] {
+		return value;
+	}
+
+	public toOpenAPI(): SchemaObject | ReferenceObject {
+		return {
+			type: 'array',
+			items: this.def.items.toOpenAPI(),
+		};
+	}
+
+	public parseSafe(json: unknown): ParseResult<T[]> {
+		return ParseContext.result(ctx => {
+			if (!Array.isArray(json)) {
+				return ctx.addIssue('Expected array', []);
+			}
+
+			const items: T[] = [];
+
+			for (let i = 0; i < json.length; i++) {
+				const item = json[i];
+				const result = this.def.items.parseSafe(item);
+
+				if (!result.success) {
+					return ctx.addIssues(result.issues, [i.toString()]);
+				}
+
+				items.push(result.result);
+			}
+
+			return items;
+		});
+	}
+
+	public parse(json: unknown): T[] {
+		const result = this.parseSafe(json);
+
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+
+		return result.result;
+	}
+}
+
+/////////////////////////////////////////////////////
+////////////////////// KNULL //////////////////////
+/////////////////////////////////////////////////////
+
+export interface NullDef extends BaseSchemaDef<null, null> {}
+
+export class KNull extends BaseSchema<NullDef> {
+	public static create = () => new KNull({});
+
+	public serialize(): null {
+		return null;
+	}
+
+	public toOpenAPI(): SchemaObject | ReferenceObject {
+		return {
+			type: 'null',
+			...(this.def.description ? {description: this.def.description} : {}),
+		};
+	}
+
+	public parseSafe(json: unknown): ParseResult<null> {
+		return ParseContext.result(ctx => {
+			if (json !== null) {
+				return ctx.addIssue('Expected null', []);
+			}
+			return null;
+		});
+	}
+
+	public parse(json: unknown): null {
+		const result = this.parseSafe(json);
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+		return result.result;
+	}
+}
+
+/////////////////////////////////////////////////////
+////////////////////// KREF //////////////////////
+/////////////////////////////////////////////////////
+
+export interface RefDef<Shape extends Record<string, BaseSchemaDef<any, any>>>
+	extends BaseSchemaDef<
+		{
+			[K in keyof Shape]: Input<Shape[K]>;
+		},
+		{
+			[K in keyof Shape]: Output<Shape[K]>;
+		}
+	> {
+	name: string;
+	shape: {
+		[K in keyof Shape]: BaseSchema<Shape[K]>;
+	};
+}
+
+export class KRef<Shape extends Record<string, BaseSchemaDef<any, any>>> extends BaseSchema<RefDef<Shape>> {
+	override serialize(value: {
+		[K in keyof Shape]: Input<Shape[K]>;
+	}): {
+		[K in keyof Shape]: Output<Shape[K]>;
+	} {
+		const result: Record<string, unknown> = {};
+		for (const key in this.def.shape) {
+			if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
+				const fieldValue = (value as any)[key];
+				if (fieldValue === undefined) {
+					throw new Error(`Missing required property: ${key}`);
+				}
+				result[key] = this.def.shape[key].serialize(fieldValue);
+			}
+		}
+
+		return result as {
+			[K in keyof Shape]: Output<Shape[K]>;
+		};
+	}
+
+	public static create = <Shape extends Record<string, BaseSchemaDef<any, any>>>(
+		name: string,
+		shape: {
+			[K in keyof Shape]: BaseSchema<Shape[K]>;
+		},
+	) => new KRef({name, shape});
+
+	override toOpenAPI(): ReferenceObject {
+		return {
+			$ref: `#/components/schemas/${this.def.name}`,
+			...(this.def.description ? {description: this.def.description} : {}),
+		};
+	}
+
+	public parseSafe(json: unknown) {
+		return ParseContext.result(ctx => {
+			if (typeof json !== 'object' || json === null || Array.isArray(json)) {
+				return ctx.addIssue('Expected object', []);
+			}
+
+			const result: any = {};
+
+			for (const key in this.def.shape) {
+				if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
+					const value = (json as any)[key];
+					if (value === undefined) {
+						return ctx.addIssue(`Missing required property: ${key}`, [key]);
+					}
+					try {
+						result[key] = this.def.shape[key]!.parse(value);
+					} catch (error: any) {
+						return ctx.addIssue(`Invalid value for property "${key}": ${error.message}`, [key]);
+					}
+				}
+			}
+
+			return result;
+		});
+	}
+
+	public parse(json: unknown) {
+		const result = this.parseSafe(json);
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+		return result.result;
+	}
+
+	get shape() {
+		return this.def.shape;
+	}
+
+	get name() {
+		return this.def.name;
+	}
+}
+
 export const k = {
 	string: KString.create,
 	number: KNumber.create,
+	boolean: KBoolean.create,
+	array: KArray.create,
+	null: KNull.create,
+	ref: KRef.create,
 };
 
 // export type NumberFormat = 'float' | 'double' | 'int32' | 'int64';
@@ -775,84 +1029,6 @@ export const k = {
 
 // 	override toOpenAPI(): SchemaObject {
 // 		return {type: 'null'};
-// 	}
-// }
-
-// export type RefDef<Shape extends Record<string, KBaseSchema<any, any>>> = {
-// 	name: string;
-// 	shape: Shape;
-// };
-
-// export class KRef<Shape extends Record<string, KBaseSchema<any, any>>> extends KBaseSchema<
-// 	{
-// 		[K in keyof Shape]: KInferInput<Shape[K]>;
-// 	},
-// 	{
-// 		[K in keyof Shape]: KInferOutput<Shape[K]>;
-// 	}
-// > {
-// 	private def: RefDef<Shape>;
-
-// 	constructor(def: RefDef<Shape>) {
-// 		super();
-// 		this.def = def;
-// 	}
-
-// 	override parse(json: unknown): {
-// 		[K in keyof Shape]: KInferOutput<Shape[K]>;
-// 	} {
-// 		if (typeof json !== 'object' || json === null || Array.isArray(json)) {
-// 			throw new Error('Expected object');
-// 		}
-
-// 		const result: any = {};
-
-// 		for (const key in this.def.shape) {
-// 			if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
-// 				const value = (json as any)[key];
-// 				if (value === undefined) {
-// 					throw new Error(`Missing required property: ${key}`);
-// 				}
-// 				try {
-// 					result[key] = this.def.shape[key]!.parse(value);
-// 				} catch (error: any) {
-// 					throw new Error(`Invalid value for property "${key}": ${error.message}`);
-// 				}
-// 			}
-// 		}
-
-// 		return result;
-// 	}
-
-// 	override serialize(value: {
-// 		[K in keyof Shape]: KInferOutput<Shape[K]>;
-// 	}): unknown {
-// 		const result: Record<string, unknown> = {};
-// 		for (const key in this.def.shape) {
-// 			if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
-// 				const fieldValue = (value as any)[key];
-// 				if (fieldValue === undefined) {
-// 					throw new Error(`Missing required property: ${key}`);
-// 				}
-// 				result[key] = this.def.shape[key]!.serialize(fieldValue);
-// 			}
-// 		}
-// 		return result;
-// 	}
-
-// 	override toOpenAPI(): ReferenceObject {
-// 		return {
-// 			$ref: `#/components/schemas/${this.def.name}`,
-// 			...(this._description ? {description: this._description} : {}),
-// 		};
-// 	}
-
-// 	get shape() {
-// 		return this.def.shape;
-// 	}
-
-// 	get name() {
-// 		return this.def.name;
 // 	}
 // }
 

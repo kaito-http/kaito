@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import {describe, it} from 'node:test';
-import {k, KNumber, KString} from './schema.ts';
+import {k, KArray, KBoolean, KNull, KNumber, KRef, KString} from './schema.ts';
 
 describe('Schema', () => {
 	describe('KString', () => {
@@ -25,7 +25,7 @@ describe('Schema', () => {
 
 		describe('length validation', () => {
 			it('should validate minLength', () => {
-				const schema = k.string().minLength(3);
+				const schema = k.string().min(3);
 				assert.strictEqual(schema.parse('hello'), 'hello');
 				assert.strictEqual(schema.parse('123'), '123');
 				assert.throws(() => schema.parse('hi'), /at least 3 characters/);
@@ -33,14 +33,14 @@ describe('Schema', () => {
 			});
 
 			it('should validate maxLength', () => {
-				const schema = k.string().maxLength(5);
+				const schema = k.string().max(5);
 				assert.strictEqual(schema.parse('hello'), 'hello');
 				assert.strictEqual(schema.parse('123'), '123');
 				assert.throws(() => schema.parse('hello world'), /at most 5 characters/);
 			});
 
 			it('should validate both min and max length', () => {
-				const schema = k.string().minLength(2).maxLength(5);
+				const schema = k.string().min(2).max(5);
 				assert.strictEqual(schema.parse('hello'), 'hello');
 				assert.strictEqual(schema.parse('123'), '123');
 				assert.throws(() => schema.parse('a'), /at least 2 characters/);
@@ -247,25 +247,11 @@ describe('Schema', () => {
 				assert.throws(() => schema.parse(-1), /greater than or equal to 0/);
 			});
 
-			it('should validate exclusive minimum', () => {
-				const schema = k.number().min(0, true);
-				assert.strictEqual(schema.parse(1), 1);
-				assert.throws(() => schema.parse(0), /greater than 0/);
-				assert.throws(() => schema.parse(-1), /greater than 0/);
-			});
-
 			it('should validate maximum', () => {
 				const schema = k.number().max(100);
 				assert.strictEqual(schema.parse(0), 0);
 				assert.strictEqual(schema.parse(100), 100);
 				assert.throws(() => schema.parse(101), /less than or equal to 100/);
-			});
-
-			it('should validate exclusive maximum', () => {
-				const schema = k.number().max(100, true);
-				assert.strictEqual(schema.parse(99), 99);
-				assert.throws(() => schema.parse(100), /less than 100/);
-				assert.throws(() => schema.parse(101), /less than 100/);
 			});
 
 			it('should validate both min and max', () => {
@@ -313,25 +299,25 @@ describe('Schema', () => {
 
 		describe('number formats', () => {
 			it('should validate float format', () => {
-				const schema = k.number().format('float');
+				const schema = k.number().float();
 				assert.strictEqual(schema.parse(123.456), 123.456);
 				assert.strictEqual(schema.parse(-123.456), -123.456);
 			});
 
 			it('should validate double format', () => {
-				const schema = k.number().format('double');
+				const schema = k.number().double();
 				assert.strictEqual(schema.parse(123.456), 123.456);
 				assert.strictEqual(schema.parse(-123.456), -123.456);
 			});
 
 			it('should validate int32 format', () => {
-				const schema = k.number().format('int32');
+				const schema = k.number().int32();
 				assert.strictEqual(schema.parse(123), 123);
 				assert.throws(() => schema.parse(123.456), /Expected integer/);
 			});
 
 			it('should validate int64 format', () => {
-				const schema = k.number().format('int64');
+				const schema = k.number().int64();
 				assert.strictEqual(schema.parse(123), 123);
 				assert.throws(() => schema.parse(123.456), /Expected integer/);
 			});
@@ -685,25 +671,8 @@ describe('Schema', () => {
 			assert(k.number() instanceof KNumber);
 			assert(k.boolean() instanceof KBoolean);
 			assert(k.array(k.string()) instanceof KArray);
-			assert(k.ref('Test', {}) instanceof KRef);
 			assert(k.null() instanceof KNull);
-
-			// Test format convenience methods
-			assert(k.date() instanceof KString);
-			assert(k.dateTime() instanceof KString);
-			assert(k.email() instanceof KString);
-			assert(k.uuid() instanceof KString);
-			assert(k.uri() instanceof KString);
-			assert(k.hostname() instanceof KString);
-			assert(k.ipv4() instanceof KString);
-			assert(k.ipv6() instanceof KString);
-			assert(k.password() instanceof KString);
-
-			// Test number format convenience methods
-			assert(k.float() instanceof KNumber);
-			assert(k.double() instanceof KNumber);
-			assert(k.int32() instanceof KNumber);
-			assert(k.int64() instanceof KNumber);
+			assert(k.ref('Test', {}) instanceof KRef);
 		});
 	});
 });
