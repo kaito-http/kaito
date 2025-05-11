@@ -17,8 +17,7 @@
 		"@kaito-http/core": "workspace:^",
 		"@kaito-http/uws": "workspace:^",
 		"cookie": "^1.0.2",
-		"stripe": "^17.5.0",
-		"zod": "^3.24.1"
+		"stripe": "^17.5.0"
 	},
 	"devDependencies": {
 		"tsx": "^4.19.2",
