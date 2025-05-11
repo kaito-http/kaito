@@ -1,6 +1,6 @@
 {
 	"name": "kaito-http",
-	"version": "4.0.0-beta.8",
+	"version": "4.0.0-beta.12",
 	"repository": "https://github.com/kaito-http/kaito",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
@@ -36,5 +36,5 @@
 		"tsup": "^8.3.5",
 		"typescript": "^5.7.3"
 	},
-	"packageManager": "yarn@4.5.0"
+	"packageManager": "yarn@4.7.0"
 }

@@ -1,4 +1,11 @@
-import type {APIResponse, ErroredAPIResponse, InferRoutes, KaitoMethod, Router} from '@kaito-http/core';
+import type {
+	AnyRoute,
+	APIResponse,
+	ErroredAPIResponse,
+	ExtractRouteParams,
+	KaitoMethod,
+	Router,
+} from '@kaito-http/core';
 import type {KaitoSSEResponse, SSEEvent} from '@kaito-http/core/stream';
 import {pathcat} from 'pathcat';
 import pkg from '../package.json' with {type: 'json'};
@@ -32,14 +39,6 @@ export type AlwaysEnabledOptions = {
 	signal?: AbortSignal | null | undefined;
 	headers?: HeadersInit;
 };
-
-export type ExtractRouteParams<T extends string> = string extends T
-	? string
-	: T extends `${string}:${infer Param}/${infer Rest}`
-		? Param | ExtractRouteParams<Rest>
-		: T extends `${string}:${infer Param}`
-			? Param
-			: never;
 
 export class KaitoClientHTTPError extends Error {
 	constructor(
@@ -177,10 +176,10 @@ export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements Asyn
 	}
 }
 
-export function createKaitoHTTPClient<APP extends Router<any, any, any, any> = never>(
+export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any> = never>(
 	rootOptions: KaitoHTTPClientRootOptions,
 ) {
-	type ROUTES = InferRoutes<APP>;
+	type ROUTES = APP['routes'] extends Set<infer R extends AnyRoute> ? R : never;
 
 	type ReturnTypeFor<M extends KaitoMethod, Path extends Extract<ROUTES, {method: M}>['path']> = Awaited<
 		ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>

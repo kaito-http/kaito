@@ -3,18 +3,18 @@ import type {Router} from './router/router.ts';
 import type {KaitoSSEResponse} from './stream/stream.ts';
 import type {ExtractRouteParams, KaitoMethod} from './util.ts';
 
-export type RouteRunData<Params, Context, QueryOutput, BodyOutput> = {
+export type RouteRunData<Params extends string, Context, QueryOutput, BodyOutput> = {
+	params: Record<Params, string>;
 	ctx: Context;
-	body: BodyOutput;
 	query: QueryOutput;
-	params: Params;
+	body: BodyOutput;
 };
 
 export type AnyQuery = {[key in string]: any};
 
-export type Through<From, To, RequiredParams extends Record<string, unknown>> = (
+export type Through<From, To, RequiredParams extends string> = (
 	context: From,
-	params: RequiredParams,
+	params: Record<RequiredParams, string>,
 ) => Promise<To>;
 
 export type SSEOutputSpec<Result> = {
@@ -40,7 +40,7 @@ export type Route<
 	// Route information
 	Result,
 	Path extends string,
-	AdditionalParams extends Record<string, unknown>,
+	AdditionalParams extends string,
 	Method extends KaitoMethod,
 	// Schemas
 	Query,
@@ -51,9 +51,9 @@ export type Route<
 	path: Path;
 	method: Method;
 	openapi?: OutputSpec<NoInfer<Result>>;
-	router: Router<unknown, ContextTo, AdditionalParams, AnyRoute>;
+	router: Router<unknown, ContextTo, AdditionalParams, AnyRoute, any>;
 	run(
-		data: RouteRunData<ExtractRouteParams<Path> & AdditionalParams, ContextTo, Query, Body>,
+		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>,
 	): Promise<Result> | Result;
 };
 

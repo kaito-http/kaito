@@ -1,4 +1,4 @@
-import {z, type ZodTypeDef} from 'zod';
+import {z} from 'zod';
 // import {
 // 	createDocument,
 // 	type ZodOpenApiContentObject,
@@ -6,15 +6,22 @@ import {z, type ZodTypeDef} from 'zod';
 // 	type ZodOpenApiPathsObject,
 // } from 'zod-openapi';
 // import 'zod-openapi/extend';
+import {
+	createDocument,
+	type ZodOpenApiContentObject,
+	type ZodOpenApiOperationObject,
+	type ZodOpenApiPathsObject,
+} from 'zod-openapi';
+import 'zod-openapi/extend';
 import type {KaitoConfig} from '../create.ts';
 import {KaitoError, WrappedError} from '../error.ts';
 import {KaitoHead} from '../head.ts';
 import {KaitoRequest} from '../request.ts';
 import type {AnyQuery, AnyRoute, Route} from '../route.ts';
 import {
+	isNodeLikeDev,
 	type ErroredAPIResponse,
 	type ExtractRouteParams,
-	isNodeLikeDev,
 	type KaitoMethod,
 	type MaybePromise,
 } from '../util.ts';
@@ -39,40 +46,35 @@ type PrefixRoutesPath<Prefix extends `/${string}`, R extends AnyRoute> = R exten
 export type RouterState<
 	ContextFrom,
 	ContextTo,
-	RequiredParams extends Record<string, unknown>,
+	RequiredParams extends string,
 	Routes extends AnyRoute,
+	Input extends readonly unknown[],
 > = {
 	routes: Set<Routes>;
 	through: (context: unknown, params: RequiredParams) => Promise<ContextTo>;
-	config: KaitoConfig<ContextFrom>;
-	paramsSchema: z.Schema<RequiredParams> | null;
+	config: KaitoConfig<ContextFrom, Input>;
 };
 
-/**
- * Accepts a router instance, and returns a union of all the routes in the router
- *
- * @example
- * ```ts
- * const app = router.get('/', () => 'Hello, world!');
- *
- * type Routes = InferRoutes<typeof app>;
- * ```
- */
-export type InferRoutes<R extends Router<any, any, any, any>> =
-	R extends Router<any, any, any, infer R extends AnyRoute> ? R : never;
+export class Router<
+	ContextFrom,
+	ContextTo,
+	RequiredParams extends string,
+	R extends AnyRoute,
+	Input extends readonly unknown[],
+> {
+	private readonly state: RouterState<ContextFrom, ContextTo, RequiredParams, R, Input>;
 
-export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string, unknown>, R extends AnyRoute> {
-	private readonly state: RouterState<ContextFrom, ContextTo, RequiredParams, R>;
-
-	public static create = <Context>(config: KaitoConfig<Context>): Router<Context, Context, {}, never> =>
-		new Router({
+	public static create = <Context = null, Input extends readonly unknown[] = []>(
+		config: KaitoConfig<Context, Input> = {},
+	): Router<Context, Context, never, never, Input> => {
+		return new Router({
 			through: async context => context as Context,
 			routes: new Set(),
 			config,
-			paramsSchema: null,
 		});
+	};
 
-	protected constructor(state: RouterState<ContextFrom, ContextTo, RequiredParams, R>) {
+	protected constructor(state: RouterState<ContextFrom, ContextTo, RequiredParams, R, Input>) {
 		this.state = state;
 	}
 
@@ -80,7 +82,7 @@ export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string
 		return this.state.routes;
 	}
 
-	private add = <Result, Path extends string, Method extends KaitoMethod, Query extends AnyQuery, Body>(
+	private readonly add = <Result, Path extends string, Method extends KaitoMethod, Query extends AnyQuery, Body>(
 		method: Method,
 		path: Path,
 		route:
@@ -95,7 +97,8 @@ export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string
 		ContextFrom,
 		ContextTo,
 		RequiredParams,
-		R | Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body>
+		R | Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body>,
+		Input
 	> => {
 		const merged: Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body> = {
 			...((typeof route === 'object' ? route : {run: route}) as {run: never}),
@@ -110,37 +113,25 @@ export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string
 		});
 	};
 
-	public params: this extends Router<
-		infer ContextFrom,
-		infer ContextTo,
-		infer Params extends Record<string, unknown>,
-		infer R extends AnyRoute
-	>
-		? [keyof Params] extends [never]
-			? <NextParams extends Record<string, unknown> = {}>(spec: {
-					[Key in keyof NextParams]: z.ZodType<NextParams[Key], ZodTypeDef, string>;
-				}) => Router<ContextFrom, ContextTo, NextParams, R>
-			: 'You cannot define params() on a router that has already had params defined, as routes that already consume params can break.'
-		: never = ((spec: {}) =>
-		new Router({
-			...this.state,
-			paramsSchema: z.object(spec),
-		} as never)) as never;
+	public readonly params: [R] extends [never]
+		? <NextParams extends string>() => Router<ContextFrom, ContextTo, NextParams, R, Input>
+		: 'router.params() can only be called before any routes are attached' = (() => this) as never;
 
 	public readonly merge = <
 		PathPrefix extends `/${string}`,
-		NextRequiredParams extends Record<string, unknown>,
+		NextRequiredParams extends string,
 		OtherRoutes extends AnyRoute,
 	>(
-		pathPrefix: keyof NextRequiredParams extends keyof ExtractRouteParams<PathPrefix> | keyof RequiredParams
+		pathPrefix: [NextRequiredParams] extends [ExtractRouteParams<PathPrefix> | RequiredParams]
 			? PathPrefix
-			: `Missing ${Exclude<Extract<keyof NextRequiredParams, string>, keyof RequiredParams>}${string}`,
-		other: Router<ContextFrom, unknown, NextRequiredParams, OtherRoutes>,
+			: `Missing ${Exclude<NextRequiredParams, ExtractRouteParams<PathPrefix> | RequiredParams>}`,
+		other: Router<ContextFrom, unknown, NextRequiredParams, OtherRoutes, Input>,
 	): Router<
 		ContextFrom,
 		ContextTo,
 		RequiredParams,
-		Extract<R | PrefixRoutesPath<PathPrefix, Extract<OtherRoutes, AnyRoute>>, AnyRoute>
+		Extract<R | PrefixRoutesPath<PathPrefix, Extract<OtherRoutes, AnyRoute>>, AnyRoute>,
+		Input
 	> => {
 		const newRoutes = [...other.state.routes].map(route => ({
 			...route,
@@ -231,7 +222,7 @@ export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string
 		const findRoute = Router.getFindRoute(methodToRoutesMap);
 
 		// We don't return this function directly, because we wrap it below with the `.before()` and `.transform()` methods
-		const handle = async (req: Request): Promise<Response> => {
+		const handle = async (req: Request, ...args: Input): Promise<Response> => {
 			const url = new URL(req.url);
 			const method = req.method as KaitoMethod;
 
@@ -253,18 +244,17 @@ export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string
 			try {
 				const body = route.body ? await route.body.parseAsync(await req.json()) : undefined;
 				const query = route.fastQuerySchema ? await route.fastQuerySchema.parseAsync(url.searchParams) : {};
-				const params = route.router.state.paramsSchema ? route.router.state.paramsSchema.parse(rawParams) : rawParams;
 
 				const ctx = await route.router.state.through(
-					(await this.state.config.getContext?.(request, head)) ?? null,
-					params,
+					(await this.state.config.getContext?.(request, head, ...args)) ?? null,
+					rawParams,
 				);
 
 				const result = await route.run({
 					ctx,
 					body,
 					query,
-					params,
+					params: rawParams,
 				});
 
 				if (result instanceof Response) {
@@ -328,7 +318,7 @@ export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string
 			}
 		};
 
-		return async (request: Request): Promise<Response> => {
+		return async (request: Request, ...args: Input): Promise<Response> => {
 			if (this.state.config.before) {
 				const result = await this.state.config.before(request);
 
@@ -345,7 +335,7 @@ export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string
 				}
 			}
 
-			const response = await handle(request);
+			const response = await handle(request, ...args);
 
 			if (this.state.config.transform) {
 				const transformed = await this.state.config.transform(request, response);
@@ -485,8 +475,8 @@ export class Router<ContextFrom, ContextTo, RequiredParams extends Record<string
 
 	public through = <NextContext>(
 		through: (context: ContextTo, params: RequiredParams) => MaybePromise<NextContext>,
-	): Router<ContextFrom, NextContext, RequiredParams, R> => {
-		return new Router<ContextFrom, NextContext, RequiredParams, R>({
+	): Router<ContextFrom, NextContext, RequiredParams, R, Input> => {
+		return new Router<ContextFrom, NextContext, RequiredParams, R, Input>({
 			...this.state,
 			through: async (context, params) => await through(await this.state.through(context, params), params),
 		});

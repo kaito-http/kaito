@@ -1,8 +1,10 @@
 import type {KaitoHead} from './head.ts';
 import type {KaitoRequest} from './request.ts';
+import type {AnyRoute} from './route.ts';
+import type {Router} from './router/router.ts';
 
 /**
- * A helper to check if the environment is Node.js-like and the NODE_ENV is development
+ * A helper to check if the environment is Node.js-like and the `NODE_ENV` environment variable is set to `'development'`
  */
 export const isNodeLikeDev =
 	typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env.NODE_ENV === 'development';
@@ -19,12 +21,25 @@ export type NotReadonly<T> = {
 };
 
 export type ExtractRouteParams<T extends string> = string extends T
-	? Record<string, string>
+	? string
 	: T extends `${string}:${infer Param}/${infer Rest}`
-		? {[k in Param | keyof ExtractRouteParams<Rest>]: string}
+		? Param | ExtractRouteParams<Rest>
 		: T extends `${string}:${infer Param}`
-			? {[k in Param]: string}
-			: {};
+			? Param
+			: never;
+
+/**
+ * Accepts a router instance, and returns a union of all the routes in the router
+ *
+ * @example
+ * ```ts
+ * const app = router.get('/', () => 'Hello, world!');
+ *
+ * type Routes = InferRoutes<typeof app>;
+ * ```
+ */
+export type InferRoutes<R extends Router<never, never, never, never, never>> =
+	R extends Router<any, any, any, infer R extends AnyRoute, any> ? R : never;
 
 /**
  * A function that is called to get the context for a request.
@@ -37,4 +52,8 @@ export type ExtractRouteParams<T extends string> = string extends T
  * @param head - The kaito head object, which contains getters and setters for headers and status
  * @returns The context for your routes
  */
-export type GetContext<Result> = (req: KaitoRequest, head: KaitoHead) => MaybePromise<Result>;
+export type GetContext<Result, Input extends readonly unknown[]> = (
+	req: KaitoRequest,
+	head: KaitoHead,
+	...args: Input
+) => MaybePromise<Result>;

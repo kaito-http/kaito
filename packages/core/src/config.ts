@@ -1,9 +1,8 @@
 import type {KaitoError} from './error.ts';
 import type {KaitoRequest} from './request.ts';
-import {Router} from './router/router.ts';
 import type {GetContext, MaybePromise} from './util.ts';
 
-export type KaitoConfig<ContextFrom> = {
+export type KaitoConfig<ContextFrom, Input extends readonly unknown[]> = {
 	/**
 	 * A function that is called to get the context for a request.
 	 *
@@ -11,7 +10,7 @@ export type KaitoConfig<ContextFrom> = {
 	 *
 	 * It's fine for this function to throw; if it does, the error is passed to the `onError` function.
 	 */
-	getContext?: GetContext<ContextFrom>;
+	getContext?: GetContext<ContextFrom, Input>;
 
 	/**
 	 * A function that is called when an error occurs inside a route handler.
@@ -61,15 +60,3 @@ export type KaitoConfig<ContextFrom> = {
 	 */
 	transform?: (req: Request, res: Response) => MaybePromise<Response | void | undefined>;
 };
-
-/**
- * Create a helper function for instantiating a Kaito router
- *
- * This is the starting point for any Kaito application
- *
- * @param config - The configuration for the router
- * @returns A new Kaito router
- */
-export function create<Context = null>(config: KaitoConfig<Context> = {}) {
-	return Router.create<Context>(config);
-}

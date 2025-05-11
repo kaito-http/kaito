@@ -1,13 +1,12 @@
 import assert from 'node:assert';
 import {describe, it} from 'node:test';
 import {z} from 'zod';
-import {create} from '../create.ts';
 import {KaitoError} from '../error.ts';
 import type {AnyRoute} from '../route.ts';
 import type {KaitoMethod} from '../util.ts';
 import {Router} from './router.ts';
 
-const router = create({
+const router = Router.create({
 	getContext: req => ({req}),
 	onError: () => ({status: 500, message: 'Internal Server Error'}),
 });
@@ -150,7 +149,7 @@ describe('Router', () => {
 		});
 
 		it('should handle generic errors with server error handler', async () => {
-			const r = create({
+			const r = Router.create({
 				onError: () => ({status: 500, message: 'Custom Error Message'}),
 			}).get('/error', {
 				run: async () => {
@@ -174,9 +173,7 @@ describe('Router', () => {
 
 	describe('router merging', () => {
 		it('should merge routers with prefix', async () => {
-			const userRouter = router.get('/:user_id', {
-				run: ({params}) => ({id: params.user_id}),
-			});
+			const userRouter = router.get('/:user_id', ({params}) => params.user_id);
 
 			const mainRouter = router.merge('/api', userRouter);
 
@@ -278,12 +275,12 @@ describe('Router', () => {
 			['PUT', new Map([['/users/:id', dummyHandler]])],
 		]);
 
-		class ExposedInternalsRouter<ContextFrom, ContextTo, R extends AnyRoute> extends Router<
+		class ExposedInternalsRouter<
 			ContextFrom,
 			ContextTo,
-			{},
-			R
-		> {
+			R extends AnyRoute,
+			Input extends readonly unknown[],
+		> extends Router<ContextFrom, ContextTo, never, R, Input> {
 			public static override getFindRoute = Router.getFindRoute;
 		}
 
@@ -386,7 +383,7 @@ describe('Router', () => {
 
 	describe('Lifecycle hooks', () => {
 		it('should short-circuit route execution when before hook returns a Response', async () => {
-			const beforeRouter = create({
+			const beforeRouter = Router.create({
 				before: () => Response.json({blocked: true}, {status: 403}),
 			}).get('/should-not-run', {
 				run: async () => ({should: 'not-run'}),
@@ -401,7 +398,7 @@ describe('Router', () => {
 		});
 
 		it('should modify the route response using transform hook', async () => {
-			const transformRouter = create({
+			const transformRouter = Router.create({
 				transform: async (_req, res) => {
 					const originalData = await res.json();
 					return Response.json({...originalData, transformed: true});
@@ -423,7 +420,7 @@ describe('Router', () => {
 		});
 
 		it('should not apply transform hook to a before hook response', async () => {
-			const beforeTransformRouter = create({
+			const beforeTransformRouter = Router.create({
 				before: () => Response.json({blocked: true}, {status: 403}),
 				// Even though transform returns a new response, its return is ignored because the before hook short-circuits.
 				transform: () => Response.json({shouldNot: 'modify'}, {status: 200}),
@@ -442,17 +439,12 @@ describe('Router', () => {
 
 	describe('params() validation', () => {
 		it('should validate params with schema', async () => {
-			const r = router
-				.params({
-					id: z.string().min(3),
-					slug: z.string().regex(/^[a-z0-9-]+$/),
-				})
-				.get('/', {
-					run: async ({params}) => ({
-						postId: params.id,
-						postSlug: params.slug,
-					}),
-				});
+			const r = router.params<'id' | 'slug'>().get('/', {
+				run: async ({params}) => ({
+					postId: params.id,
+					postSlug: params.slug,
+				}),
+			});
 
 			const root = router.merge('/posts/:id/:slug', r);
 
@@ -482,22 +474,13 @@ describe('Router', () => {
 		});
 
 		it('should work with merged routers and params', async () => {
-			const userRouter = router
-				.params({
-					userId: z.string().min(3),
-				})
-				.get('/', {
-					run: async ({params}) => ({userId: params.userId}),
-				});
+			const userRouter = router.params<'userId'>().get('/', {
+				run: async ({params}) => ({userId: params.userId}),
+			});
 
-			const postRouter = router
-				.params({
-					userId: z.string().min(3),
-					postId: z.string().regex(/^[0-9]+$/),
-				})
-				.get('/', {
-					run: async ({params}) => ({postId: params.postId}),
-				});
+			const postRouter = router.params<'postId' | 'userId'>().get('/', {
+				run: async ({params}) => ({postId: params.postId, userId: params.userId}),
+			});
 
 			const mainRouter = router.merge('/users/:userId', userRouter).merge('/users/:userId/posts/:postId', postRouter);
 
