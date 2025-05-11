@@ -162,9 +162,7 @@ export const STRING_FORMAT_REGEXES = {
 	email: /^(?!\.)(?!.*\.\.)([A-Z0-9_'+\-\.]*)[A-Z0-9_+-]@([A-Z0-9][A-Z0-9\-]*\.)+[A-Z]{2,}$/i,
 	ipv4: /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/,
 	ipv6: /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/,
-	date: new RegExp(
-		`^((\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-((0[13578]|1[02])-(0[1-9]|[12]\\d|3[01])|(0[469]|11)-(0[1-9]|[12]\\d|30)|(02)-(0[1-9]|1\\d|2[0-8])))$`,
-	),
+	date: /^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/,
 	uri: /^(([^:/?#]+):)?(\/\/([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/,
 	hostname:
 		/^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$/,
@@ -752,7 +750,9 @@ export class KRef<Shape extends Record<string, BaseSchemaDef<any, any>>> extends
 	}
 
 	public parseSafe(json: unknown) {
-		return ParseContext.result(ctx => {
+		return ParseContext.result<{
+			[K in keyof Shape]: Input<Shape[K]>;
+		}>(ctx => {
 			if (typeof json !== 'object' || json === null || Array.isArray(json)) {
 				return ctx.addIssue('Expected object', []);
 			}
@@ -835,8 +835,8 @@ export class KRef<Shape extends Record<string, BaseSchemaDef<any, any>>> extends
 
 export interface ScalarOptions<ClientRepresentation extends JSONPrimitive, ServerRepresentation> {
 	schema: BaseSchema<BaseSchemaDef<ClientRepresentation, ClientRepresentation>>;
-	from: (jsonValue: ClientRepresentation) => ServerRepresentation;
-	to: (clientValue: ServerRepresentation) => ClientRepresentation;
+	toServer: (jsonValue: ClientRepresentation) => ServerRepresentation;
+	toClient: (clientValue: ServerRepresentation) => ClientRepresentation;
 }
 
 export interface ScalarDef<ClientRepresentation extends JSONPrimitive, ServerRepresentation>
@@ -855,7 +855,7 @@ export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresent
 	}
 
 	override serialize(value: ServerRepresentation): ClientRepresentation {
-		return this.def.to(value);
+		return this.def.toClient(value);
 	}
 
 	override toOpenAPI(): SchemaObject | ReferenceObject {
@@ -868,7 +868,7 @@ export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresent
 			if (!jsonValue.success) {
 				return ctx.addIssues(jsonValue.issues, []);
 			}
-			return this.def.from(jsonValue.result);
+			return this.def.toServer(jsonValue.result);
 		});
 	}
 

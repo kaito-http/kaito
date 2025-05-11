@@ -556,8 +556,8 @@ describe('Schema', () => {
 		describe('basic scalar types', () => {
 			const bigIntSchema = k.scalar({
 				schema: k.string(),
-				from: value => BigInt(value),
-				to: value => value.toString(),
+				toServer: value => BigInt(value),
+				toClient: value => value.toString(),
 			});
 
 			it('should parse and transform valid values', () => {
@@ -586,8 +586,8 @@ describe('Schema', () => {
 		describe('complex transformations', () => {
 			const dateSchema = k.scalar<string, Date>({
 				schema: k.string().date(),
-				from: (value: string) => new Date(value),
-				to: (value: Date) => value.toISOString().split('T')[0]!,
+				toServer: string => new Date(string),
+				toClient: date => date.toISOString().split('T')[0]!,
 			});
 
 			it('should parse dates from strings', () => {
@@ -614,8 +614,8 @@ describe('Schema', () => {
 			const schema = k
 				.scalar({
 					schema: k.string(),
-					from: value => BigInt(value),
-					to: value => value.toString(),
+					toServer: value => BigInt(value),
+					toClient: value => value.toString(),
 				})
 				.description('A big integer ID')
 				.example('12345');
