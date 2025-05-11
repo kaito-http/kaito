@@ -921,7 +921,7 @@ __metadata:
     "@arethetypeswrong/cli": "npm:^0.17.2"
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.3"
-    uWebSockets.js: "https://github.com/kaito-http/uWebSockets.js#v20.51.0"
+    uWebSockets.js: "https://github.com/uNetworking/uWebSockets.js#v20.52.0"
   languageName: unknown
   linkType: soft
 
@@ -6995,10 +6995,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"uWebSockets.js@https://github.com/kaito-http/uWebSockets.js#v20.51.0":
-  version: 20.51.0
-  resolution: "uWebSockets.js@https://github.com/kaito-http/uWebSockets.js.git#commit=6609a88ffa9a16ac5158046761356ce03250a0df"
-  checksum: 10c0/25bd18780ee0582981bf40f40a56dd1d38d528c0d22806c4295d6ab165aae10e90438ca910952ca32d86e264d851325104051b3339e46c8df8633661192d7131
+"uWebSockets.js@https://github.com/uNetworking/uWebSockets.js#v20.52.0":
+  version: 20.52.0
+  resolution: "uWebSockets.js@https://github.com/uNetworking/uWebSockets.js.git#commit=cfc9a40d8132a34881813cec3d5f8e3a185b3ce3"
+  checksum: 10c0/3a852780e99ee16196fd4b027374527f28bdb9509b3d42fcfc85144ef46fa5dd72b6ebf45499f8f0eefadb403e10e6f4605131d0e3992118e2d79d2e769bf68a
   languageName: node
   linkType: hard
 

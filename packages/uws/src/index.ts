@@ -144,9 +144,12 @@ export class KaitoServer {
 		await Promise.all(staticPromises);
 
 		app.any('/*', async (res, req) => {
+			const controller = new AbortController();
+
 			let aborted = false;
 			res.onAborted(() => {
 				aborted = true;
+				controller.abort();
 			});
 
 			const headers = new Headers();
@@ -162,7 +165,7 @@ export class KaitoServer {
 				headers,
 				method,
 				body: method === GET || method === HEAD ? null : this.getRequestBodyStream(res),
-
+				signal: controller.signal,
 				// @ts-expect-error undici in Node.js doesn't define the types
 				duplex: 'half',
 			});

@@ -30,7 +30,7 @@
 	"repository": "https://github.com/kaito-http/kaito",
 	"license": "MIT",
 	"dependencies": {
-		"uWebSockets.js": "https://github.com/kaito-http/uWebSockets.js#v20.51.0"
+		"uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js#v20.52.0"
 	},
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.17.2",
