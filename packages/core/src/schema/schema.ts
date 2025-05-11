@@ -3,14 +3,14 @@ import type {ReferenceObject, SchemaObject} from 'openapi3-ts/oas31';
 export type JSONPrimitive = string | number | boolean | null;
 export type JSONValue = JSONPrimitive | JSONValue[] | {[key: string]: JSONValue};
 
-export interface BaseSchemaDef<Input extends JSONValue, Output extends JSONValue> {
+export interface BaseSchemaDef<Input extends JSONValue, _Output extends JSONValue> {
 	example?: Input | undefined;
 	description?: string | undefined;
 }
 
-type Input<Def extends BaseSchemaDef<any, any>> = Def extends BaseSchemaDef<infer Input, infer Output> ? Input : never;
+type Input<Def extends BaseSchemaDef<any, any>> = Def extends BaseSchemaDef<infer Input, infer _Output> ? Input : never;
 type Output<Def extends BaseSchemaDef<any, any>> =
-	Def extends BaseSchemaDef<infer Input, infer Output> ? Output : never;
+	Def extends BaseSchemaDef<infer _Input, infer Output> ? Output : never;
 
 export interface Issue {
 	message: string;
@@ -99,6 +99,7 @@ export abstract class BaseSchema<Def extends BaseSchemaDef<any, any>> {
 	protected readonly def: Def;
 
 	protected clone(def: Partial<Def>): this {
+		// @ts-expect-error
 		return new this.constructor({
 			...this.def,
 			...def,
@@ -116,7 +117,7 @@ export abstract class BaseSchema<Def extends BaseSchemaDef<any, any>> {
 			return this.def.example;
 		}
 
-		return this.clone({example});
+		return this.clone({example} as Partial<Def>);
 	}
 
 	description(description: string): this;
@@ -126,7 +127,7 @@ export abstract class BaseSchema<Def extends BaseSchemaDef<any, any>> {
 			return this.def.description;
 		}
 
-		return this.clone({description});
+		return this.clone({description} as Partial<Def>);
 	}
 }
 
