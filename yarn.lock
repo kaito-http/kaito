@@ -897,8 +897,6 @@ __metadata:
     openapi3-ts: "npm:^4.4.0"
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.3"
-  peerDependencies:
-    zod: ^3.24.1
   languageName: unknown
   linkType: soft
 

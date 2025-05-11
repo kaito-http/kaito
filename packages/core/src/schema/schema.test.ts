@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import {describe, it} from 'node:test';
-import {k, KArray, KBoolean, KNull, KNumber, KRef, KString} from './schema.ts';
+import {k, KNumber, KString} from './schema.ts';
 
 describe('Schema', () => {
 	describe('KString', () => {
