@@ -280,4 +280,44 @@ describe('KaitoServer', () => {
 			server.close();
 		}
 	});
+
+	test('server detects client disconnect during streaming response', async () => {
+		let disconnectDetected = false;
+		const encoder = new TextEncoder();
+
+		const server = await createTestServer({
+			fetch: async () => {
+				const stream = new ReadableStream({
+					async start(controller) {
+						controller.enqueue(encoder.encode('chunk1'));
+						await new Promise(r => setTimeout(r, 200));
+						controller.enqueue(encoder.encode('chunk2'));
+						await new Promise(r => setTimeout(r, 200));
+						controller.enqueue(encoder.encode('chunk3'));
+						controller.close();
+					},
+					cancel() {
+						disconnectDetected = true;
+					},
+				});
+
+				return new Response(stream);
+			},
+		});
+
+		try {
+			const controller = new AbortController();
+			const res = await fetch(server.url, {signal: controller.signal});
+			const reader = res.body!.getReader();
+
+			await reader.read();
+			controller.abort(); // disconnect before next chunks
+
+			await new Promise(r => setTimeout(r, 200)); // short processing time so server can detect disconnect
+
+			assert.equal(disconnectDetected, true, 'Server should detect client disconnect');
+		} finally {
+			server.close();
+		}
+	});
 });

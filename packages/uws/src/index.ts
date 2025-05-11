@@ -259,6 +259,9 @@ export class KaitoServer {
 						await writeNext(value);
 					}
 				}
+				if (aborted) {
+					await reader.cancel('Request aborted');
+				}
 			} finally {
 				if (!aborted) {
 					res.cork(() => res.end());
