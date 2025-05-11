@@ -817,7 +817,6 @@ __metadata:
     dotenv: "npm:^16.3.1"
     tsx: "npm:^4.19.2"
     typescript: "npm:^5.7.3"
-    zod: "npm:^3.24.1"
   languageName: unknown
   linkType: soft
 
@@ -832,7 +831,6 @@ __metadata:
     stripe: "npm:^17.5.0"
     tsx: "npm:^4.19.2"
     typescript: "npm:^5.7.3"
-    zod: "npm:^3.24.1"
   languageName: unknown
   linkType: soft
 
@@ -843,7 +841,6 @@ __metadata:
     "@kaito-http/core": "workspace:^"
     tsx: "npm:^4.19.2"
     typescript: "npm:^5.7.3"
-    zod: "npm:^3.24.1"
   languageName: unknown
   linkType: soft
 
@@ -873,7 +870,6 @@ __metadata:
     "@kaito-http/core": "workspace:^"
     tsx: "npm:^4.19.2"
     typescript: "npm:^5.7.3"
-    zod: "npm:^3.24.1"
   languageName: unknown
   linkType: soft
 
@@ -894,11 +890,9 @@ __metadata:
   resolution: "@kaito-http/core@workspace:packages/core"
   dependencies:
     "@arethetypeswrong/cli": "npm:^0.17.2"
+    openapi3-ts: "npm:^4.4.0"
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.3"
-    zod-openapi: "npm:^4.2.3"
-  peerDependencies:
-    zod: ^3.24.1
   languageName: unknown
   linkType: soft
 
@@ -5602,6 +5596,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"openapi3-ts@npm:^4.4.0":
+  version: 4.4.0
+  resolution: "openapi3-ts@npm:4.4.0"
+  dependencies:
+    yaml: "npm:^2.5.0"
+  checksum: 10c0/900b834279fc8a43c545728ad75ec7c26934ec5344225b60d1e1c0df44d742d7e7379aea18d9034e03031f079d3308ba5a68600682eece3ed41cdbdd10346a9e
+  languageName: node
+  linkType: hard
+
 "p-limit@npm:^6.0.0":
   version: 6.2.0
   resolution: "p-limit@npm:6.2.0"
@@ -7391,6 +7394,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"yaml@npm:^2.5.0":
+  version: 2.7.0
+  resolution: "yaml@npm:2.7.0"
+  bin:
+    yaml: bin.mjs
+  checksum: 10c0/886a7d2abbd70704b79f1d2d05fe9fb0aa63aefb86e1cb9991837dced65193d300f5554747a872b4b10ae9a12bc5d5327e4d04205f70336e863e35e89d8f4ea9
+  languageName: node
+  linkType: hard
+
 "yargs-parser@npm:^20.2.2":
   version: 20.2.9
   resolution: "yargs-parser@npm:20.2.9"
@@ -7420,15 +7432,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod-openapi@npm:^4.2.3":
-  version: 4.2.3
-  resolution: "zod-openapi@npm:4.2.3"
-  peerDependencies:
-    zod: ^3.21.4
-  checksum: 10c0/7f36eaeba40bb1dd444dbd73f0b9a6ff825cf43ca09ca64093e4a26eecb541987516ea0535fd258b7ba44424c90c5b2c0c0df8e7725e159fbc149f7611932f34
-  languageName: node
-  linkType: hard
-
 "zod-validation-error@npm:^3.0.0":
   version: 3.4.0
   resolution: "zod-validation-error@npm:3.4.0"
@@ -7442,13 +7445,6 @@ __metadata:
   version: 3.23.8
   resolution: "zod@npm:3.23.8"
   checksum: 10c0/8f14c87d6b1b53c944c25ce7a28616896319d95bc46a9660fe441adc0ed0a81253b02b5abdaeffedbeb23bdd25a0bf1c29d2c12dd919aef6447652dd295e3e69
-  languageName: node
-  linkType: hard
-
-"zod@npm:^3.24.1":
-  version: 3.24.1
-  resolution: "zod@npm:3.24.1"
-  checksum: 10c0/0223d21dbaa15d8928fe0da3b54696391d8e3e1e2d0283a1a070b5980a1dbba945ce631c2d1eccc088fdbad0f2dfa40155590bf83732d3ac4fcca2cc9237591b
   languageName: node
   linkType: hard
 

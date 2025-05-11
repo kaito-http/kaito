@@ -1,11 +1,3 @@
-import {z} from 'zod';
-import {
-	createDocument,
-	type ZodOpenApiContentObject,
-	type ZodOpenApiOperationObject,
-	type ZodOpenApiPathsObject,
-} from 'zod-openapi';
-import 'zod-openapi/extend';
 import type {KaitoConfig} from '../config.ts';
 import {KaitoError, WrappedError} from '../error.ts';
 import {KaitoHead} from '../head.ts';
@@ -174,21 +166,21 @@ export class Router<
 			return {};
 		};
 
-	private static buildQuerySchema = (schema: Record<string, z.Schema>) => {
-		const keys = Object.keys(schema);
-		return z
-			.instanceof(URLSearchParams)
-			.transform(params => {
-				const result: Record<string, unknown> = {};
+	// private static buildQuerySchema = (schema: Record<string, z.Schema>) => {
+	// 	const keys = Object.keys(schema);
+	// 	return z
+	// 		.instanceof(URLSearchParams)
+	// 		.transform(params => {
+	// 			const result: Record<string, unknown> = {};
 
-				for (const key of keys) {
-					result[key] = params.get(key);
-				}
+	// 			for (const key of keys) {
+	// 				result[key] = params.get(key);
+	// 			}
 
-				return result;
-			})
-			.pipe(z.object(schema));
-	};
+	// 			return result;
+	// 		})
+	// 		.pipe(z.object(schema));
+	// };
 
 	public serve = () => {
 		const methodToRoutesMap = new Map<
@@ -196,7 +188,8 @@ export class Router<
 			Map<
 				string,
 				AnyRoute & {
-					fastQuerySchema: z.Schema<Record<string, unknown>, z.ZodTypeDef, URLSearchParams> | undefined;
+					// fastQuerySchema: z.Schema<Record<string, unknown>, z.ZodTypeDef, URLSearchParams> | undefined;
+					fastQuerySchema: undefined;
 				}
 			>
 		>();
@@ -208,7 +201,8 @@ export class Router<
 
 			methodToRoutesMap.get(route.method)!.set(route.path, {
 				...route,
-				fastQuerySchema: route.query ? Router.buildQuerySchema(route.query) : undefined,
+				fastQuerySchema: undefined,
+				// fastQuerySchema: route.query ? Router.buildQuerySchema(route.query) : undefined,
 			});
 		}
 
@@ -236,7 +230,7 @@ export class Router<
 
 			try {
 				const body = route.body ? await route.body.parseAsync(await req.json()) : undefined;
-				const query = route.fastQuerySchema ? await route.fastQuerySchema.parseAsync(url.searchParams) : {};
+				const query = route.fastQuerySchema ? await (route.fastQuerySchema as any).parseAsync(url.searchParams) : {};
 
 				const ctx = await route.router.state.through(
 					(await this.state.config.getContext?.(request, head, ...args)) ?? null,
@@ -350,6 +344,9 @@ export class Router<
 		};
 		servers?: Partial<Record<(`https://` | `http://`) | ({} & string), string>>;
 	}) => {
+		return this;
+		/*
+
 		const OPENAPI_VERSION = '3.0.0';
 
 		const paths: ZodOpenApiPathsObject = {};
@@ -442,6 +439,8 @@ export class Router<
 		});
 
 		return this.get('/openapi.json', () => Response.json(doc));
+	
+	*/
 	};
 
 	private readonly method = <M extends KaitoMethod>(method: M) => {
