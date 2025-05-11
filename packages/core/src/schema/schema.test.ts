@@ -474,7 +474,10 @@ describe('Schema', () => {
 					},
 					tags: ['hello', 'world'],
 				};
-				assert.deepStrictEqual(postSchema.parse(validPost), validPost);
+
+				const parsed = postSchema.parse(validPost);
+
+				assert.deepStrictEqual(parsed, validPost);
 			});
 
 			it('should validate nested ref properties', () => {

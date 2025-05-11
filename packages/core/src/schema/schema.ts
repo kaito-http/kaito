@@ -666,8 +666,8 @@ export interface NullDef extends BaseSchemaDef<null, null> {}
 export class KNull extends BaseSchema<null, null, NullDef> {
 	public static create = () => new KNull({});
 
-	public serialize(): null {
-		return null;
+	public serialize(value: null): null {
+		return value;
 	}
 
 	public toOpenAPI(): SchemaObject | ReferenceObject {
@@ -699,7 +699,7 @@ export class KNull extends BaseSchema<null, null, NullDef> {
 ////////////////////// KREF //////////////////////
 /////////////////////////////////////////////////////
 
-export interface RefDef<Input extends Record<string, JSONValue>, Output extends Record<keyof Input, JSONValue>>
+export interface RefDef<Input extends Record<keyof Output, JSONValue>, Output extends Record<keyof Input, JSONValue>>
 	extends BaseSchemaDef<Input, Output> {
 	name: string;
 	shape: {
@@ -708,14 +708,13 @@ export interface RefDef<Input extends Record<string, JSONValue>, Output extends 
 }
 
 export class KRef<
-	Input extends Record<string, JSONValue>,
+	Input extends Record<keyof Output, JSONValue>,
 	Output extends Record<keyof Input, JSONValue>,
-	Shape extends Record<string, BaseSchema<any, any, any>>,
 > extends BaseSchema<Input, Output, RefDef<Input, Output>> {
-	public static create = <Input extends Record<string, JSONValue>, Output extends Record<keyof Input, JSONValue>>(
+	public static create = <Input extends Record<keyof Output, JSONValue>, Output extends Record<keyof Input, JSONValue>>(
 		name: string,
 		shape: {
-			[K in keyof Input]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K], Output[K]>>;
+			[K in keyof Input | keyof Output]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K], Output[K]>>;
 		},
 	) => new KRef({name, shape});
 
@@ -786,42 +785,6 @@ export class KRef<
 		return this.def.name;
 	}
 }
-
-// export type ScalarDef<ClientRepresentation extends JSONPrimitive, ServerRepresentation> = {
-// 	json: KBaseSchema<ClientRepresentation, ClientRepresentation>;
-// 	parse(jsonValue: ClientRepresentation): ServerRepresentation;
-// 	serialize(clientValue: ServerRepresentation): ClientRepresentation;
-// };
-
-// export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresentation> extends KBaseSchema<
-// 	ClientRepresentation,
-// 	ServerRepresentation
-// > {
-// 	private def: ScalarDef<ClientRepresentation, ServerRepresentation>;
-
-// 	constructor(def: ScalarDef<ClientRepresentation, ServerRepresentation>) {
-// 		super();
-// 		this.def = def;
-// 	}
-
-// 	override parse(json: unknown): ServerRepresentation {
-// 		const jsonValue = this.def.json.parse(json);
-// 		return this.def.parse(jsonValue);
-// 	}
-
-// 	override serialize(value: ServerRepresentation): unknown {
-// 		const jsonValue = this.def.serialize(value);
-// 		return this.def.json.serialize(jsonValue);
-// 	}
-
-// 	override toOpenAPI(): SchemaObject | ReferenceObject {
-// 		const base = this.def.json.toOpenAPI();
-// 		if (this._description && 'description' in base) {
-// 			base.description = this._description;
-// 		}
-// 		return base;
-// 	}
-// }
 
 export interface ScalarOptions<ClientRepresentation extends JSONPrimitive, ServerRepresentation> {
 	schema: BaseSchema<
