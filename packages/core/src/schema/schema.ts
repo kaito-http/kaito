@@ -8,10 +8,6 @@ export interface BaseSchemaDef<Input extends JSONValue, _Output> {
 	description?: string | undefined;
 }
 
-type Input<Def extends BaseSchemaDef<any, any>> = Def extends BaseSchemaDef<infer Input, infer _Output> ? Input : never;
-type Output<Def extends BaseSchemaDef<any, any>> =
-	Def extends BaseSchemaDef<infer _Input, infer Output> ? Output : never;
-
 export interface Issue {
 	message: string;
 	path: string[];
@@ -97,10 +93,10 @@ export class ParseContext {
 	}
 }
 
-export abstract class BaseSchema<Def extends BaseSchemaDef<any, any>> {
-	abstract parse(json: unknown): Output<Def>;
-	abstract parseSafe(json: unknown): ParseResult<Output<Def>>;
-	abstract serialize(value: Output<Def>): JSONValue;
+export abstract class BaseSchema<Input extends JSONValue, Output, Def extends BaseSchemaDef<Input, Output>> {
+	abstract parse(json: unknown): Output;
+	abstract parseSafe(json: unknown): ParseResult<Output>;
+	abstract serialize(value: Output): Input;
 	abstract toOpenAPI(): SchemaObject | ReferenceObject;
 
 	protected readonly def: Def;
@@ -117,9 +113,9 @@ export abstract class BaseSchema<Def extends BaseSchemaDef<any, any>> {
 		this.def = def;
 	}
 
-	example(example: Input<Def>): this;
-	example(): Input<Def> | undefined;
-	example(example?: Input<Def>) {
+	example(example: Input): this;
+	example(): Input | undefined;
+	example(example?: Input) {
 		if (example === undefined) {
 			return this.def.example;
 		}
@@ -177,7 +173,7 @@ export interface StringChecks {
 
 export interface StringDef extends BaseSchemaDef<string, string>, StringChecks {}
 
-export class KString extends BaseSchema<StringDef> {
+export class KString extends BaseSchema<string, string, StringDef> {
 	public static create = () => new KString({});
 
 	public serialize(value: string): string {
@@ -412,7 +408,7 @@ export interface NumberChecks {
 
 export interface NumberDef extends BaseSchemaDef<number, number>, NumberChecks {}
 
-export class KNumber extends BaseSchema<NumberDef> {
+export class KNumber extends BaseSchema<number, number, NumberDef> {
 	public static create = () => new KNumber({});
 
 	public serialize(value: number): number {
@@ -524,7 +520,7 @@ export class KNumber extends BaseSchema<NumberDef> {
 
 export interface BooleanDef extends BaseSchemaDef<boolean, boolean> {}
 
-export class KBoolean extends BaseSchema<BooleanDef> {
+export class KBoolean extends BaseSchema<boolean, boolean, BooleanDef> {
 	public static create = () => new KBoolean({});
 
 	public serialize(value: boolean): boolean {
@@ -568,16 +564,21 @@ export interface ArrayChecks {
 	uniqueItems?: Check<'uniqueItems', {val: boolean}>;
 }
 
-export interface ArrayDef<Input extends JSONValue, Output> extends BaseSchemaDef<Input, Output>, ArrayChecks {
-	items: BaseSchema<BaseSchemaDef<Input, Output>>;
+export interface ArrayDef<Input extends JSONValue, Output> extends BaseSchemaDef<Input[], Output[]>, ArrayChecks {
+	items: BaseSchema<Input, Output, BaseSchemaDef<Input, Output>>;
 }
 
-export class KArray<Input extends JSONValue, Output> extends BaseSchema<ArrayDef<Input, Output>> {
-	public static create = <Input extends JSONValue, Output>(items: BaseSchema<BaseSchemaDef<Input, Output>>) =>
-		new KArray({items});
+export class KArray<Input extends JSONValue, Output> extends BaseSchema<Input[], Output[], ArrayDef<Input, Output>> {
+	public static create = <
+		ItemsInput extends JSONValue,
+		ItemsOutput,
+		Def extends BaseSchemaDef<ItemsInput, ItemsOutput>,
+	>(
+		items: BaseSchema<ItemsInput, ItemsOutput, Def>,
+	) => new KArray({items});
 
 	public serialize(value: Output[]): Input[] {
-		return value.map(item => this.def.items.serialize(item) as Input);
+		return value.map(item => this.def.items.serialize(item));
 	}
 
 	private setCheck<T extends keyof ArrayChecks>(check: NonNullable<ArrayChecks[T]>): this {
@@ -662,7 +663,7 @@ export class KArray<Input extends JSONValue, Output> extends BaseSchema<ArrayDef
 
 export interface NullDef extends BaseSchemaDef<null, null> {}
 
-export class KNull extends BaseSchema<NullDef> {
+export class KNull extends BaseSchema<null, null, NullDef> {
 	public static create = () => new KNull({});
 
 	public serialize(): null {
@@ -698,27 +699,27 @@ export class KNull extends BaseSchema<NullDef> {
 ////////////////////// KREF //////////////////////
 /////////////////////////////////////////////////////
 
-export interface RefDef<Shape extends Record<string, BaseSchemaDef<any, any>>>
-	extends BaseSchemaDef<
-		{
-			[K in keyof Shape]: Input<Shape[K]>;
-		},
-		{
-			[K in keyof Shape]: Output<Shape[K]>;
-		}
-	> {
+export interface RefDef<Input extends Record<string, JSONValue>, Output extends Record<keyof Input, JSONValue>>
+	extends BaseSchemaDef<Input, Output> {
 	name: string;
 	shape: {
-		[K in keyof Shape]: BaseSchema<Shape[K]>;
+		[K in keyof Input]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K], Output[K]>>;
 	};
 }
 
-export class KRef<Shape extends Record<string, BaseSchemaDef<any, any>>> extends BaseSchema<RefDef<Shape>> {
-	override serialize(value: {
-		[K in keyof Shape]: Input<Shape[K]>;
-	}): {
-		[K in keyof Shape]: Output<Shape[K]>;
-	} {
+export class KRef<
+	Input extends Record<string, JSONValue>,
+	Output extends Record<keyof Input, JSONValue>,
+	Shape extends Record<string, BaseSchema<any, any, any>>,
+> extends BaseSchema<Input, Output, RefDef<Input, Output>> {
+	public static create = <Input extends Record<string, JSONValue>, Output extends Record<keyof Input, JSONValue>>(
+		name: string,
+		shape: {
+			[K in keyof Input]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K], Output[K]>>;
+		},
+	) => new KRef({name, shape});
+
+	override serialize(value: Output): Input {
 		const result: Record<string, unknown> = {};
 		for (const key in this.def.shape) {
 			if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
@@ -730,17 +731,8 @@ export class KRef<Shape extends Record<string, BaseSchemaDef<any, any>>> extends
 			}
 		}
 
-		return result as {
-			[K in keyof Shape]: Output<Shape[K]>;
-		};
+		return result as Input;
 	}
-
-	public static create = <Shape extends Record<string, BaseSchemaDef<any, any>>>(
-		name: string,
-		shape: {
-			[K in keyof Shape]: BaseSchema<Shape[K]>;
-		},
-	) => new KRef({name, shape});
 
 	override toOpenAPI(): ReferenceObject {
 		return {
@@ -749,15 +741,13 @@ export class KRef<Shape extends Record<string, BaseSchemaDef<any, any>>> extends
 		};
 	}
 
-	public parseSafe(json: unknown) {
-		return ParseContext.result<{
-			[K in keyof Shape]: Input<Shape[K]>;
-		}>(ctx => {
+	public parseSafe(json: unknown): ParseResult<Output> {
+		return ParseContext.result<Output>(ctx => {
 			if (typeof json !== 'object' || json === null || Array.isArray(json)) {
 				return ctx.addIssue('Expected object', []);
 			}
 
-			const result: any = {};
+			const result: Output = {} as Output;
 
 			for (const key in this.def.shape) {
 				if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
@@ -769,7 +759,7 @@ export class KRef<Shape extends Record<string, BaseSchemaDef<any, any>>> extends
 					const parseResult = this.def.shape[key]!.parseSafe(value);
 
 					if (!parseResult.success) {
-						return ctx.addIssues(result.issues, [key]);
+						return ctx.addIssues(parseResult.issues, [key]);
 					}
 
 					result[key] = parseResult.result;
@@ -834,7 +824,11 @@ export class KRef<Shape extends Record<string, BaseSchemaDef<any, any>>> extends
 // }
 
 export interface ScalarOptions<ClientRepresentation extends JSONPrimitive, ServerRepresentation> {
-	schema: BaseSchema<BaseSchemaDef<ClientRepresentation, ClientRepresentation>>;
+	schema: BaseSchema<
+		ClientRepresentation,
+		ClientRepresentation,
+		BaseSchemaDef<ClientRepresentation, ClientRepresentation>
+	>;
 	toServer: (jsonValue: ClientRepresentation) => ServerRepresentation;
 	toClient: (clientValue: ServerRepresentation) => ClientRepresentation;
 }
@@ -844,6 +838,8 @@ export interface ScalarDef<ClientRepresentation extends JSONPrimitive, ServerRep
 		ScalarOptions<ClientRepresentation, ServerRepresentation> {}
 
 export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresentation> extends BaseSchema<
+	ClientRepresentation,
+	ServerRepresentation,
 	ScalarDef<ClientRepresentation, ServerRepresentation>
 > {
 	public static create = <ClientRepresentation extends JSONPrimitive, ServerRepresentation>(
