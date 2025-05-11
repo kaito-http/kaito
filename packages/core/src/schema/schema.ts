@@ -3,7 +3,7 @@ import type {ReferenceObject, SchemaObject} from 'openapi3-ts/oas31';
 export type JSONPrimitive = string | number | boolean | null;
 export type JSONValue = JSONPrimitive | JSONValue[] | {[key: string]: JSONValue};
 
-export interface BaseSchemaDef<Input extends JSONValue, _Output extends JSONValue> {
+export interface BaseSchemaDef<Input extends JSONValue, _Output> {
 	example?: Input | undefined;
 	description?: string | undefined;
 }
@@ -302,70 +302,70 @@ export class KString extends BaseSchema<StringDef> {
 			}
 
 			if (this.def.min !== undefined && json.length < this.def.min.val) {
-				ctx.addIssue(`String must be at least ${this.def.min.val} characters long`, []);
+				ctx.addIssue(this.def.min.message ?? `String must be at least ${this.def.min.val} characters long`, []);
 			}
 
 			if (this.def.max !== undefined && json.length > this.def.max.val) {
-				ctx.addIssue(`String must be at most ${this.def.max.val} characters long`, []);
+				ctx.addIssue(this.def.max.message ?? `String must be at most ${this.def.max.val} characters long`, []);
 			}
 
 			if (this.def.regex !== undefined && !this.def.regex.regex.test(json)) {
-				ctx.addIssue(`String must match ${this.def.regex.regex.source}`, []);
+				ctx.addIssue(this.def.regex.message ?? `String must match ${this.def.regex.regex.source}`, []);
 			}
 
 			if (this.def.format !== undefined) {
 				switch (this.def.format.format) {
 					case 'uuid':
 						if (!STRING_FORMAT_REGEXES.uuid.test(json)) {
-							ctx.addIssue('Invalid UUID format', []);
+							ctx.addIssue(this.def.format.message ?? 'Invalid UUID format', []);
 						}
 						break;
 
 					case 'email':
 						if (!STRING_FORMAT_REGEXES.email.test(json)) {
-							ctx.addIssue('Invalid email format', []);
+							ctx.addIssue(this.def.format.message ?? 'Invalid email format', []);
 						}
 						break;
 
 					case 'ipv4':
 						if (!STRING_FORMAT_REGEXES.ipv4.test(json)) {
-							ctx.addIssue('Invalid IPv4 address', []);
+							ctx.addIssue(this.def.format.message ?? 'Invalid IPv4 address', []);
 						}
 						break;
 
 					case 'ipv6':
 						if (!STRING_FORMAT_REGEXES.ipv6.test(json)) {
-							ctx.addIssue('Invalid IPv6 address', []);
+							ctx.addIssue(this.def.format.message ?? 'Invalid IPv6 address', []);
 						}
 						break;
 
 					case 'date':
 						if (!STRING_FORMAT_REGEXES.date.test(json)) {
-							ctx.addIssue('Invalid date format', []);
+							ctx.addIssue(this.def.format.message ?? 'Invalid date format', []);
 						}
 						break;
 
 					case 'date-time':
 						if (Number.isNaN(new Date(json).getTime())) {
-							ctx.addIssue('Invalid date-time format', []);
+							ctx.addIssue(this.def.format.message ?? 'Invalid date-time format', []);
 						}
 						break;
 
 					case 'byte':
 						if (!/^[A-Za-z0-9+/]*={0,2}$/.test(json) || json.length % 4 !== 0) {
-							ctx.addIssue('Invalid base64 format', []);
+							ctx.addIssue(this.def.format.message ?? 'Invalid base64 format', []);
 						}
 						break;
 
 					case 'uri':
 						if (!STRING_FORMAT_REGEXES.uri.test(json)) {
-							ctx.addIssue('Invalid URI format', []);
+							ctx.addIssue(this.def.format.message ?? 'Invalid URI format', []);
 						}
 						break;
 
 					case 'hostname':
 						if (!STRING_FORMAT_REGEXES.hostname.test(json)) {
-							ctx.addIssue('Invalid hostname format', []);
+							ctx.addIssue(this.def.format.message ?? 'Invalid hostname format', []);
 						}
 						break;
 
@@ -487,19 +487,22 @@ export class KNumber extends BaseSchema<NumberDef> {
 			}
 
 			if (this.def.integer && !Number.isInteger(json)) {
-				return ctx.addIssue('Expected integer', []);
+				return ctx.addIssue(this.def.integer.message ?? 'Expected integer', []);
 			}
 
 			if (this.def.min !== undefined && json < this.def.min.val) {
-				return ctx.addIssue(`Number must be greater than ${this.def.min.val}`, []);
+				return ctx.addIssue(this.def.min.message ?? `Number must be greater than ${this.def.min.val}`, []);
 			}
 
 			if (this.def.max !== undefined && json > this.def.max.val) {
-				return ctx.addIssue(`Number must be less than ${this.def.max.val}`, []);
+				return ctx.addIssue(this.def.max.message ?? `Number must be less than ${this.def.max.val}`, []);
 			}
 
 			if (this.def.multipleOf !== undefined && json % this.def.multipleOf.val !== 0) {
-				return ctx.addIssue(`Number must be a multiple of ${this.def.multipleOf.val}`, []);
+				return ctx.addIssue(
+					this.def.multipleOf.message ?? `Number must be a multiple of ${this.def.multipleOf.val}`,
+					[],
+				);
 			}
 
 			return json;
@@ -561,31 +564,73 @@ export class KBoolean extends BaseSchema<BooleanDef> {
 ////////////////////// KARRAY //////////////////////
 /////////////////////////////////////////////////////
 
-export interface ArrayDef<T extends JSONValue> extends BaseSchemaDef<T[], T[]> {
-	items: BaseSchema<BaseSchemaDef<T, T>>;
+export interface ArrayChecks {
+	minItems?: Check<'minItems', {val: number}>;
+	maxItems?: Check<'maxItems', {val: number}>;
+	uniqueItems?: Check<'uniqueItems', {val: boolean}>;
 }
 
-export class KArray<T extends JSONValue> extends BaseSchema<ArrayDef<T>> {
-	public static create = <T extends JSONValue>(items: BaseSchema<BaseSchemaDef<T, T>>) => new KArray({items});
+export interface ArrayDef<Input extends JSONValue, Output> extends BaseSchemaDef<Input, Output>, ArrayChecks {
+	items: BaseSchema<BaseSchemaDef<Input, Output>>;
+}
 
-	public serialize(value: T[]): T[] {
-		return value;
+export class KArray<Input extends JSONValue, Output> extends BaseSchema<ArrayDef<Input, Output>> {
+	public static create = <Input extends JSONValue, Output>(items: BaseSchema<BaseSchemaDef<Input, Output>>) =>
+		new KArray({items});
+
+	public serialize(value: Output[]): Input[] {
+		return value.map(item => this.def.items.serialize(item) as Input);
+	}
+
+	private setCheck<T extends keyof ArrayChecks>(check: NonNullable<ArrayChecks[T]>): this {
+		return this.clone({[check.type]: check});
 	}
 
 	public toOpenAPI(): SchemaObject | ReferenceObject {
 		return {
 			type: 'array',
 			items: this.def.items.toOpenAPI(),
+			...(this.def.minItems !== undefined ? {minItems: this.def.minItems.val} : {}),
+			...(this.def.maxItems !== undefined ? {maxItems: this.def.maxItems.val} : {}),
+			...(this.def.uniqueItems !== undefined ? {uniqueItems: this.def.uniqueItems.val} : {}),
 		};
 	}
 
-	public parseSafe(json: unknown): ParseResult<T[]> {
+	public min(minItems: number): this {
+		return this.setCheck({type: 'minItems', val: minItems});
+	}
+
+	public max(maxItems: number): this {
+		return this.setCheck({type: 'maxItems', val: maxItems});
+	}
+
+	public unique(): this {
+		return this.setCheck({type: 'uniqueItems', val: true});
+	}
+
+	public notUnique(): this {
+		return this.setCheck({type: 'uniqueItems', val: false});
+	}
+
+	public parseSafe(json: unknown): ParseResult<Output[]> {
 		return ParseContext.result(ctx => {
 			if (!Array.isArray(json)) {
 				return ctx.addIssue('Expected array', []);
 			}
 
-			const items: T[] = [];
+			if (this.def.minItems !== undefined && json.length < this.def.minItems.val) {
+				return ctx.addIssue(this.def.minItems.message ?? `Array must have at least ${this.def.minItems.val} items`, []);
+			}
+
+			if (this.def.maxItems !== undefined && json.length > this.def.maxItems.val) {
+				return ctx.addIssue(this.def.maxItems.message ?? `Array must have at most ${this.def.maxItems.val} items`, []);
+			}
+
+			if (this.def.uniqueItems !== undefined && new Set(json).size !== json.length) {
+				return ctx.addIssue(this.def.uniqueItems.message ?? 'Array must have unique items', []);
+			}
+
+			const items: Output[] = [];
 
 			for (let i = 0; i < json.length; i++) {
 				const item = json[i];
@@ -602,7 +647,7 @@ export class KArray<T extends JSONValue> extends BaseSchema<ArrayDef<T>> {
 		});
 	}
 
-	public parse(json: unknown): T[] {
+	public parse(json: unknown): Output[] {
 		const result = this.parseSafe(json);
 
 		if (!result.success) {
@@ -720,11 +765,14 @@ export class KRef<Shape extends Record<string, BaseSchemaDef<any, any>>> extends
 					if (value === undefined) {
 						return ctx.addIssue(`Missing required property: ${key}`, [key]);
 					}
-					try {
-						result[key] = this.def.shape[key]!.parse(value);
-					} catch (error: any) {
-						return ctx.addIssue(`Invalid value for property "${key}": ${error.message}`, [key]);
+
+					const parseResult = this.def.shape[key]!.parseSafe(value);
+
+					if (!parseResult.success) {
+						return ctx.addIssues(result.issues, [key]);
 					}
+
+					result[key] = parseResult.result;
 				}
 			}
 
@@ -748,236 +796,6 @@ export class KRef<Shape extends Record<string, BaseSchemaDef<any, any>>> extends
 		return this.def.name;
 	}
 }
-
-export const k = {
-	string: KString.create,
-	number: KNumber.create,
-	boolean: KBoolean.create,
-	array: KArray.create,
-	null: KNull.create,
-	ref: KRef.create,
-};
-
-// export type NumberFormat = 'float' | 'double' | 'int32' | 'int64';
-
-// export type NumberDef = {
-// 	min?: number;
-// 	max?: number;
-// 	integer?: boolean;
-// 	format?: NumberFormat;
-// 	exclusiveMin?: boolean;
-// 	exclusiveMax?: boolean;
-// 	multipleOf?: number;
-// };
-
-// export class KNumber extends KBaseSchema<number, number> {
-// 	private def: NumberDef;
-
-// 	constructor(def: NumberDef = {}) {
-// 		super();
-// 		this.def = def;
-// 	}
-
-// 	override parse(json: unknown): number {
-// 		if (typeof json !== 'number') {
-// 			throw new Error('Expected number');
-// 		}
-
-// 		// Check integer format first
-// 		if (this.def.format === 'int32' || this.def.format === 'int64' || this.def.integer) {
-// 			if (!Number.isInteger(json)) {
-// 				throw new Error('Expected integer');
-// 			}
-
-// 			// Additional format-specific validations
-// 			if (this.def.format === 'int32') {
-// 				if (json < -2147483648 || json > 2147483647) {
-// 					throw new Error('Integer must be within 32-bit range (-2^31 to 2^31-1)');
-// 				}
-// 			} else if (this.def.format === 'int64') {
-// 				if (json < -9223372036854775808 || json > 9223372036854775807) {
-// 					throw new Error('Integer must be within 64-bit range (-2^63 to 2^63-1)');
-// 				}
-// 			}
-// 		}
-
-// 		if (this.def.min !== undefined) {
-// 			if (this.def.exclusiveMin && json <= this.def.min) {
-// 				throw new Error(`Number must be greater than ${this.def.min}`);
-// 			} else if (!this.def.exclusiveMin && json < this.def.min) {
-// 				throw new Error(`Number must be greater than or equal to ${this.def.min}`);
-// 			}
-// 		}
-// 		if (this.def.max !== undefined) {
-// 			if (this.def.exclusiveMax && json >= this.def.max) {
-// 				throw new Error(`Number must be less than ${this.def.max}`);
-// 			} else if (!this.def.exclusiveMax && json > this.def.max) {
-// 				throw new Error(`Number must be less than or equal to ${this.def.max}`);
-// 			}
-// 		}
-// 		if (this.def.multipleOf !== undefined && json % this.def.multipleOf !== 0) {
-// 			throw new Error(`Number must be a multiple of ${this.def.multipleOf}`);
-// 		}
-// 		return json;
-// 	}
-
-// 	override serialize(value: number): number {
-// 		return this.parse(value);
-// 	}
-
-// 	min(min: number, exclusive: boolean = false): this {
-// 		this.def.min = min;
-// 		this.def.exclusiveMin = exclusive;
-// 		return this;
-// 	}
-
-// 	max(max: number, exclusive: boolean = false): this {
-// 		this.def.max = max;
-// 		this.def.exclusiveMax = exclusive;
-// 		return this;
-// 	}
-
-// 	integer(): this {
-// 		this.def.integer = true;
-// 		return this;
-// 	}
-
-// 	format(format: NumberFormat): this {
-// 		this.def.format = format;
-// 		return this;
-// 	}
-
-// 	multipleOf(value: number): this {
-// 		if (value <= 0) {
-// 			throw new Error('multipleOf must be a positive number');
-// 		}
-// 		this.def.multipleOf = value;
-// 		return this;
-// 	}
-
-// 	override toOpenAPI(): SchemaObject {
-// 		const schema: SchemaObject = {
-// 			type: this.def.format === 'int32' || this.def.format === 'int64' || this.def.integer ? 'integer' : 'number',
-// 		};
-// 		if (this.def.format) {
-// 			schema.format = this.def.format;
-// 		}
-// 		if (this.def.min !== undefined) {
-// 			if (this.def.exclusiveMin) {
-// 				schema.exclusiveMinimum = this.def.min;
-// 			} else {
-// 				schema.minimum = this.def.min;
-// 			}
-// 		}
-// 		if (this.def.max !== undefined) {
-// 			if (this.def.exclusiveMax) {
-// 				schema.exclusiveMaximum = this.def.max;
-// 			} else {
-// 				schema.maximum = this.def.max;
-// 			}
-// 		}
-// 		if (this.def.multipleOf !== undefined) {
-// 			schema.multipleOf = this.def.multipleOf;
-// 		}
-// 		if (this._description) {
-// 			schema.description = this._description;
-// 		}
-// 		return schema;
-// 	}
-// }
-
-// export class KBoolean extends KBaseSchema<boolean, boolean> {
-// 	constructor() {
-// 		super();
-// 	}
-
-// 	override parse(json: unknown): boolean {
-// 		if (typeof json !== 'boolean') {
-// 			throw new Error('Expected boolean');
-// 		}
-// 		return json;
-// 	}
-
-// 	override serialize(value: boolean): boolean {
-// 		return this.parse(value);
-// 	}
-
-// 	override toOpenAPI(): SchemaObject {
-// 		return {
-// 			type: 'boolean',
-// 			...(this._description ? {description: this._description} : {}),
-// 		};
-// 	}
-// }
-
-// export type ArrayDef<T> = {
-// 	items: KBaseSchema<any, T>;
-// 	minItems?: number;
-// 	maxItems?: number;
-// 	uniqueItems?: boolean;
-// };
-
-// export class KArray<T> extends KBaseSchema<Array<any>, Array<T>> {
-// 	private def: ArrayDef<T>;
-
-// 	constructor(def: ArrayDef<T>) {
-// 		super();
-// 		this.def = def;
-// 	}
-
-// 	override parse(json: unknown): Array<T> {
-// 		if (!Array.isArray(json)) {
-// 			throw new Error('Expected array');
-// 		}
-// 		if (this.def.minItems !== undefined && json.length < this.def.minItems) {
-// 			throw new Error(`Array must contain at least ${this.def.minItems} items`);
-// 		}
-// 		if (this.def.maxItems !== undefined && json.length > this.def.maxItems) {
-// 			throw new Error(`Array must contain at most ${this.def.maxItems} items`);
-// 		}
-// 		if (this.def.uniqueItems) {
-// 			const seen = new Set();
-// 			for (const item of json) {
-// 				const key = JSON.stringify(item);
-// 				if (seen.has(key)) {
-// 					throw new Error('Array items must be unique');
-// 				}
-// 				seen.add(key);
-// 			}
-// 		}
-// 		return json.map(item => this.def.items.parse(item));
-// 	}
-
-// 	override serialize(value: Array<T>): unknown {
-// 		return value.map(item => this.def.items.serialize(item));
-// 	}
-
-// 	minItems(min: number): this {
-// 		this.def.minItems = min;
-// 		return this;
-// 	}
-
-// 	maxItems(max: number): this {
-// 		this.def.maxItems = max;
-// 		return this;
-// 	}
-
-// 	uniqueItems(): this {
-// 		this.def.uniqueItems = true;
-// 		return this;
-// 	}
-
-// 	override toOpenAPI(): SchemaObject {
-// 		return {
-// 			type: 'array',
-// 			items: this.def.items.toOpenAPI(),
-// 			...(this.def.minItems !== undefined ? {minItems: this.def.minItems} : {}),
-// 			...(this.def.maxItems !== undefined ? {maxItems: this.def.maxItems} : {}),
-// 			...(this.def.uniqueItems ? {uniqueItems: true} : {}),
-// 			...(this._description ? {description: this._description} : {}),
-// 		};
-// 	}
-// }
 
 // export type ScalarDef<ClientRepresentation extends JSONPrimitive, ServerRepresentation> = {
 // 	json: KBaseSchema<ClientRepresentation, ClientRepresentation>;
@@ -1015,124 +833,60 @@ export const k = {
 // 	}
 // }
 
-// export class KNull extends KBaseSchema<null, null> {
-// 	override parse(json: unknown): null {
-// 		if (json !== null) {
-// 			throw new Error('Expected null');
-// 		}
-// 		return null;
-// 	}
+export interface ScalarOptions<ClientRepresentation extends JSONPrimitive, ServerRepresentation> {
+	schema: BaseSchema<BaseSchemaDef<ClientRepresentation, ClientRepresentation>>;
+	from: (jsonValue: ClientRepresentation) => ServerRepresentation;
+	to: (clientValue: ServerRepresentation) => ClientRepresentation;
+}
 
-// 	override serialize(value: null): null {
-// 		return value;
-// 	}
+export interface ScalarDef<ClientRepresentation extends JSONPrimitive, ServerRepresentation>
+	extends BaseSchemaDef<ClientRepresentation, ServerRepresentation>,
+		ScalarOptions<ClientRepresentation, ServerRepresentation> {}
 
-// 	override toOpenAPI(): SchemaObject {
-// 		return {type: 'null'};
-// 	}
-// }
+export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresentation> extends BaseSchema<
+	ScalarDef<ClientRepresentation, ServerRepresentation>
+> {
+	public static create = <ClientRepresentation extends JSONPrimitive, ServerRepresentation>(
+		options: ScalarOptions<ClientRepresentation, ServerRepresentation>,
+	) => new KScalar(options);
 
-// export const k = {
-// 	string() {
-// 		return new KString();
-// 	},
+	public constructor(def: ScalarDef<ClientRepresentation, ServerRepresentation>) {
+		super(def);
+	}
 
-// 	scalar<ClientRepresentation extends JSONPrimitive, ServerRepresentation>(
-// 		def: ScalarDef<ClientRepresentation, ServerRepresentation>,
-// 	) {
-// 		return new KScalar<ClientRepresentation, ServerRepresentation>(def);
-// 	},
+	override serialize(value: ServerRepresentation): ClientRepresentation {
+		return this.def.to(value);
+	}
 
-// 	ref<Shape extends Record<string, any>>(name: string, shape: Shape) {
-// 		const def: RefDef<Shape> = {name, shape};
-// 		return new KRef(def);
-// 	},
+	override toOpenAPI(): SchemaObject | ReferenceObject {
+		return this.def.schema.toOpenAPI();
+	}
 
-// 	number() {
-// 		return new KNumber();
-// 	},
+	override parseSafe(json: unknown): ParseResult<ServerRepresentation> {
+		return ParseContext.result(ctx => {
+			const jsonValue = this.def.schema.parseSafe(json);
+			if (!jsonValue.success) {
+				return ctx.addIssues(jsonValue.issues, []);
+			}
+			return this.def.from(jsonValue.result);
+		});
+	}
 
-// 	boolean() {
-// 		return new KBoolean();
-// 	},
+	override parse(json: unknown): ServerRepresentation {
+		const result = this.parseSafe(json);
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+		return result.result;
+	}
+}
 
-// 	array<T>(items: KBaseSchema<any, T>) {
-// 		return new KArray({items});
-// 	},
-
-// 	null() {
-// 		return new KNull();
-// 	},
-
-// 	// Convenience methods for common string formats
-// 	date() {
-// 		return new KString().date();
-// 	},
-
-// 	dateTime() {
-// 		return new KString().dateTime();
-// 	},
-
-// 	email() {
-// 		return new KString().email();
-// 	},
-
-// 	uuid() {
-// 		return new KString().uuid();
-// 	},
-
-// 	uri() {
-// 		return new KString().uri();
-// 	},
-
-// 	hostname() {
-// 		return new KString().hostname();
-// 	},
-
-// 	ipv4() {
-// 		return new KString().ipv4();
-// 	},
-
-// 	ipv6() {
-// 		return new KString().ipv6();
-// 	},
-
-// 	password() {
-// 		return new KString().password();
-// 	},
-
-// 	// Convenience methods for common number formats
-// 	float() {
-// 		return new KNumber().format('float');
-// 	},
-
-// 	double() {
-// 		return new KNumber().format('double');
-// 	},
-
-// 	int32() {
-// 		return new KNumber().integer().format('int32');
-// 	},
-
-// 	int64() {
-// 		return new KNumber().integer().format('int64');
-// 	},
-// };
-
-// export const id = k
-// 	.scalar({
-// 		json: k.string(),
-// 		parse: value => BigInt(value),
-// 		serialize: value => value.toString(),
-// 	})
-// 	.description('A user id');
-
-// export const user = k
-// 	.ref('User', {
-// 		id: id,
-// 		name: k.string(),
-// 	})
-// 	.example({
-// 		id: '1234',
-// 		name: 'Alistair',
-// 	});
+export const k = {
+	string: KString.create,
+	number: KNumber.create,
+	boolean: KBoolean.create,
+	array: KArray.create,
+	null: KNull.create,
+	ref: KRef.create,
+	scalar: KScalar.create,
+};

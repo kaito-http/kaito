@@ -367,7 +367,7 @@ describe('Schema', () => {
 
 		describe('length validation', () => {
 			it('should validate minItems', () => {
-				const schema = k.array(k.string()).minItems(2);
+				const schema = k.array(k.string()).min(2);
 				assert.deepStrictEqual(schema.parse(['a', 'b']), ['a', 'b']);
 				assert.deepStrictEqual(schema.parse(['a', 'b', 'c']), ['a', 'b', 'c']);
 				assert.throws(() => schema.parse([]), /at least 2 items/);
@@ -375,7 +375,7 @@ describe('Schema', () => {
 			});
 
 			it('should validate maxItems', () => {
-				const schema = k.array(k.string()).maxItems(2);
+				const schema = k.array(k.string()).max(2);
 				assert.deepStrictEqual(schema.parse([]), []);
 				assert.deepStrictEqual(schema.parse(['a']), ['a']);
 				assert.deepStrictEqual(schema.parse(['a', 'b']), ['a', 'b']);
@@ -384,7 +384,7 @@ describe('Schema', () => {
 		});
 
 		describe('uniqueItems validation', () => {
-			const schema = k.array(k.string()).uniqueItems();
+			const schema = k.array(k.string()).unique();
 
 			it('should accept arrays with unique items', () => {
 				assert.deepStrictEqual(schema.parse([]), []);
@@ -498,7 +498,7 @@ describe('Schema', () => {
 
 	describe('OpenAPI Schema Generation', () => {
 		it('should generate string schema', () => {
-			const schema = k.string().minLength(3).maxLength(10).email().description('User email');
+			const schema = k.string().min(3).max(10).email().description('User email');
 
 			assert.deepStrictEqual(schema.toOpenAPI(), {
 				type: 'string',
@@ -510,7 +510,7 @@ describe('Schema', () => {
 		});
 
 		it('should generate number schema', () => {
-			const schema = k.number().min(0).max(100).multipleOf(5).format('int32').description('Score');
+			const schema = k.number().min(0).max(100).multipleOf(5).int32().description('Score');
 
 			assert.deepStrictEqual(schema.toOpenAPI(), {
 				type: 'integer',
@@ -523,7 +523,7 @@ describe('Schema', () => {
 		});
 
 		it('should generate array schema', () => {
-			const schema = k.array(k.string()).minItems(1).maxItems(5).uniqueItems().description('Tags');
+			const schema = k.array(k.string()).min(1).max(5).unique().description('Tags');
 
 			assert.deepStrictEqual(schema.toOpenAPI(), {
 				type: 'array',
@@ -555,9 +555,9 @@ describe('Schema', () => {
 	describe('KScalar', () => {
 		describe('basic scalar types', () => {
 			const bigIntSchema = k.scalar({
-				json: k.string(),
-				parse: value => BigInt(value),
-				serialize: value => value.toString(),
+				schema: k.string(),
+				from: value => BigInt(value),
+				to: value => value.toString(),
 			});
 
 			it('should parse and transform valid values', () => {
@@ -585,9 +585,9 @@ describe('Schema', () => {
 
 		describe('complex transformations', () => {
 			const dateSchema = k.scalar<string, Date>({
-				json: k.string().date(),
-				parse: (value: string) => new Date(value),
-				serialize: (value: Date) => value.toISOString().split('T')[0]!,
+				schema: k.string().date(),
+				from: (value: string) => new Date(value),
+				to: (value: Date) => value.toISOString().split('T')[0]!,
 			});
 
 			it('should parse dates from strings', () => {
@@ -613,9 +613,9 @@ describe('Schema', () => {
 		describe('with description and example', () => {
 			const schema = k
 				.scalar({
-					json: k.string(),
-					parse: value => BigInt(value),
-					serialize: value => value.toString(),
+					schema: k.string(),
+					from: value => BigInt(value),
+					to: value => value.toString(),
 				})
 				.description('A big integer ID')
 				.example('12345');
@@ -633,7 +633,7 @@ describe('Schema', () => {
 	});
 
 	describe('KNull', () => {
-		const schema = new KNull();
+		const schema = k.null();
 
 		describe('basic validation', () => {
 			it('should accept null', () => {
