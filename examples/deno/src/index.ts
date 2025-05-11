@@ -16,7 +16,8 @@ const router = create({
 	}),
 });
 
-const fetch = router.get('/', () => 'hey')
+const fetch = router
+	.get('/', () => 'hey')
 	.post('/', () => 'hey2')
 	.post('/2', () => 'hey2')
 	.openapi({
