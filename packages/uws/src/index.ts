@@ -113,15 +113,15 @@ export class KaitoServer {
 		const staticPromises = Object.entries(fullOptions.static ?? {}).map(async ([path, response]) => {
 			const timeout = setTimeout(() => {
 				const lines = [
-					'KAITO STARTUP WARNING',
-					`The static path on ${path} is taking more than 10s to load. This suggests you are waiting for a stream to finish.`,
+					'⚠️ [KAITO STARTUP WARNING] ⚠️',
+					`The static path on ${path} is taking more than 3s to load. This suggests you are waiting for a stream to finish.`,
 					'We suggest you do one of the following:',
-					'	1. Use `new Response(new Response(stream).arrayBuffer())` if you really need to wait for a stream',
+					'	1. Use `new Response(new Response(stream).arrayBuffer(), { ... })` if you really need to wait for a stream',
 					"	2. Don't use a stream in the first place",
 				];
 
 				console.log(lines.join('\n'));
-			}, 10000);
+			}, 3000);
 
 			const buffer = await response.arrayBuffer();
 
