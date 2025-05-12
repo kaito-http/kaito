@@ -853,7 +853,7 @@ export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresent
 export interface UnionDef<Input extends JSONValue, Output> extends BaseSchemaDef<Input> {
 	items: [
 		a: BaseSchema<Input, Output, BaseSchemaDef<Input>>,
-		b: BaseSchema<JSONValue, Output, BaseSchemaDef<Input>>,
+		b: BaseSchema<Input, Output, BaseSchemaDef<Input>>,
 		...remaining: BaseSchema<Input, Output, BaseSchemaDef<Input>>[],
 	];
 }
