@@ -3,6 +3,7 @@ import {KaitoError, WrappedError} from '../error.ts';
 import {KaitoHead} from '../head.ts';
 import {KaitoRequest} from '../request.ts';
 import type {AnyQuery, AnyRoute, Route} from '../route.ts';
+import {k, type AnySchemaFor, type JSONValue} from '../schema/schema.ts';
 import {
 	isNodeLikeDev,
 	type ErroredAPIResponse,
@@ -67,7 +68,13 @@ export class Router<
 		return this.state.routes;
 	}
 
-	private readonly add = <Result, Path extends string, Method extends KaitoMethod, Query extends AnyQuery, Body>(
+	private readonly add = <
+		Result extends JSONValue,
+		Path extends string,
+		Method extends KaitoMethod,
+		Query extends AnyQuery,
+		Body extends JSONValue,
+	>(
 		method: Method,
 		path: Path,
 		route:
@@ -167,7 +174,15 @@ export class Router<
 		};
 
 	public serve = () => {
-		const methodToRoutesMap = new Map<KaitoMethod, Map<string, AnyRoute>>();
+		const methodToRoutesMap = new Map<
+			KaitoMethod,
+			Map<
+				string,
+				AnyRoute & {
+					fastQuerySchema: AnySchemaFor<AnyQuery> | undefined;
+				}
+			>
+		>();
 
 		for (const route of this.state.routes) {
 			if (!methodToRoutesMap.has(route.method)) {
@@ -176,8 +191,7 @@ export class Router<
 
 			methodToRoutesMap.get(route.method)!.set(route.path, {
 				...route,
-				fastQuerySchema: undefined,
-				// fastQuerySchema: route.query ? Router.buildQuerySchema(route.query) : undefined,
+				fastQuerySchema: route.query ? k.object(route.query) : undefined,
 			});
 		}
 
@@ -204,8 +218,8 @@ export class Router<
 			const head = new KaitoHead();
 
 			try {
-				const body = route.body ? await route.body.parseAsync(await req.json()) : undefined;
-				const query = route.query ? await route.query.parseAsync(url.searchParams) : {};
+				const body = route.body ? await route.body.parse(await req.json()) : undefined;
+				const query = route.fastQuerySchema ? route.fastQuerySchema.parse(url.searchParams) : {};
 
 				const ctx = await route.router.state.through(
 					(await this.state.config.getContext?.(request, head, ...args)) ?? null,
@@ -419,7 +433,7 @@ export class Router<
 	};
 
 	private readonly method = <M extends KaitoMethod>(method: M) => {
-		return <Result, Path extends string, Query extends AnyQuery = {}, Body = never>(
+		return <Result extends JSONValue, Path extends string, Query extends AnyQuery = {}, Body extends JSONValue = never>(
 			path: Path,
 			route:
 				| (M extends 'GET'

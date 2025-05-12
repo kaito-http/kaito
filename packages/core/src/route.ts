@@ -17,9 +17,9 @@ export type Through<From, To, RequiredParams extends string> = (
 	params: Record<RequiredParams, string>,
 ) => Promise<To>;
 
-export type SSEOutputSpec<Result> = {
+export type SSEOutputSpec<Result extends JSONValue> = {
 	type: 'sse';
-	schema: z.Schema<Result>;
+	schema: AnySchemaFor<Result>;
 	description?: string;
 };
 
@@ -31,20 +31,22 @@ export type JSONOutputSpec<Result extends JSONValue> = {
 
 export type OutputSpec<Result extends JSONValue> = {
 	description?: string;
-	body: NoInfer<Result extends KaitoSSEResponse<infer R> ? SSEOutputSpec<R> : JSONOutputSpec<Result>>;
+	body: NoInfer<
+		Result extends KaitoSSEResponse<infer R> ? SSEOutputSpec<Extract<R, JSONValue>> : JSONOutputSpec<Result>
+	>;
 };
 
 export type Route<
 	// Router context
 	ContextTo,
 	// Route information
-	Result,
+	Result extends JSONValue,
 	Path extends string,
 	AdditionalParams extends string,
 	Method extends KaitoMethod,
 	// Schemas
-	Query,
-	Body,
+	Query extends Record<string, JSONValue>,
+	Body extends JSONValue,
 > = {
 	body?: AnySchemaFor<Body>;
 	query?: {[Key in keyof Query]: AnySchemaFor<Query[Key]>};

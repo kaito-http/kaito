@@ -1018,6 +1018,7 @@ export const k = {
 	array: KArray.create,
 	null: KNull.create,
 	ref: KRef.create,
+	object: KObject.create,
 	scalar: KScalar.create,
 	union: KUnion.create,
 };
