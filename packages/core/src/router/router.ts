@@ -166,33 +166,8 @@ export class Router<
 			return {};
 		};
 
-	// private static buildQuerySchema = (schema: Record<string, z.Schema>) => {
-	// 	const keys = Object.keys(schema);
-	// 	return z
-	// 		.instanceof(URLSearchParams)
-	// 		.transform(params => {
-	// 			const result: Record<string, unknown> = {};
-
-	// 			for (const key of keys) {
-	// 				result[key] = params.get(key);
-	// 			}
-
-	// 			return result;
-	// 		})
-	// 		.pipe(z.object(schema));
-	// };
-
 	public serve = () => {
-		const methodToRoutesMap = new Map<
-			KaitoMethod,
-			Map<
-				string,
-				AnyRoute & {
-					// fastQuerySchema: z.Schema<Record<string, unknown>, z.ZodTypeDef, URLSearchParams> | undefined;
-					fastQuerySchema: undefined;
-				}
-			>
-		>();
+		const methodToRoutesMap = new Map<KaitoMethod, Map<string, AnyRoute>>();
 
 		for (const route of this.state.routes) {
 			if (!methodToRoutesMap.has(route.method)) {
@@ -230,7 +205,7 @@ export class Router<
 
 			try {
 				const body = route.body ? await route.body.parseAsync(await req.json()) : undefined;
-				const query = route.fastQuerySchema ? await (route.fastQuerySchema as any).parseAsync(url.searchParams) : {};
+				const query = route.query ? await route.query.parseAsync(url.searchParams) : {};
 
 				const ctx = await route.router.state.through(
 					(await this.state.config.getContext?.(request, head, ...args)) ?? null,

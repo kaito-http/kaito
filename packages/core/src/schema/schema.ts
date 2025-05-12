@@ -93,6 +93,8 @@ export class ParseContext {
 	}
 }
 
+export type AnySchemaFor<T extends JSONValue> = BaseSchema<T, T, BaseSchemaDef<T>>;
+
 export abstract class BaseSchema<Input extends JSONValue, Output, Def extends BaseSchemaDef<Input>> {
 	abstract parse(json: unknown): Output;
 	abstract parseSafe(json: unknown): ParseResult<Output>;
@@ -692,16 +694,113 @@ export class KNull extends BaseSchema<null, null, NullDef> {
 }
 
 /////////////////////////////////////////////////////
+////////////////////// KOBJECT //////////////////////
+/////////////////////////////////////////////////////
+
+export interface ObjectDef<Input extends Record<keyof Output, JSONValue>, Output extends Record<keyof Input, JSONValue>>
+	extends BaseSchemaDef<Input> {
+	shape: {
+		[K in keyof Input]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K]>>;
+	};
+}
+
+export class KObject<
+	Input extends Record<keyof Output, JSONValue>,
+	Output extends Record<keyof Input, JSONValue>,
+> extends BaseSchema<Input, Output, ObjectDef<Input, Output>> {
+	public static create = <
+		Input extends Record<keyof Output, JSONValue>,
+		Output extends Record<keyof Input, JSONValue>,
+	>(shape: {
+		[K in keyof Input | keyof Output]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K]>>;
+	}) => new KObject({shape});
+
+	override serialize(value: Output): Input {
+		const result: Record<string, unknown> = {};
+
+		for (const key in this.def.shape) {
+			if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
+				const fieldValue = value[key];
+
+				if (fieldValue === undefined) {
+					throw new Error(`Missing required property: ${key}`);
+				}
+
+				result[key] = this.def.shape[key].serialize(fieldValue);
+			}
+		}
+
+		return result as Input;
+	}
+
+	override toOpenAPI(): SchemaObject {
+		return {
+			type: 'object',
+			properties: Object.fromEntries(
+				Object.entries(this.def.shape).map(entry => {
+					const [key, value] = entry as [
+						keyof Input,
+						BaseSchema<Input[keyof Input], Output[keyof Input], BaseSchemaDef<Input[keyof Input]>>,
+					];
+
+					return [key, value.toOpenAPI()];
+				}),
+			),
+			required: Object.keys(this.def.shape),
+			...(this.def.description ? {description: this.def.description} : {}),
+		};
+	}
+
+	public parseSafe(json: unknown): ParseResult<Output> {
+		return ParseContext.result<Output>(ctx => {
+			if (typeof json !== 'object' || json === null || Array.isArray(json)) {
+				return ctx.addIssue(`Expected object, got ${typeof json}`, []);
+			}
+
+			const result: Output = {} as Output;
+
+			for (const key in this.def.shape) {
+				if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
+					const value = (json as {[key: string]: unknown})[key];
+					if (value === undefined) {
+						return ctx.addIssue(`Missing required property: ${key}`, [key]);
+					}
+
+					const parseResult = this.def.shape[key]!.parseSafe(value);
+
+					if (!parseResult.success) {
+						return ctx.addIssues(parseResult.issues, [key]);
+					}
+
+					result[key] = parseResult.result;
+				}
+			}
+
+			return result;
+		});
+	}
+
+	public parse(json: unknown) {
+		const result = this.parseSafe(json);
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+		return result.result;
+	}
+
+	get shape() {
+		return this.def.shape;
+	}
+}
+
+/////////////////////////////////////////////////////
 ////////////////////// KREF //////////////////////
 /////////////////////////////////////////////////////
 
 export interface RefDef<Input extends Record<keyof Output, JSONValue>, Output extends Record<keyof Input, JSONValue>>
-	extends BaseSchemaDef<Input> {
+	extends ObjectDef<Input, Output> {
 	name: string;
 	summary?: string | undefined;
-	shape: {
-		[K in keyof Input]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K]>>;
-	};
 }
 
 export class KRef<

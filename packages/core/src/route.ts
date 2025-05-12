@@ -1,5 +1,5 @@
-import type {z} from 'zod';
 import type {Router} from './router/router.ts';
+import type {AnySchemaFor, JSONValue} from './schema/schema.ts';
 import type {KaitoSSEResponse} from './stream/stream.ts';
 import type {ExtractRouteParams, KaitoMethod} from './util.ts';
 
@@ -23,13 +23,13 @@ export type SSEOutputSpec<Result> = {
 	description?: string;
 };
 
-export type JSONOutputSpec<Result> = {
+export type JSONOutputSpec<Result extends JSONValue> = {
 	type: 'json';
-	schema: z.Schema<Result>;
+	schema: AnySchemaFor<Result>;
 	description?: string;
 };
 
-export type OutputSpec<Result> = {
+export type OutputSpec<Result extends JSONValue> = {
 	description?: string;
 	body: NoInfer<Result extends KaitoSSEResponse<infer R> ? SSEOutputSpec<R> : JSONOutputSpec<Result>>;
 };
@@ -46,8 +46,8 @@ export type Route<
 	Query,
 	Body,
 > = {
-	body?: z.Schema<Body>;
-	query?: {[Key in keyof Query]: z.Schema<Query[Key]>};
+	body?: AnySchemaFor<Body>;
+	query?: {[Key in keyof Query]: AnySchemaFor<Query[Key]>};
 	path: Path;
 	method: Method;
 	openapi?: OutputSpec<NoInfer<Result>>;
