@@ -325,7 +325,7 @@ export class Router<
 		};
 	};
 
-	public openapi = (highLevelSpec: {
+	public openapi = (_highLevelSpec: {
 		info: {
 			version: string;
 			title: string;
