@@ -1,7 +1,7 @@
-import type {z} from 'zod';
+import {k} from '@kaito-http/core';
 import {router} from './router.ts';
 
-declare const schema: z.Schema<{hello: string}>;
+const schema = k.object({hello: k.string()});
 
 export const mountMe = router
 	.post('/post', {

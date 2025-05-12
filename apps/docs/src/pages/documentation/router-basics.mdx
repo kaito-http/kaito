@@ -30,14 +30,9 @@ The `onError` configuration function is called whenever an error is thrown in th
 
 ```ts
 import {create} from '@kaito-http/core';
-import {ZodError} from 'zod';
 
 export const router = create({
 	onError: async (error, req) => {
-		if (error instanceof ZodError) {
-			return {status: 400, message: 'Invalid request'};
-		}
-
 		return {status: 500, message: 'Internal Server Error'};
 	},
 });

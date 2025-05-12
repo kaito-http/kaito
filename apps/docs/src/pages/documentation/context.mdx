@@ -54,12 +54,11 @@ export const router = create({
 You can then use this context, when setup correctly with a router, inside every single route. E.g.
 
 ```ts filename="routes/users.ts"
-import {z} from 'zod';
 import {router} from '../context.ts';
 
 export const users = router.get('/users/search', {
 	query: {
-		search: z.string().max(200),
+		search: k.string().max(200),
 	},
 
 	async run({ctx, query}) {

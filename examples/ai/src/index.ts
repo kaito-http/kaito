@@ -1,8 +1,8 @@
 import 'dotenv/config';
 
+import {k} from '@kaito-http/core';
 import {sse} from '@kaito-http/core/stream';
 import {KaitoServer} from '@kaito-http/uws';
-import {z} from 'zod';
 import {createGoogleAI, tellMeAStory} from './ai.ts';
 import {router} from './context.ts';
 
@@ -30,7 +30,7 @@ const v1 = router
 	})
 	.get('/stories', {
 		query: {
-			topic: z.string(),
+			topic: k.string(),
 		},
 		run: async ({query}) => {
 			console.error('story query', query);

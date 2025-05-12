@@ -30,7 +30,7 @@ The `.params()` method provides type-safe declaration of parameters that a route
 // Declare that this router needs a userId parameter
 const userRouter = router
 	.params({
-		userId: z.string().min(3),
+		userId: k.string().min(3),
 	})
 	.get('/', async ({params}) => {
 		// params.userId is guaranteed to exist
@@ -52,8 +52,8 @@ Parameters become especially powerful with deeply nested routers:
 // This router needs both userId and postId
 const commentsRouter = router
 	.params({
-		userId: z.string(),
-		postId: z.string(),
+		userId: k.string(),
+		postId: k.string(),
 	})
 	.through(async (ctx, params) => {
 		const [user, post] = await Promise.all([db.users.findById(params.userId), db.posts.findById(params.postId)]);
@@ -72,7 +72,7 @@ const commentsRouter = router
 // This router provides postId and forwards userId
 const postsRouter = router
 	.params({
-		userId: z.string(),
+		userId: k.string(),
 	})
 	.merge('/posts/:postId/comments', commentsRouter);
 

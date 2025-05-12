@@ -1,12 +1,11 @@
 import {create} from '../../src/index.ts';
-import {z} from 'zod';
 
 const router = create();
 
 const guildChannelRouter = router
 	.params({
-		guild_id: z.string(),
-		channel_id: z.string(),
+		guild_id: k.string(),
+		channel_id: k.string(),
 	})
 	.get('/', ({params}) => ({
 		guild: params.guild_id,
@@ -15,7 +14,7 @@ const guildChannelRouter = router
 
 const guildRouter = router
 	.params({
-		guild_id: z.string(),
+		guild_id: k.string(),
 	})
 	.merge('/channels/:channel_id', guildChannelRouter);
 

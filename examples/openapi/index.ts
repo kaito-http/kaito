@@ -1,7 +1,6 @@
-import {create} from '@kaito-http/core';
+import {create, k} from '@kaito-http/core';
 import {sse} from '@kaito-http/core/stream';
 import {KaitoServer} from '@kaito-http/uws';
-import {z} from 'zod';
 
 const router = create({
 	getContext: (req, head) => ({req, head}),
@@ -15,17 +14,17 @@ const root = router
 			body: {
 				type: 'json',
 				description: 'A user object',
-				schema: z.object({
-					body: z.string(),
-					query: z.object({
-						name: z.string(),
+				schema: k.object({
+					body: k.string(),
+					query: k.object({
+						name: k.string(),
 					}),
 				}),
 			},
 		},
-		body: z.string(),
+		body: k.string(),
 		query: {
-			name: z.string(),
+			name: k.string(),
 		},
 		run: async ({body, query}) => ({
 			body,
@@ -36,10 +35,10 @@ const root = router
 		openapi: {
 			body: {
 				type: 'sse',
-				schema: z.object({
-					data: z.string(),
-					event: z.literal('cool'),
-					retry: z.number(),
+				schema: k.object({
+					data: k.string(),
+					event: k.literal('cool'),
+					retry: k.number(),
 				}),
 			},
 		},

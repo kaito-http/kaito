@@ -1,6 +1,6 @@
+import {k} from '@kaito-http/core';
 import assert from 'node:assert';
 import {describe, it} from 'node:test';
-import {z} from 'zod';
 import {KaitoError} from '../error.ts';
 import type {AnyRoute} from '../route.ts';
 import type {KaitoMethod} from '../util.ts';
@@ -34,7 +34,7 @@ describe('Router', () => {
 
 		it('should handle POST requests with body parsing', async () => {
 			const r = router.post('/users', {
-				body: z.object({name: z.string()}),
+				body: k.object({name: k.string()}),
 				run: async ({body}) => ({id: '1', name: body.name}),
 			});
 
@@ -77,8 +77,8 @@ describe('Router', () => {
 		it('should handle query parameters', async () => {
 			const r = router.get('/search', {
 				query: {
-					q: z.string(),
-					limit: z.coerce.number(),
+					q: k.string(),
+					limit: k.string().transform(Number),
 				},
 				run: async ({query}) => ({
 					query: query.q,
@@ -521,7 +521,7 @@ describe('Router', () => {
 	describe('Invalid JSON body handling', () => {
 		it('should return 500 when invalid JSON is provided for a POST request', async () => {
 			const invalidJsonRouter = router.post('/invalid', {
-				body: z.object({name: z.string()}),
+				body: k.object({name: k.string()}),
 				run: async ({body}) => ({received: body.name}),
 			});
 

@@ -1,8 +1,7 @@
-import {KaitoError} from '@kaito-http/core';
+import {k, KaitoError} from '@kaito-http/core';
 import {sse, sseFromAnyReadable} from '@kaito-http/core/stream';
 import {KaitoServer} from '@kaito-http/uws';
 import stripe from 'stripe';
-import {z} from 'zod';
 import {randomEvent} from './data.ts';
 import {router} from './router.ts';
 
@@ -12,16 +11,16 @@ async function sleep(ms: number) {
 
 const users = router
 	.post('/:id', {
-		body: z.object({
-			name: z.string(),
+		body: k.object({
+			name: k.string(),
 		}),
 
 		query: {
-			limit: z
+			limit: k
 				.string()
 				.transform(value => parseInt(value, 10))
 				.default('10'),
-			skip: z.string().transform(value => parseInt(value, 10)),
+			skip: k.string().transform(value => parseInt(value, 10)),
 		},
 
 		async run({ctx, body, params, query}) {
@@ -133,9 +132,9 @@ const v1 = router
 
 	// Example parsing request body
 	.post('/echo', {
-		body: z.record(z.string(), z.unknown()),
+		body: k.record(k.string(), k.unknown()),
 		query: {
-			name: z.string(),
+			name: k.string(),
 		},
 		async run({body, query}) {
 			// Body is typed as `Record<string, unknown>`
@@ -146,7 +145,7 @@ const v1 = router
 	// example streaming SSE responses to get request using low level interface
 	.get('/sse_stream', {
 		query: {
-			content: z.string(),
+			content: k.string(),
 		},
 		run: async ({query}) => {
 			// This is an example of using the SSESource interface
@@ -175,8 +174,8 @@ const v1 = router
 
 	// example streaming SSE responses to post request with just an async generator
 	.post('/sse_stream', {
-		body: z.object({
-			count: z.number(),
+		body: k.object({
+			count: k.number(),
 		}),
 		run: async ({body}) => {
 			// This is an example of a discriminated union being sent on the stream
@@ -191,8 +190,8 @@ const v1 = router
 
 	// example streaming SSE responses to post request with just an async generator
 	.post('/sse_stream_union', {
-		body: z.object({
-			count: z.number(),
+		body: k.object({
+			count: k.number(),
 		}),
 		run: async ({body}) => {
 			// This is an example of a union of different types being sent on the stream
@@ -225,7 +224,7 @@ const root = router
 	// Accessing query
 	.get('/query', {
 		query: {
-			age: z
+			age: k
 				.string()
 				.transform(value => parseInt(value, 10))
 				.default('10'),
