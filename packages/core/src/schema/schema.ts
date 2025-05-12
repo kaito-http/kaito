@@ -96,6 +96,11 @@ export class ParseContext {
 export type AnySchemaFor<T extends JSONValue> = BaseSchema<T, T, BaseSchemaDef<T>>;
 
 export abstract class BaseSchema<Input extends JSONValue, Output, Def extends BaseSchemaDef<Input>> {
+	/** @internal */
+	readonly _input!: Input;
+	/** @internal */
+	readonly _output!: Output;
+
 	abstract parse(json: unknown): Output;
 	abstract parseSafe(json: unknown): ParseResult<Output>;
 	abstract serialize(value: Output): Input;
@@ -966,12 +971,7 @@ export class KUnion<Input extends JSONValue, Output> extends BaseSchema<Input, O
 		],
 	>(
 		items: Items,
-	) => {
-		return new KUnion<ReturnType<Items[number]['serialize']>, ReturnType<Items[number]['parse']>>({
-			// @ts-expect-error
-			items,
-		});
-	};
+	) => new KUnion<Items[number]['_input'], Items[number]['_output']>({items});
 
 	public serialize(value: Output): Input {
 		for (const option of this.def.items) {
