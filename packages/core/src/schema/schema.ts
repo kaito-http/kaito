@@ -846,6 +846,72 @@ export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresent
 	}
 }
 
+/////////////////////////////////////////////////////
+////////////////////// KUNION ///////////////////////
+/////////////////////////////////////////////////////
+
+export interface UnionDef<Input extends JSONValue, Output> extends BaseSchemaDef<Input> {
+	items: [
+		a: BaseSchema<Input, Output, BaseSchemaDef<Input>>,
+		b: BaseSchema<JSONValue, Output, BaseSchemaDef<Input>>,
+		...remaining: BaseSchema<Input, Output, BaseSchemaDef<Input>>[],
+	];
+}
+
+export class KUnion<Input extends JSONValue, Output> extends BaseSchema<Input, Output, UnionDef<Input, Output>> {
+	public static create = <
+		Items extends [
+			a: BaseSchema<JSONValue, unknown, BaseSchemaDef<JSONValue>>,
+			b: BaseSchema<JSONValue, unknown, BaseSchemaDef<JSONValue>>,
+			...remaining: BaseSchema<JSONValue, unknown, BaseSchemaDef<JSONValue>>[],
+		],
+	>(
+		items: Items,
+	) => {
+		return new KUnion<ReturnType<Items[number]['serialize']>, ReturnType<Items[number]['parse']>>({
+			// @ts-expect-error
+			items,
+		});
+	};
+
+	public serialize(value: Output): Input {
+		for (const option of this.def.items) {
+			try {
+				return option.serialize(value);
+			} catch {}
+		}
+		throw new Error('Value does not match any union option for serialization');
+	}
+
+	public toOpenAPI(): SchemaObject | ReferenceObject {
+		return {
+			oneOf: this.def.items.map(option => option.toOpenAPI()),
+			...(this.def.description ? {description: this.def.description} : {}),
+		} as SchemaObject;
+	}
+
+	public parseSafe(json: unknown): ParseResult<Output> {
+		let lastIssues: Set<Issue> | undefined;
+		for (const option of this.def.items) {
+			const result = option.parseSafe(json);
+			if (result.success) {
+				return {success: true, result: result.result};
+			} else {
+				lastIssues = result.issues;
+			}
+		}
+		return {success: false, issues: lastIssues ?? new Set([{message: 'No union option matched', path: []}])};
+	}
+
+	public parse(json: unknown): Output {
+		const result = this.parseSafe(json);
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+		return result.result;
+	}
+}
+
 export const k = {
 	string: KString.create,
 	number: KNumber.create,
@@ -854,4 +920,5 @@ export const k = {
 	null: KNull.create,
 	ref: KRef.create,
 	scalar: KScalar.create,
+	union: KUnion.create,
 };

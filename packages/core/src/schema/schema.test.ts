@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import {describe, it} from 'node:test';
-import {k, KArray, KBoolean, KNull, KNumber, KRef, KString} from './schema.ts';
+import {k, KArray, KBoolean, KNull, KNumber, KRef, KString, KUnion} from './schema.ts';
 
 describe('Schema', () => {
 	describe('KString', () => {
@@ -668,6 +668,36 @@ describe('Schema', () => {
 		});
 	});
 
+	describe('KUnion', () => {
+		const schema = k.union([k.string(), k.number()]);
+
+		it('should accept all valid values', () => {
+			assert.strictEqual(schema.parse('test'), 'test');
+			assert.strictEqual(schema.parse(123), 123);
+		});
+
+		it('should reject invalid values', () => {
+			assert.throws(() => schema.parse(null), /Expected number/);
+			assert.throws(() => schema.parse(true), /Expected number/);
+			assert.throws(() => schema.parse({}), /Expected number/);
+			assert.throws(() => schema.parse([]), /Expected number/);
+		});
+
+		it('should work with complex object types', () => {
+			const schema = k.union([
+				k.ref('User', {
+					a: k.string(),
+				}),
+				k.ref('User', {
+					b: k.number(),
+				}),
+			]);
+
+			assert.deepStrictEqual(schema.parse({a: 'test'}), {a: 'test'});
+			assert.deepStrictEqual(schema.parse({b: 123}), {b: 123});
+		});
+	});
+
 	describe('k object', () => {
 		it('should provide access to all schema types', () => {
 			assert(k.string() instanceof KString);
@@ -676,6 +706,7 @@ describe('Schema', () => {
 			assert(k.array(k.string()) instanceof KArray);
 			assert(k.null() instanceof KNull);
 			assert(k.ref('Test', {}) instanceof KRef);
+			assert(k.union([k.string(), k.number()]) instanceof KUnion);
 		});
 	});
 });
