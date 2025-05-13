@@ -19,20 +19,20 @@ import type {APIResponse} from './util.ts';
  * ```
  */
 export class KaitoHead {
-	private _headers: Headers | null;
-	private _status: number;
+	#headers: Headers | null;
+	#status: number;
 
 	public constructor() {
-		this._headers = null;
-		this._status = 200;
+		this.#headers = null;
+		this.#status = 200;
 	}
 
 	public get headers() {
-		if (this._headers === null) {
-			this._headers = new Headers();
+		if (this.#headers === null) {
+			this.#headers = new Headers();
 		}
 
-		return this._headers;
+		return this.#headers;
 	}
 
 	/**
@@ -50,10 +50,10 @@ export class KaitoHead {
 
 	public status(status?: number) {
 		if (status === undefined) {
-			return this._status;
+			return this.#status;
 		}
 
-		this._status = status;
+		this.#status = status;
 		return this;
 	}
 
@@ -64,11 +64,11 @@ export class KaitoHead {
 	 */
 	public toResponse<T>(body: APIResponse<T>): Response {
 		const init: ResponseInit = {
-			status: this._status,
+			status: this.#status,
 		};
 
-		if (this._headers) {
-			init.headers = this._headers;
+		if (this.#headers) {
+			init.headers = this.#headers;
 		}
 
 		return Response.json(body, init);
@@ -78,6 +78,6 @@ export class KaitoHead {
 	 * Whether this KaitoHead instance has been touched/modified
 	 */
 	public get touched() {
-		return this._status !== 200 || this._headers !== null;
+		return this.#status !== 200 || this.#headers !== null;
 	}
 }

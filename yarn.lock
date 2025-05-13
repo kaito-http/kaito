@@ -816,8 +816,7 @@ __metadata:
     "@kaito-http/uws": "workspace:^"
     dotenv: "npm:^16.3.1"
     tsx: "npm:^4.19.2"
-    typescript: "npm:^5.7.2"
-    zod: "npm:^3.24.1"
+    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -831,8 +830,7 @@ __metadata:
     cookie: "npm:^1.0.2"
     stripe: "npm:^17.5.0"
     tsx: "npm:^4.19.2"
-    typescript: "npm:^5.7.2"
-    zod: "npm:^3.24.1"
+    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -842,7 +840,7 @@ __metadata:
   dependencies:
     "@kaito-http/core": "workspace:^"
     tsx: "npm:^4.19.2"
-    typescript: "npm:^5.7.2"
+    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -852,7 +850,7 @@ __metadata:
   dependencies:
     "@kaito-http-examples/basic": "workspace:^"
     "@kaito-http/client": "workspace:^"
-    typescript: "npm:^5.7.2"
+    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -861,7 +859,17 @@ __metadata:
   resolution: "@kaito-http-examples/deno@workspace:examples/deno"
   dependencies:
     "@kaito-http/core": "workspace:^"
-    typescript: "npm:^5.7.2"
+    typescript: "npm:^5.7.3"
+  languageName: unknown
+  linkType: soft
+
+"@kaito-http-examples/openapi@workspace:examples/openapi":
+  version: 0.0.0-use.local
+  resolution: "@kaito-http-examples/openapi@workspace:examples/openapi"
+  dependencies:
+    "@kaito-http/core": "workspace:^"
+    tsx: "npm:^4.19.2"
+    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -873,6 +881,7 @@ __metadata:
     "@kaito-http/core": "workspace:^"
     pathcat: "npm:^1.4.0"
     tsup: "npm:^8.3.5"
+    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -881,9 +890,9 @@ __metadata:
   resolution: "@kaito-http/core@workspace:packages/core"
   dependencies:
     "@arethetypeswrong/cli": "npm:^0.17.2"
-    "@types/node": "npm:^22.10.2"
+    openapi3-ts: "npm:^4.4.0"
     tsup: "npm:^8.3.5"
-    typescript: "npm:^5.7.2"
+    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -911,7 +920,8 @@ __metadata:
   dependencies:
     "@arethetypeswrong/cli": "npm:^0.17.2"
     tsup: "npm:^8.3.5"
-    uWebSockets.js: "https://github.com/kaito-http/uWebSockets.js#v20.51.0"
+    typescript: "npm:^5.7.3"
+    uWebSockets.js: "https://github.com/uNetworking/uWebSockets.js#v20.52.0"
   languageName: unknown
   linkType: soft
 
@@ -1904,7 +1914,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:>=8.1.0, @types/node@npm:^22.10.2":
+"@types/node@npm:>=8.1.0":
   version: 22.10.2
   resolution: "@types/node@npm:22.10.2"
   dependencies:
@@ -4193,7 +4203,7 @@ __metadata:
   dependencies:
     prettier: "npm:^3.4.2"
     tsup: "npm:^8.3.5"
-    typescript: "npm:^5.7.2"
+    typescript: "npm:^5.7.3"
   languageName: unknown
   linkType: soft
 
@@ -5586,6 +5596,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"openapi3-ts@npm:^4.4.0":
+  version: 4.4.0
+  resolution: "openapi3-ts@npm:4.4.0"
+  dependencies:
+    yaml: "npm:^2.5.0"
+  checksum: 10c0/900b834279fc8a43c545728ad75ec7c26934ec5344225b60d1e1c0df44d742d7e7379aea18d9034e03031f079d3308ba5a68600682eece3ed41cdbdd10346a9e
+  languageName: node
+  linkType: hard
+
 "p-limit@npm:^6.0.0":
   version: 6.2.0
   resolution: "p-limit@npm:6.2.0"
@@ -6946,16 +6965,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.7.2":
-  version: 5.7.2
-  resolution: "typescript@npm:5.7.2"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 10c0/a873118b5201b2ef332127ef5c63fb9d9c155e6fdbe211cbd9d8e65877283797cca76546bad742eea36ed7efbe3424a30376818f79c7318512064e8625d61622
-  languageName: node
-  linkType: hard
-
 "typescript@npm:^5.7.3":
   version: 5.7.3
   resolution: "typescript@npm:5.7.3"
@@ -6976,30 +6985,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^5.7.2#optional!builtin<compat/typescript>":
-  version: 5.7.2
-  resolution: "typescript@patch:typescript@npm%3A5.7.2#optional!builtin<compat/typescript>::version=5.7.2&hash=8c6c40"
-  bin:
-    tsc: bin/tsc
-    tsserver: bin/tsserver
-  checksum: 10c0/c891ccf04008bc1305ba34053db951f8a4584b4a1bf2f68fd972c4a354df3dc5e62c8bfed4f6ac2d12e5b3b1c49af312c83a651048f818cd5b4949d17baacd79
-  languageName: node
-  linkType: hard
-
 "typescript@patch:typescript@npm%3A^5.7.3#optional!builtin<compat/typescript>":
   version: 5.7.3
-  resolution: "typescript@patch:typescript@npm%3A5.7.3#optional!builtin<compat/typescript>::version=5.7.3&hash=8c6c40"
+  resolution: "typescript@patch:typescript@npm%3A5.7.3#optional!builtin<compat/typescript>::version=5.7.3&hash=5786d5"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 10c0/3b56d6afa03d9f6172d0b9cdb10e6b1efc9abc1608efd7a3d2f38773d5d8cfb9bbc68dfb72f0a7de5e8db04fc847f4e4baeddcd5ad9c9feda072234f0d788896
+  checksum: 10c0/6fd7e0ed3bf23a81246878c613423730c40e8bdbfec4c6e4d7bf1b847cbb39076e56ad5f50aa9d7ebd89877999abaee216002d3f2818885e41c907caaa192cc4
   languageName: node
   linkType: hard
 
-"uWebSockets.js@https://github.com/kaito-http/uWebSockets.js#v20.51.0":
-  version: 20.51.0
-  resolution: "uWebSockets.js@https://github.com/kaito-http/uWebSockets.js.git#commit=6609a88ffa9a16ac5158046761356ce03250a0df"
-  checksum: 10c0/25bd18780ee0582981bf40f40a56dd1d38d528c0d22806c4295d6ab165aae10e90438ca910952ca32d86e264d851325104051b3339e46c8df8633661192d7131
+"uWebSockets.js@https://github.com/uNetworking/uWebSockets.js#v20.52.0":
+  version: 20.52.0
+  resolution: "uWebSockets.js@https://github.com/uNetworking/uWebSockets.js.git#commit=cfc9a40d8132a34881813cec3d5f8e3a185b3ce3"
+  checksum: 10c0/3a852780e99ee16196fd4b027374527f28bdb9509b3d42fcfc85144ef46fa5dd72b6ebf45499f8f0eefadb403e10e6f4605131d0e3992118e2d79d2e769bf68a
   languageName: node
   linkType: hard
 
@@ -7395,6 +7394,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"yaml@npm:^2.5.0":
+  version: 2.7.0
+  resolution: "yaml@npm:2.7.0"
+  bin:
+    yaml: bin.mjs
+  checksum: 10c0/886a7d2abbd70704b79f1d2d05fe9fb0aa63aefb86e1cb9991837dced65193d300f5554747a872b4b10ae9a12bc5d5327e4d04205f70336e863e35e89d8f4ea9
+  languageName: node
+  linkType: hard
+
 "yargs-parser@npm:^20.2.2":
   version: 20.2.9
   resolution: "yargs-parser@npm:20.2.9"
@@ -7437,13 +7445,6 @@ __metadata:
   version: 3.23.8
   resolution: "zod@npm:3.23.8"
   checksum: 10c0/8f14c87d6b1b53c944c25ce7a28616896319d95bc46a9660fe441adc0ed0a81253b02b5abdaeffedbeb23bdd25a0bf1c29d2c12dd919aef6447652dd295e3e69
-  languageName: node
-  linkType: hard
-
-"zod@npm:^3.24.1":
-  version: 3.24.1
-  resolution: "zod@npm:3.24.1"
-  checksum: 10c0/0223d21dbaa15d8928fe0da3b54696391d8e3e1e2d0283a1a070b5980a1dbba945ce631c2d1eccc088fdbad0f2dfa40155590bf83732d3ac4fcca2cc9237591b
   languageName: node
   linkType: hard
 

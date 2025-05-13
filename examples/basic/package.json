@@ -7,7 +7,7 @@
 	"homepage": "https://github.com/kaito-http/kaito",
 	"repository": "https://github.com/kaito-http/kaito",
 	"license": "MIT",
-	"version": "3.0.4",
+	"version": "4.0.0-beta.13",
 	"scripts": {
 		"dev": "node --import=tsx --watch src/index.ts",
 		"start": "node --import=tsx src/index.ts"
@@ -17,12 +17,11 @@
 		"@kaito-http/core": "workspace:^",
 		"@kaito-http/uws": "workspace:^",
 		"cookie": "^1.0.2",
-		"stripe": "^17.5.0",
-		"zod": "^3.24.1"
+		"stripe": "^17.5.0"
 	},
 	"devDependencies": {
 		"tsx": "^4.19.2",
-		"typescript": "^5.7.2"
+		"typescript": "^5.7.3"
 	},
 	"keywords": [
 		"typescript",

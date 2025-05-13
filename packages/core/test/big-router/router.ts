@@ -1,5 +1,5 @@
-import {createUtilities} from '../../src/index.ts';
+import {create} from '../../src/index.ts';
 
-export const {router} = createUtilities(async req => {
-	return {req, foo: 1};
+export const router = create({
+	getContext: req => ({req, foo: 1}),
 });

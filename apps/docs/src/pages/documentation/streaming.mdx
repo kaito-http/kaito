@@ -9,7 +9,7 @@ SSE is a technology that allows you to stream data to the client in realtime. It
 Kaito has a built-in utility for doing SSE, called `sse`. This function returns a `Response` object that you can return from your route.
 
 ```ts
-const stream = router().get('/', async ({ctx}) => {
+const stream = router.get('/', async ({ctx}) => {
 	return sse(async function* () {
 		yield {data: 'Hello, world!'};
 		await new Promise(resolve => setTimeout(resolve, 1000));
@@ -23,7 +23,7 @@ const stream = router().get('/', async ({ctx}) => {
 You can also just return a response with a `ReadableStream` body.
 
 ```ts
-router().get('/', async () => {
+router.get('/', async () => {
 	const stream = new ReadableStream<string>({
 		async start(controller) {
 			controller.enqueue('Hello, ');

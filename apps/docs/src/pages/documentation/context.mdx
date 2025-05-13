@@ -19,45 +19,46 @@ In the documentation about routers, you'll learn about how routers can create th
 </Callout>
 
 ```ts filename="context.ts"
-import {createUtilities} from '@kaito-http/core';
+import {create} from '@kaito-http/core';
 import {db} from './db.ts';
 
-// Use the `createUtilities` helper to also create a strongly typed `router` function
-export const {getContext, router} = createUtilities(async (req, res) => {
-	return {
-		req,
-		res,
-		time: new Date(),
+// Create a new router with context
+export const router = create({
+	getContext: async (req, head) => {
+		return {
+			req,
+			res,
+			time: new Date(),
 
-		searchForUser: async (query: string) => {
-			return await db.users.search(query);
-		},
+			searchForUser: async (query: string) => {
+				return await db.users.search(query);
+			},
 
-		// This is just an example
-		getSession: async () => {
-			const cookies = req.headers.cookie;
+			// This is just an example
+			getSession: async () => {
+				const cookies = req.headers.cookie;
 
-			// this is bad code, use a cookie parser library! npmjs.com/package/cookie is a good one
-			const token = cookies
-				?.split(';')
-				.find(cookie => cookie.startsWith('token='))
-				.split('=')[1];
+				// this is bad code, use a cookie parser library! npmjs.com/package/cookie is a good one
+				const token = cookies
+					?.split(';')
+					.find(cookie => cookie.startsWith('token='))
+					.split('=')[1];
 
-			return await db.sessions.findByToken(token);
-		},
-	};
+				return await db.sessions.findByToken(token);
+			},
+		};
+	},
 });
 ```
 
 You can then use this context, when setup correctly with a router, inside every single route. E.g.
 
 ```ts filename="routes/users.ts"
-import {z} from 'zod';
 import {router} from '../context.ts';
 
-export const users = router().get('/users/search', {
+export const users = router.get('/users/search', {
 	query: {
-		search: z.string().max(200),
+		search: k.string().max(200),
 	},
 
 	async run({ctx, query}) {

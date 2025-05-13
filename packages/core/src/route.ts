@@ -1,52 +1,62 @@
-import type {KaitoMethod} from './router/types.ts';
-import type {ExtractRouteParams, InferParsable, Parsable} from './util.ts';
+import type {Router} from './router/router.ts';
+import type {AnySchemaFor, JSONValue} from './schema/schema.ts';
+import type {KaitoSSEResponse} from './stream/stream.ts';
+import type {ExtractRouteParams, KaitoMethod} from './util.ts';
 
-export type RouteArgument<Path extends string, Context, QueryOutput, BodyOutput> = {
+export type RouteRunData<Params extends string, Context, QueryOutput, BodyOutput> = {
+	params: Record<Params, string>;
 	ctx: Context;
-	body: BodyOutput;
 	query: QueryOutput;
-	params: ExtractRouteParams<Path>;
+	body: BodyOutput;
 };
 
-export type AnyQueryDefinition = Record<string, Parsable<any, string | undefined>>;
+export type AnyQuery = {[key in string]: any};
 
-export type Through<From, To> = (context: From) => Promise<To>;
+export type Through<From, To, RequiredParams extends string> = (
+	context: From,
+	params: Record<RequiredParams, string>,
+) => Promise<To>;
+
+export type SSEOutputSpec<Result extends JSONValue> = {
+	type: 'sse';
+	schema: AnySchemaFor<Result>;
+	description?: string;
+};
+
+export type JSONOutputSpec<Result extends JSONValue> = {
+	type: 'json';
+	schema: AnySchemaFor<Result>;
+	description?: string;
+};
+
+export type OutputSpec<Result extends JSONValue> = {
+	description?: string;
+	body: NoInfer<
+		Result extends KaitoSSEResponse<infer R> ? SSEOutputSpec<Extract<R, JSONValue>> : JSONOutputSpec<Result>
+	>;
+};
 
 export type Route<
 	// Router context
-	ContextFrom,
 	ContextTo,
 	// Route information
-	Result,
+	Result extends JSONValue,
 	Path extends string,
+	AdditionalParams extends string,
 	Method extends KaitoMethod,
 	// Schemas
-	Query extends AnyQueryDefinition,
-	Body extends Parsable,
+	Query extends Record<string, JSONValue>,
+	Body extends JSONValue,
 > = {
-	through: Through<ContextFrom, ContextTo>;
-	body?: Body;
-	query?: Query;
+	body?: AnySchemaFor<Body>;
+	query?: {[Key in keyof Query]: AnySchemaFor<Query[Key]>};
 	path: Path;
 	method: Method;
+	openapi?: OutputSpec<NoInfer<Result>>;
+	router: Router<unknown, ContextTo, AdditionalParams, AnyRoute, any>;
 	run(
-		arg: RouteArgument<
-			Path,
-			ContextTo,
-			{
-				[Key in keyof Query]: InferParsable<Query[Key]>['output'];
-			},
-			InferParsable<Body>['output']
-		>,
+		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>,
 	): Promise<Result> | Result;
 };
 
-export type AnyRoute<ContextFrom = any, ContextTo = any> = Route<
-	ContextFrom,
-	ContextTo,
-	any,
-	any,
-	any,
-	AnyQueryDefinition,
-	any
->;
+export type AnyRoute = Route<any, any, any, any, any, any, any>;

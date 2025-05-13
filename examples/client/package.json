@@ -10,7 +10,7 @@
 		"@kaito-http/client": "workspace:^"
 	},
 	"devDependencies": {
-		"typescript": "^5.7.2"
+		"typescript": "^5.7.3"
 	},
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"description": "Functional HTTP Framework for TypeScript",
@@ -22,5 +22,5 @@
 	],
 	"license": "MIT",
 	"repository": "https://github.com/kaito-http/kaito",
-	"version": "3.0.4"
+	"version": "4.0.0-beta.13"
 }

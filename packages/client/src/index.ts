@@ -1,4 +1,11 @@
-import type {APIResponse, ErroredAPIResponse, InferParsable, InferRoutes, KaitoMethod, Router} from '@kaito-http/core';
+import type {
+	AnyRoute,
+	APIResponse,
+	ErroredAPIResponse,
+	ExtractRouteParams,
+	KaitoMethod,
+	Router,
+} from '@kaito-http/core';
 import type {KaitoSSEResponse, SSEEvent} from '@kaito-http/core/stream';
 import {pathcat} from 'pathcat';
 import pkg from '../package.json' with {type: 'json'};
@@ -26,19 +33,12 @@ export type UndefinedKeysToOptional<T> = {
 	[K in keyof T as undefined extends T[K] ? never : K]: T[K];
 };
 
-export type IsExactly<T, A, True, False> = T extends A ? (A extends T ? True : False) : False;
+export type IsExactly<T, A, True = true, False = false> = T extends A ? (A extends T ? True : False) : False;
 
 export type AlwaysEnabledOptions = {
 	signal?: AbortSignal | null | undefined;
+	headers?: HeadersInit;
 };
-
-export type ExtractRouteParams<T extends string> = string extends T
-	? string
-	: T extends `${string}:${infer Param}/${infer Rest}`
-		? Param | ExtractRouteParams<Rest>
-		: T extends `${string}:${infer Param}`
-			? Param
-			: never;
 
 export class KaitoClientHTTPError extends Error {
 	constructor(
@@ -176,36 +176,44 @@ export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements Asyn
 	}
 }
 
-export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>(
+export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any> = never>(
 	rootOptions: KaitoHTTPClientRootOptions,
 ) {
-	type ROUTES = InferRoutes<APP>;
+	type ROUTES = APP['routes'] extends Set<infer R extends AnyRoute> ? R : never;
+
+	type ReturnTypeFor<M extends KaitoMethod, Path extends Extract<ROUTES, {method: M}>['path']> = Awaited<
+		ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>
+	>;
 
 	type RequestOptionsFor<M extends KaitoMethod, Path extends Extract<ROUTES, {method: M}>['path']> = {
-		body: IfNeverThenUndefined<InferParsable<NonNullable<Extract<ROUTES, {method: M; path: Path}>['body']>>['input']>;
+		body: IfNeverThenUndefined<NonNullable<Extract<ROUTES, {method: M; path: Path}>['body']>['_input']>;
 
 		params: IfNoKeysThenUndefined<Record<ExtractRouteParams<Path>, string>>;
 
 		query: MakeQueryUndefinedIfNoRequiredKeys<
 			Prettify<
 				UndefinedKeysToOptional<{
-					[Key in keyof NonNullable<Extract<ROUTES, {method: M; path: Path}>['query']>]: InferParsable<
+					[Key in keyof NonNullable<Extract<ROUTES, {method: M; path: Path}>['query']>]: NonNullable<
 						NonNullable<Extract<ROUTES, {method: M; path: Path}>['query']>[Key]
-					>['input'];
+					>['_input'];
 				}>
 			>
 		>;
 
-		sse: IfNeverThenUndefined<
-			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<any>
-				? true
-				: never
-		>;
+		sse: IfNeverThenUndefined<ReturnTypeFor<M, Path> extends KaitoSSEResponse<any> ? true : never>;
 
-		response: IfNeverThenUndefined<
-			IsExactly<JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>, Response, true, never>
-		>;
+		response: IfNeverThenUndefined<IsExactly<ReturnTypeFor<M, Path>, Response, true, never>>;
 	};
+
+	function* iterateHeaders(init: HeadersInit): Generator<[key: string, value: string], void, void> {
+		for (const [key, value] of Array.isArray(init)
+			? init
+			: init instanceof Headers
+				? init.entries()
+				: Object.entries(init)) {
+			yield [key, value];
+		}
+	}
 
 	const create = <M extends KaitoMethod>(method: M) => {
 		return async <Path extends Extract<ROUTES, {method: M}>['path']>(
@@ -214,7 +222,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 				? [options?: AlwaysEnabledOptions]
 				: [options: RemoveOnlyUndefinedKeys<UndefinedKeysToOptional<RequestOptionsFor<M, Path>>> & AlwaysEnabledOptions]
 		): Promise<
-			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<
+			Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>> extends KaitoSSEResponse<
 				infer U extends SSEEvent<unknown, string>
 			>
 				? KaitoSSEStream<U>
@@ -238,6 +246,12 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 				headers,
 				method,
 			};
+
+			if (options.headers !== undefined) {
+				for (const [key, value] of iterateHeaders(options.headers)) {
+					headers.set(key, value);
+				}
+			}
 
 			if (options.signal !== undefined) {
 				init.signal = options.signal;

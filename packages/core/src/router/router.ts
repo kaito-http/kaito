@@ -1,93 +1,102 @@
+import type {KaitoConfig} from '../config.ts';
 import {KaitoError, WrappedError} from '../error.ts';
-import type {HandlerConfig} from '../handler.ts';
 import {KaitoHead} from '../head.ts';
 import {KaitoRequest} from '../request.ts';
-import type {AnyQueryDefinition, AnyRoute, Route} from '../route.ts';
-import {isNodeLikeDev, type ErroredAPIResponse, type Parsable} from '../util.ts';
-import type {KaitoMethod} from './types.ts';
+import type {AnyQuery, AnyRoute, Route} from '../route.ts';
+import {k, type AnySchemaFor, type JSONValue} from '../schema/schema.ts';
+import {
+	isNodeLikeDev,
+	type ErroredAPIResponse,
+	type ExtractRouteParams,
+	type KaitoMethod,
+	type MaybePromise,
+} from '../util.ts';
 
 type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 	R extends Route<
-		infer ContextFrom,
 		infer ContextTo,
 		infer Result,
 		infer Path,
+		infer AdditionalParams,
 		infer Method,
 		infer Query,
 		infer BodyOutput
 	>
-		? Route<ContextFrom, ContextTo, Result, `${Prefix}${Path}`, Method, Query, BodyOutput>
+		? Route<ContextTo, Result, `${Prefix}${Path extends '/' ? '' : Path}`, AdditionalParams, Method, Query, BodyOutput>
 		: never;
 
 type PrefixRoutesPath<Prefix extends `/${string}`, R extends AnyRoute> = R extends R
 	? PrefixRoutesPathInner<R, Prefix>
 	: never;
 
-export type RouterState<Routes extends AnyRoute, ContextFrom, ContextTo> = {
+export type RouterState<
+	ContextFrom,
+	ContextTo,
+	RequiredParams extends string,
+	Routes extends AnyRoute,
+	Input extends readonly unknown[],
+> = {
 	routes: Set<Routes>;
-	through: (context: ContextFrom) => Promise<ContextTo>;
+	through: (context: unknown, params: RequiredParams) => Promise<ContextTo>;
+	config: KaitoConfig<ContextFrom, Input>;
 };
 
-export type InferRoutes<R extends Router<any, any, any>> = R extends Router<any, any, infer R> ? R : never;
+export class Router<
+	ContextFrom,
+	ContextTo,
+	RequiredParams extends string,
+	R extends AnyRoute,
+	Input extends readonly unknown[],
+> {
+	private readonly state: RouterState<ContextFrom, ContextTo, RequiredParams, R, Input>;
 
-export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
-	private readonly state: RouterState<R, ContextFrom, ContextTo>;
-
-	public static create = <Context>(): Router<Context, Context, never> =>
-		new Router<Context, Context, never>({
-			through: async context => context,
+	public static create = <Context = null, Input extends readonly unknown[] = []>(
+		config: KaitoConfig<Context, Input> = {},
+	): Router<Context, Context, never, never, Input> => {
+		return new Router({
+			through: async context => context as Context,
 			routes: new Set(),
+			config,
 		});
+	};
 
-	private static parseQuery<T extends AnyQueryDefinition>(schema: T | undefined, url: URL) {
-		if (!schema) {
-			return {};
-		}
-
-		const result: Record<PropertyKey, unknown> = {};
-		for (const key in schema) {
-			if (!schema.hasOwnProperty(key)) continue;
-			const value = url.searchParams.get(key);
-			result[key] = (schema[key] as Parsable).parse(value);
-		}
-
-		return result as {
-			[Key in keyof T]: ReturnType<T[Key]['parse']>;
-		};
-	}
-
-	public constructor(options: RouterState<R, ContextFrom, ContextTo>) {
-		this.state = options;
+	protected constructor(state: RouterState<ContextFrom, ContextTo, RequiredParams, R, Input>) {
+		this.state = state;
 	}
 
 	public get routes() {
 		return this.state.routes;
 	}
 
-	public add = <
-		Result,
+	private readonly add = <
+		Result extends JSONValue,
 		Path extends string,
 		Method extends KaitoMethod,
-		Query extends AnyQueryDefinition = {},
-		Body extends Parsable = never,
+		Query extends AnyQuery,
+		Body extends JSONValue,
 	>(
 		method: Method,
 		path: Path,
 		route:
 			| (Method extends 'GET'
 					? Omit<
-							Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>,
-							'body' | 'path' | 'method' | 'through'
+							Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body>,
+							'body' | 'path' | 'method' | 'router'
 						>
-					: Omit<Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>, 'path' | 'method' | 'through'>)
-			| Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>['run'],
-	): Router<ContextFrom, ContextTo, R | Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body>> => {
-		const merged: Route<ContextFrom, ContextTo, Result, Path, Method, Query, Body> = {
-			// TODO: Ideally fix the typing here, but this will be replaced in Kaito v4 where all routes must return a Response (which we can type)
+					: Omit<Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body>, 'path' | 'method' | 'router'>)
+			| Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body>['run'],
+	): Router<
+		ContextFrom,
+		ContextTo,
+		RequiredParams,
+		R | Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body>,
+		Input
+	> => {
+		const merged: Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body> = {
 			...((typeof route === 'object' ? route : {run: route}) as {run: never}),
 			method,
 			path,
-			through: this.state.through,
+			router: this,
 		};
 
 		return new Router({
@@ -96,46 +105,60 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 		});
 	};
 
-	public readonly merge = <PathPrefix extends `/${string}`, OtherRoutes extends AnyRoute>(
-		pathPrefix: PathPrefix,
-		other: Router<ContextFrom, unknown, OtherRoutes>,
-	): Router<ContextFrom, ContextTo, Extract<R | PrefixRoutesPath<PathPrefix, OtherRoutes>, AnyRoute>> => {
+	public readonly params: [R] extends [never]
+		? <NextParams extends string>() => Router<ContextFrom, ContextTo, NextParams, R, Input>
+		: 'router.params() can only be called before any routes are attached' = (() => this) as never;
+
+	public readonly merge = <
+		PathPrefix extends `/${string}`,
+		NextRequiredParams extends string,
+		OtherRoutes extends AnyRoute,
+	>(
+		pathPrefix: [NextRequiredParams] extends [ExtractRouteParams<PathPrefix> | RequiredParams]
+			? PathPrefix
+			: `Missing ${Exclude<NextRequiredParams, ExtractRouteParams<PathPrefix> | RequiredParams>}`,
+		other: Router<ContextFrom, unknown, NextRequiredParams, OtherRoutes, Input>,
+	): Router<
+		ContextFrom,
+		ContextTo,
+		RequiredParams,
+		Extract<R | PrefixRoutesPath<PathPrefix, Extract<OtherRoutes, AnyRoute>>, AnyRoute>,
+		Input
+	> => {
 		const newRoutes = [...other.state.routes].map(route => ({
 			...route,
-			path: `${pathPrefix}${route.path as string}`,
+			// handle pathPrefix = / & route.path = / case causing //
+			// we intentionally are replacing on the joining path and not the pathPrefix, in case of
+			// /named -> merged to -> / causing /named/ not /named
+			path: `${pathPrefix}${route.path === '/' ? '' : route.path}`,
 		}));
 
-		return new Router<ContextFrom, ContextTo, Extract<R | PrefixRoutesPath<PathPrefix, OtherRoutes>, AnyRoute>>({
+		return new Router({
 			...this.state,
 			routes: new Set([...this.state.routes, ...newRoutes] as never),
 		});
 	};
 
-	public freeze = (server: Omit<HandlerConfig<ContextFrom>, 'router'>) => {
-		const routes = new Map<string, Map<KaitoMethod, AnyRoute>>();
-
-		for (const route of this.state.routes) {
-			if (!routes.has(route.path)) {
-				routes.set(route.path, new Map());
-			}
-
-			routes.get(route.path)!.set(route.method, route);
-		}
-
-		const findRoute = (method: KaitoMethod, path: string): {route?: AnyRoute; params: Record<string, string>} => {
+	protected static getFindRoute =
+		<R>(routes: Map<KaitoMethod, Map<string, R>>) =>
+		(method: KaitoMethod, path: string) => {
 			const params: Record<string, string> = {};
 			const pathParts = path.split('/').filter(Boolean);
 
-			for (const [routePath, methodHandlers] of routes) {
+			const methodRoutes = routes.get(method);
+			if (!methodRoutes) return {};
+
+			for (const [routePath, route] of methodRoutes) {
 				const routeParts = routePath.split('/').filter(Boolean);
 
-				if (routeParts.length !== pathParts.length) continue;
+				if (routeParts.length !== pathParts.length) {
+					continue;
+				}
 
 				let matches = true;
 				for (let i = 0; i < routeParts.length; i++) {
 					const routePart = routeParts[i];
 					const pathPart = pathParts[i];
-
 					if (routePart && pathPart && routePart.startsWith(':')) {
 						params[routePart.slice(1)] = pathPart;
 					} else if (routePart !== pathPart) {
@@ -144,20 +167,42 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 					}
 				}
 
-				if (matches) {
-					const route = methodHandlers.get(method);
-					if (route) return {route, params};
-				}
+				if (matches) return {route, params};
 			}
 
-			return {params};
+			return {};
 		};
 
-		return async (req: Request): Promise<Response> => {
+	public serve = () => {
+		const methodToRoutesMap = new Map<
+			KaitoMethod,
+			Map<
+				string,
+				AnyRoute & {
+					fastQuerySchema: AnySchemaFor<AnyQuery> | undefined;
+				}
+			>
+		>();
+
+		for (const route of this.state.routes) {
+			if (!methodToRoutesMap.has(route.method)) {
+				methodToRoutesMap.set(route.method, new Map());
+			}
+
+			methodToRoutesMap.get(route.method)!.set(route.path, {
+				...route,
+				fastQuerySchema: route.query ? k.object(route.query) : undefined,
+			});
+		}
+
+		const findRoute = Router.getFindRoute(methodToRoutesMap);
+
+		// We don't return this function directly, because we wrap it below with the `.before()` and `.transform()` methods
+		const handle = async (req: Request, ...args: Input): Promise<Response> => {
 			const url = new URL(req.url);
 			const method = req.method as KaitoMethod;
 
-			const {route, params} = findRoute(method, url.pathname);
+			const {route, params: rawParams} = findRoute(method, url.pathname);
 
 			if (!route) {
 				const body: ErroredAPIResponse = {
@@ -174,16 +219,18 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 
 			try {
 				const body = route.body ? await route.body.parse(await req.json()) : undefined;
-				const query = Router.parseQuery(route.query, url);
+				const query = route.fastQuerySchema ? route.fastQuerySchema.parse(url.searchParams) : {};
 
-				const rootCtx = await server.getContext(request, head);
-				const ctx = await route.through(rootCtx);
+				const ctx = await route.router.state.through(
+					(await this.state.config.getContext?.(request, head, ...args)) ?? null,
+					rawParams,
+				);
 
 				const result = await route.run({
 					ctx,
 					body,
 					query,
-					params,
+					params: rawParams,
 				});
 
 				if (result instanceof Response) {
@@ -206,7 +253,6 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 				return head.toResponse({
 					success: true,
 					data: result,
-					message: 'OK',
 				});
 			} catch (e) {
 				const error = WrappedError.maybe(e);
@@ -219,31 +265,186 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 					});
 				}
 
-				const {status, message} = await server
-					.onError({error, req: request})
-					.catch(() => ({status: 500, message: 'Internal Server Error'}));
+				if (!this.state.config.onError) {
+					return head.status(500).toResponse({
+						success: false,
+						data: null,
+						message: 'Internal Server Error',
+					});
+				}
 
-				return head.status(status).toResponse({
-					success: false,
-					data: null,
-					message,
-				});
+				try {
+					const {status, message} = await this.state.config.onError(error, request);
+
+					return head.status(status).toResponse({
+						success: false,
+						data: null,
+						message,
+					});
+				} catch (e) {
+					console.error('KAITO - Failed to handle error inside `.onError()`, returning 500 and Internal Server Error');
+					console.error(e);
+
+					return head.status(500).toResponse({
+						success: false,
+						data: null,
+						message: 'Internal Server Error',
+					});
+				}
 			}
+		};
+
+		return async (request: Request, ...args: Input): Promise<Response> => {
+			if (this.state.config.before) {
+				const result = await this.state.config.before(request);
+
+				if (result instanceof Response) {
+					if (this.state.config.transform) {
+						const transformed = await this.state.config.transform(request, result);
+
+						if (transformed instanceof Response) {
+							return result;
+						}
+					}
+
+					return result;
+				}
+			}
+
+			const response = await handle(request, ...args);
+
+			if (this.state.config.transform) {
+				const transformed = await this.state.config.transform(request, response);
+
+				if (transformed instanceof Response) {
+					return transformed;
+				}
+			}
+
+			return response;
 		};
 	};
 
-	private readonly method =
-		<M extends KaitoMethod>(method: M) =>
-		<Result, Path extends string, Query extends AnyQueryDefinition = {}, Body extends Parsable = never>(
+	public openapi = (_highLevelSpec: {
+		info: {
+			version: string;
+			title: string;
+			description?: string;
+		};
+		servers?: Partial<Record<(`https://` | `http://`) | ({} & string), string>>;
+	}) => {
+		return this;
+		/*
+
+		const OPENAPI_VERSION = '3.0.0';
+
+		const paths: ZodOpenApiPathsObject = {};
+
+		for (const route of this.state.routes) {
+			const path = route.path;
+
+			if (!route.openapi) {
+				continue;
+			}
+
+			const pathWithColonParamsReplaceWithCurlyBraces = path.replace(/:(\w+)/g, '{$1}');
+
+			if (!paths[pathWithColonParamsReplaceWithCurlyBraces]) {
+				paths[pathWithColonParamsReplaceWithCurlyBraces] = {};
+			}
+
+			const content: ZodOpenApiContentObject =
+				route.openapi.body.type === 'json'
+					? {
+							'application/json': {
+								schema: z.object({
+									success: z.literal(true).openapi({
+										type: 'boolean',
+										enum: [true], // Need this as zod-openapi doesn't properly work with literals
+									}),
+									data: route.openapi.body.schema,
+								}),
+							},
+						}
+					: {
+							'text/event-stream': {
+								schema: route.openapi.body.schema,
+							},
+						};
+
+			const item: ZodOpenApiOperationObject = {
+				description: route.openapi?.description ?? 'Successful response',
+				responses: {
+					200: {
+						description: route.openapi?.description ?? 'Successful response',
+						content,
+					},
+				},
+			};
+
+			if (route.body) {
+				item.requestBody = {
+					content: {
+						'application/json': {schema: route.body},
+					},
+				};
+			}
+
+			const params: NonNullable<ZodOpenApiOperationObject['requestParams']> = {};
+
+			if (route.query) {
+				params.query = z.object(route.query);
+			}
+
+			const urlParams = path.match(/:(\w+)/g);
+
+			if (urlParams) {
+				const pathParams = {} as Record<string, z.ZodType>;
+
+				for (const param of urlParams) {
+					pathParams[param.slice(1)] = z.string();
+				}
+
+				params.path = z.object(pathParams);
+			}
+
+			item.requestParams = params;
+
+			paths[pathWithColonParamsReplaceWithCurlyBraces][route.method.toLowerCase() as Lowercase<KaitoMethod>] = item;
+		}
+
+		const doc = createDocument({
+			openapi: OPENAPI_VERSION,
+			paths,
+			...highLevelSpec,
+			servers: Object.entries(highLevelSpec.servers ?? {}).map(entry => {
+				const [url, description] = entry as [string, string];
+
+				return {
+					url,
+					description,
+				};
+			}),
+		});
+
+		return this.get('/openapi.json', () => Response.json(doc));
+	
+	*/
+	};
+
+	private readonly method = <M extends KaitoMethod>(method: M) => {
+		return <Result extends JSONValue, Path extends string, Query extends AnyQuery = {}, Body extends JSONValue = never>(
 			path: Path,
 			route:
 				| (M extends 'GET'
-						? Omit<Route<ContextFrom, ContextTo, Result, Path, M, Query, Body>, 'body' | 'path' | 'method' | 'through'>
-						: Omit<Route<ContextFrom, ContextTo, Result, Path, M, Query, Body>, 'path' | 'method' | 'through'>)
-				| Route<ContextFrom, ContextTo, Result, Path, M, Query, Body>['run'],
-		) => {
-			return this.add<Result, Path, M, Query, Body>(method, path, route);
-		};
+						? Omit<
+								Route<ContextTo, Result, Path, RequiredParams, M, Query, Body>,
+								'body' | 'path' | 'method' | 'router'
+							>
+						: Omit<Route<ContextTo, Result, Path, RequiredParams, M, Query, Body>, 'path' | 'method' | 'router'>)
+				| Route<ContextTo, Result, Path, RequiredParams, M, Query, Body>['run'],
+		) => this.add<Result, Path, M, Query, Body>(method, path, route);
+	};
 
 	public get = this.method('GET');
 	public post = this.method('POST');
@@ -254,11 +455,11 @@ export class Router<ContextFrom, ContextTo, R extends AnyRoute> {
 	public options = this.method('OPTIONS');
 
 	public through = <NextContext>(
-		through: (context: ContextTo) => Promise<NextContext>,
-	): Router<ContextFrom, NextContext, R> => {
-		return new Router<ContextFrom, NextContext, R>({
+		through: (context: ContextTo, params: RequiredParams) => MaybePromise<NextContext>,
+	): Router<ContextFrom, NextContext, RequiredParams, R, Input> => {
+		return new Router<ContextFrom, NextContext, RequiredParams, R, Input>({
 			...this.state,
-			through: async context => through(await this.state.through(context)),
+			through: async (context, params) => await through(await this.state.through(context, params), params),
 		});
 	};
 }

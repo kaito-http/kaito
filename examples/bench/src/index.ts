@@ -1,13 +1,17 @@
-import {createKaitoHandler} from '@kaito-http/core';
+import {create} from '@kaito-http/core';
 import {sse} from '@kaito-http/core/stream';
 import {KaitoServer} from '@kaito-http/uws';
-import {getContext, router} from './context.ts';
+import {setTimeout as sleep} from 'node:timers/promises';
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const router = create();
 
-const root = router()
+const sub = router.params<'user_id'>().get('/', ({params}) => {
+	return params.user_id;
+});
+
+const app = router
 	.get('/hello', () => 'hi' as const)
-	.get('/stream', async () => {
+	.get('/stream', () => {
 		const text = "This is an example of text being streamed every 100ms by using Kaito's sse() function";
 
 		return sse(async function* () {
@@ -17,27 +21,15 @@ const root = router()
 				await sleep(100);
 			}
 		});
-	});
-
-const fetch = createKaitoHandler({
-	router: root,
-	getContext,
-
-	onError: async ({error}) => ({
-		status: 500,
-		message: error.message,
-	}),
-});
+	})
+	.merge('/:user_id', sub);
 
 const server = await KaitoServer.serve({
-	fetch,
+	fetch: app.serve(),
 	port: 3000,
 	host: '127.0.0.1',
-	// static: {
-	// 	'/static/file.txt': new Response('Hello, world!'),
-	// },
 });
 
 console.log('Server listening at', server.url);
 
-export type App = typeof root;
+export type App = typeof app;

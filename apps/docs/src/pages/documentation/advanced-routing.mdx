@@ -1,0 +1,160 @@
+---
+title: Advanced Routing
+description: Learn about advanced routing features in Kaito, including router merging, params, and middleware patterns
+---
+
+import {Callout} from 'nextra/components';
+
+# Advanced Routing
+
+## Router Merging
+
+Routers can be merged, which brings one router's routes into another, with a prefix. This is incredibly useful for larger apps, for example when you have multiple versions of an API.
+
+```ts filename="api.ts"
+import {v1} from './routers/v1';
+import {v2} from './routers/v2';
+
+export const api = router.merge('/v1', v1).merge('/v2', v2);
+```
+
+All type information, route names, and correct prefixes are preserved during merging.
+
+## Router Parameters
+
+The `.params()` method provides type-safe declaration of parameters that a router expects to receive when merged. This is exclusively used with router merging - `.params()` is only effective when the router is merged somewhere that provides those parameters.
+
+### Basic Parameters
+
+```ts
+// Declare that this router needs a userId parameter
+const userRouter = router
+	.params({
+		userId: k.string().min(3),
+	})
+	.get('/', async ({params}) => {
+		// params.userId is guaranteed to exist
+		return {id: params.userId};
+	});
+
+// This works - we're mounting at a path that provides userId
+const app = router.merge('/users/:userId', userRouter);
+
+// This would be a type error - we're not providing userId
+const badApp = router.merge('/users', userRouter);
+```
+
+### Nested Parameters
+
+Parameters become especially powerful with deeply nested routers:
+
+```ts
+// This router needs both userId and postId
+const commentsRouter = router
+	.params({
+		userId: k.string(),
+		postId: k.string(),
+	})
+	.through(async (ctx, params) => {
+		const [user, post] = await Promise.all([db.users.findById(params.userId), db.posts.findById(params.postId)]);
+
+		if (!user || !post) {
+			throw new KaitoError(404, 'Not found');
+		}
+
+		return {
+			...ctx,
+			user,
+			post,
+		};
+	});
+
+// This router provides postId and forwards userId
+const postsRouter = router
+	.params({
+		userId: k.string(),
+	})
+	.merge('/posts/:postId/comments', commentsRouter);
+
+// Finally, we provide userId at the top level
+const app = router.merge('/users/:userId', postsRouter);
+```
+
+<Callout>
+	You can only call `.params()` once on a router. Multiple calls will result in a type error to prevent breaking
+	existing routes.
+</Callout>
+
+## Middleware with `.through()`
+
+Instead of traditional middleware, Kaito offers `.through()` for a more predictable and type-safe approach to request processing.
+
+### Basic Usage
+
+`.through()` accepts a function that receives:
+
+1. The current context
+2. The router's parameters (if defined using `.params()`)
+
+It should return the next context, which will be used for all subsequent routes:
+
+```ts
+const postsRouter = router
+	.through(async ctx => {
+		const session = await ctx.getSession();
+
+		if (!session) {
+			throw new KaitoError(401, 'Not logged in');
+		}
+
+		return {
+			...ctx,
+			user: session.user,
+		};
+	})
+	.post('/posts', async ({ctx}) => {
+		const post = await ctx.db.posts.create(ctx.user.id);
+		return post;
+	});
+```
+
+### Chaining
+
+You can chain multiple `.through()` calls, where each receives the context from the previous:
+
+```ts
+const adminRouter = router
+	.through(async ctx => {
+		const session = await ctx.getSession();
+		if (!session) throw new KaitoError(401, 'Not logged in');
+		return {...ctx, user: session.user};
+	})
+	.through(async ctx => {
+		const isAdmin = await checkIfUserIsAdmin(ctx.user);
+		if (!isAdmin) throw new KaitoError(403, 'Forbidden');
+		return {...ctx, user: {...ctx.user, isAdmin: true}};
+	});
+```
+
+### Router Composition
+
+`.through()` enables powerful router composition patterns:
+
+```ts filename="routers/authed.ts"
+export const authedRouter = router.through(async ctx => {
+	const session = await ctx.getSession();
+	if (!session) throw new KaitoError(401, 'Not logged in');
+	return {...ctx, user: session.user};
+});
+```
+
+```ts filename="routes/posts.ts"
+import {authedRouter} from '../routers/authed.ts';
+
+// Note: Router methods are immutable, so we can import and use
+// the router directly without reinstantiation
+export const postsRouter = authedRouter.post('/', async ({ctx}) => {
+	// We get access to ctx.user automatically!
+	await ctx.db.posts.create(ctx.user.id);
+});
+```
