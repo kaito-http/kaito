@@ -22,7 +22,7 @@ export const {getContext, router} = createUtilities(async (req, res) => {
 			return header ? parse(header) : {};
 		},
 		setCookie(name: string, value: string, options: SerializeOptions) {
-			res.headers.set('Set-Cookie', serialize(name, value, options));
+			res.headers.append('Set-Cookie', serialize(name, value, options));
 		},
 	};
 });
