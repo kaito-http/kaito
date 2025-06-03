@@ -1,5 +1,3 @@
-import {Callout} from 'nextra/components';
-
 # Reading the client IP address
 
 Getting the client IP address in Kaito differs depending on what server runtime you're using and also if you are using a reverse proxy or not.
@@ -56,14 +54,29 @@ const server = Bun.serve({
 
 ## Node.js
 
-Since you'll be using `@kaito-http/uws` with Node.js, you can use the exported function `getRemoteAddress` to get the client IP address. Like the Bun example above, this also uses AsyncLocalStorage under the hood. The `getRemoteAddress` is a wrapper around the `getRemoteAddressAsText` function that comes from uWebSockets.js directly.
+Since you'll be using `@kaito-http/uws` with Node.js, the client IP address is available through the `context` parameter passed to your fetch handler. If you need to access it in nested functions or route handlers, you can use AsyncLocalStorage to make it available throughout the request lifecycle.
 
 ```ts
-import {getRemoteAddress} from '@kaito-http/uws';
+import {AsyncLocalStorage} from 'node:async_hooks';
+import {KaitoServer} from '@kaito-http/uws';
+
+const ipStore = new AsyncLocalStorage<string>();
 
 const app = router().get('/ip', async ({ctx}) => {
-	const ip = getRemoteAddress(); // Will "just work" in Node.js, as long as you are using KaitoServer
+	const ip = ipStore.getStore()!;
 	return ip;
+});
+
+const handle = createKaitoHandler({
+	router: app,
+	// ...
+});
+
+const server = await KaitoServer.serve({
+	port: 3000,
+	fetch: async (request, context) => {
+		return ipStore.run(context.remoteAddress, () => handle(request));
+	},
 });
 ```
 
