@@ -242,6 +242,135 @@ describe('KaitoServer', () => {
 		}
 	});
 
+	test('request.signal property for abort handling', async () => {
+		let signalWasValid = false;
+		let requestAborted = false;
+
+		const server = await createTestServer({
+			fetch: async req => {
+				assert.ok(req.signal instanceof AbortSignal, 'request.signal should be an AbortSignal');
+				signalWasValid = true;
+
+				req.signal.addEventListener('abort', () => {
+					requestAborted = true;
+				});
+
+				assert.equal(req.signal.aborted, false, 'signal should not be aborted initially');
+
+				return new Promise<Response>(resolve => {
+					const timeout = setTimeout(() => {
+						if (!req.signal.aborted) {
+							resolve(new Response('completed'));
+						}
+					}, 100);
+
+					req.signal.addEventListener('abort', () => {
+						clearTimeout(timeout);
+						resolve(new Response('aborted'));
+					});
+				});
+			},
+		});
+
+		try {
+			const responsePromise = fetch(server.url);
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			server.close();
+
+			let didError = false;
+
+			try {
+				await responsePromise;
+			} catch (error) {
+				didError = true;
+				assert.ok(error instanceof TypeError, 'request should be an error');
+			}
+
+			assert.equal(didError, true, 'request should have errored');
+
+			assert.equal(requestAborted, true, 'request should have been aborted');
+			assert.equal(signalWasValid, true, 'request.signal should have been a valid AbortSignal');
+		} finally {
+			server.close();
+		}
+	});
+
+	test('request signal abort state', async () => {
+		let signalChecks: {aborted: boolean; reason?: any}[] = [];
+
+		const server = await createTestServer({
+			fetch: async req => {
+				signalChecks.push({
+					aborted: req.signal.aborted,
+					reason: req.signal.reason,
+				});
+
+				await new Promise(resolve => setTimeout(resolve, 50));
+
+				signalChecks.push({
+					aborted: req.signal.aborted,
+					reason: req.signal.reason,
+				});
+
+				return new Response('ok');
+			},
+		});
+
+		try {
+			const res = await fetch(server.url);
+			assert.equal(await res.text(), 'ok');
+
+			assert.equal(signalChecks.length, 2);
+			assert.equal(signalChecks[0]!.aborted, false);
+			assert.equal(signalChecks[1]!.aborted, false);
+		} finally {
+			server.close();
+		}
+	});
+
+	test('getRemoteAddress function', async () => {
+		let remoteAddress: string | undefined;
+
+		const server = await createTestServer({
+			fetch: async () => {
+				const {getRemoteAddress} = await import('./index.ts');
+				try {
+					remoteAddress = getRemoteAddress();
+				} catch (error) {
+					assert.fail('getRemoteAddress should not throw');
+				}
+				return new Response('ok');
+			},
+		});
+
+		try {
+			const res = await fetch(server.url);
+			assert.equal(await res.text(), 'ok');
+			assert.ok(typeof remoteAddress === 'string', 'remoteAddress should be a string');
+		} finally {
+			server.close();
+		}
+	});
+
+	test('server properties', async () => {
+		const port = await getPort();
+		const host = '127.0.0.1';
+
+		const server = await KaitoServer.serve({
+			port,
+			host,
+			fetch: async () => new Response('ok'),
+		});
+
+		try {
+			assert.equal(server.address, `${host}:${port}`);
+			assert.equal(server.url, `http://${host}:${port}`);
+		} finally {
+			server.close();
+		}
+	});
+
 	// test('static routes', async () => {
 	// 	const server = await createTestServer({
 	// 		static: {
