@@ -329,23 +329,19 @@ describe('KaitoServer', () => {
 		assert.equal(signalChecks[1]!.aborted, false);
 	});
 
-	test('getRemoteAddress function', async () => {
+	test('request context', async () => {
 		let remoteAddress: string | undefined;
 
 		using server = await createTestServer({
-			fetch: async () => {
-				const {getRemoteAddress} = await import('./index.ts');
-				try {
-					remoteAddress = getRemoteAddress();
-				} catch (error) {
-					assert.fail('getRemoteAddress should not throw');
-				}
-				return new Response('ok');
+			fetch: async (_request, context) => {
+				assert.equal(context.remoteAddress, '127.0.0.1');
+				remoteAddress = context.remoteAddress;
+				return new Response(context.remoteAddress);
 			},
 		});
 
 		const res = await fetch(server.url);
-		assert.equal(await res.text(), 'ok');
+		assert.equal(await res.text(), '127.0.0.1');
 		assert.ok(typeof remoteAddress === 'string', 'remoteAddress should be a string');
 	});
 
@@ -361,6 +357,163 @@ describe('KaitoServer', () => {
 
 		assert.equal(server.address, `${host}:${port}`);
 		assert.equal(server.url, `http://${host}:${port}`);
+	});
+
+	test('errors in fetch handler return 500 Internal Server Error', async () => {
+		using server = await createTestServer({
+			fetch: async () => {
+				throw new Error('Something went wrong');
+			},
+		});
+
+		const res = await fetch(server.url);
+		assert.equal(res.status, 500);
+		assert.equal(await res.text(), 'Internal Server Error');
+	});
+
+	test('async errors in fetch handler are caught and handled', async () => {
+		using server = await createTestServer({
+			fetch: async () => {
+				await new Promise(resolve => setTimeout(resolve, 10));
+				throw new Error('Async error occurred');
+			},
+		});
+
+		const res = await fetch(server.url);
+		assert.equal(res.status, 500);
+		assert.equal(await res.text(), 'Internal Server Error');
+	});
+
+	test('synchronous errors in fetch handler are caught and handled', async () => {
+		using server = await createTestServer({
+			fetch: () => {
+				throw new Error('Sync error occurred');
+			},
+		});
+
+		const res = await fetch(server.url);
+		assert.equal(res.status, 500);
+		assert.equal(await res.text(), 'Internal Server Error');
+	});
+
+	test('custom onError handler receives error and can return custom response', async () => {
+		let errorReceived: Error | undefined;
+		let requestReceived: Request | undefined;
+
+		using server = await createTestServer({
+			fetch: async () => {
+				throw new Error('Test error message');
+			},
+			onError: (error, request) => {
+				errorReceived = error as Error;
+				requestReceived = request;
+				return new Response('Custom error response', {
+					status: 418,
+					statusText: "I'm a teapot",
+				});
+			},
+		});
+
+		const res = await fetch(server.url);
+		assert.equal(res.status, 418);
+		assert.equal(res.statusText, "I'm a teapot");
+		assert.equal(await res.text(), 'Custom error response');
+		assert.ok(errorReceived instanceof Error);
+		assert.equal(errorReceived.message, 'Test error message');
+		assert.ok(requestReceived instanceof Request);
+	});
+
+	test('async custom onError handler works correctly', async () => {
+		using server = await createTestServer({
+			fetch: async () => {
+				throw new Error('Async fetch error');
+			},
+			onError: async error => {
+				await new Promise(resolve => setTimeout(resolve, 10));
+				return new Response(`Handled: ${(error as Error).message}`, {
+					status: 503,
+					statusText: 'Service Unavailable',
+				});
+			},
+		});
+
+		const res = await fetch(server.url);
+		assert.equal(res.status, 503);
+		assert.equal(res.statusText, 'Service Unavailable');
+		assert.equal(await res.text(), 'Handled: Async fetch error');
+	});
+
+	test('errors thrown in onError handler fallback to default error handler', async () => {
+		using server = await createTestServer({
+			fetch: async () => {
+				throw new Error('Original error');
+			},
+			onError: () => {
+				throw new Error('Error in error handler');
+			},
+		});
+
+		const res = await fetch(server.url);
+		assert.equal(res.status, 500);
+		assert.equal(await res.text(), 'Internal Server Error');
+	});
+
+	test('async errors thrown in onError handler fallback to default error handler', async () => {
+		using server = await createTestServer({
+			fetch: async () => {
+				throw new Error('Original async error');
+			},
+			onError: async () => {
+				await new Promise(resolve => setTimeout(resolve, 10));
+				throw new Error('Async error in error handler');
+			},
+		});
+
+		const res = await fetch(server.url);
+		assert.equal(res.status, 500);
+		assert.equal(await res.text(), 'Internal Server Error');
+	});
+
+	test('rejecting promises in onError handler fallback to default error handler', async () => {
+		using server = await createTestServer({
+			fetch: async () => {
+				throw new Error('Original error');
+			},
+			onError: () => {
+				return Promise.reject(new Error('Promise rejection in error handler'));
+			},
+		});
+
+		const res = await fetch(server.url);
+		assert.equal(res.status, 500);
+		assert.equal(await res.text(), 'Internal Server Error');
+	});
+
+	test('error handling preserves request details when onError fails', async () => {
+		using server = await createTestServer({
+			fetch: async request => {
+				assert.ok(request.url.includes(server.url));
+				throw new Error('Test error with request details');
+			},
+			onError: (error, request) => {
+				// Verify we receive both error and request in onError
+				assert.ok(error instanceof Error);
+				assert.ok(request instanceof Request);
+				// But then fail in the error handler
+				throw new Error('onError handler failed');
+			},
+		});
+
+		const res = await fetch(`${server.url}/test-path?param=value`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({test: 'data'}),
+		});
+
+		assert.equal(res.status, 500);
+		assert.equal(await res.text(), 'Internal Server Error');
 	});
 
 	// test('static routes', async () => {

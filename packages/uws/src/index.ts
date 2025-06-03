@@ -1,21 +1,64 @@
-import {AsyncLocalStorage} from 'node:async_hooks';
 import uWS from 'uWebSockets.js';
 
-export interface ServeOptions {
-	port: number;
-	host: string;
-	// static?: Record<`/${string}`, Response>;
-	fetch: (request: Request) => Promise<Response>;
+export interface RequestContext {
+	/**
+	 * The remote address of the client
+	 */
+	remoteAddress: string;
 }
 
-export type ServeUserOptions = Omit<ServeOptions, 'host'> & Partial<Pick<ServeOptions, 'host'>>;
+export interface ServeOptions {
+	/**
+	 * The port to listen on
+	 */
+	port: number;
+
+	/**
+	 * The host to listen on
+	 */
+	host: string;
+
+	// static?: Record<`/${string}`, Response>;
+
+	/**
+	 * This function is called for every request.
+	 *
+	 * @param request - The request that was made
+	 * @returns A response to send to the client
+	 */
+	fetch: (request: Request, context: RequestContext) => Response | PromiseLike<Response>;
+
+	/**
+	 * This function is called when an error occurs in the fetch handler.
+	 *
+	 * @param error - The error that occurred
+	 * @param request - The request that caused the error
+	 * @returns A response to send to the client
+	 */
+	onError: (error: unknown, request: Request) => Response | PromiseLike<Response>;
+}
+
+type ExpandOptions<T> = {[K in keyof T]: T[K]} & {};
+export type ServeUserOptions = ExpandOptions<
+	Omit<ServeOptions, 'host' | 'onError'> & Partial<Pick<ServeOptions, 'host' | 'onError'>>
+>;
+
+async function asyncTry<T, A extends unknown[] = []>(fn: (...args: A) => T | PromiseLike<T>, ...args: A): Promise<T> {
+	try {
+		return await fn(...args);
+	} catch (error) {
+		throw error;
+	}
+}
 
 const SPACE = ' ';
 const GET = 'get';
 const HEAD = 'head';
 const CONTENT_LENGTH = 'content-length';
+const QMARK = '?';
+const EMPTY = '';
 
-function lazyRemoteAddress(res: uWS.HttpResponse) {
+function context(res: uWS.HttpResponse): RequestContext {
 	return {
 		get remoteAddress() {
 			const value = Buffer.from(res.getRemoteAddressAsText()).toString('ascii');
@@ -25,47 +68,9 @@ function lazyRemoteAddress(res: uWS.HttpResponse) {
 	};
 }
 
-const STORE = new AsyncLocalStorage<{remoteAddress: string}>();
-
 /**
- * Get the remote address (ip address) of the request
- *
- * You can only use this function inside of getContext(), or inside of a route handler.
- * This function will throw if called outside of either of those.
- *
- * Be warned that if you are serving behind a reverse proxy (like Cloudflare, nginx, etc), this will return the ip address of the proxy, not the client.
- * You should consult the docs of your reverse proxy to see how to get the client's ip address. Usually that is
- * done by looking at a header like `x-forwarded-for` or `cf-connecting-ip`.
- *
- * This uses AsyncLocalStorage under the hood, so if the constraints of how this function works are confusing, or
- * if you are just wondering how it works, you should look at the AsyncLocalStorage docs: https://nodejs.org/api/async_context.html
- *
- * @returns The remote address of the request
- * @example
- * ```typescript
- * import {getRemoteAddress} from '@kaito-http/uws';
- *
- * // Ok to use `getRemoteAddress()` inside of this function, since we are calling it from inside a route handler.
- * // Just be aware that it will throw if called outside of a route handler or outside of getContext()
- * function printUserIp() {
- *   return `Your IP is ${getRemoteAddress()}`;
- * }
- *
- * router().get('/ip', async () => printUserIp());
- * ```
+ * The main class for creating a Kaito server
  */
-export function getRemoteAddress() {
-	const store = STORE.getStore();
-
-	if (!store) {
-		throw new Error(
-			'You can only called getRemoteAddress() inside of getContext() or somewhere nested inside of a route handler',
-		);
-	}
-
-	return store.remoteAddress;
-}
-
 export class KaitoServer implements Disposable {
 	private static getRequestBodyStream(res: uWS.HttpResponse) {
 		return new ReadableStream<Uint8Array>({
@@ -87,9 +92,34 @@ export class KaitoServer implements Disposable {
 		});
 	}
 
+	// this function must not throw by any means
+	private static readonly DEFAULT_ON_ERROR: ServeOptions['onError'] = error => {
+		console.error('[@kaito-http/uws] Error in fetch handler:');
+		console.error(error);
+
+		return new Response('Internal Server Error', {
+			status: 500,
+			statusText: 'Internal Server Error',
+		});
+	};
+
+	/**
+	 * Create a new Kaito server
+	 *
+	 * @param options - The options for the server
+	 * @returns A Kaito server instance
+	 * @example
+	 * ```typescript
+	 * using server = await KaitoServer.serve({
+	 *   port: 3000,
+	 *   fetch: async request => new Response('Hello, world!'),
+	 * });
+	 * ```
+	 */
 	public static async serve(options: ServeUserOptions) {
 		const fullOptions: ServeOptions = {
 			host: '0.0.0.0',
+			onError: this.DEFAULT_ON_ERROR,
 			...options,
 		};
 
@@ -119,7 +149,7 @@ export class KaitoServer implements Disposable {
 			//  req.getUrl does not include the query string in the url
 			const query = req.getQuery();
 
-			const url = origin.concat(req.getUrl(), query ? '?' + query : '');
+			const url = origin.concat(req.getUrl(), query ? QMARK + query : EMPTY);
 
 			const controller = new AbortController();
 
@@ -132,21 +162,16 @@ export class KaitoServer implements Disposable {
 				duplex: 'half',
 			});
 
-			let aborted = false;
 			res.onAborted(() => {
-				aborted = true;
 				controller.abort();
 			});
 
-			const response = await STORE.run(lazyRemoteAddress(res), options.fetch, request).catch(e => {
-				console.error('[@kaito-http/uws] Error in fetch handler:');
-				console.error(e);
-
-				return new Response('Internal Server Error', {status: 500});
-			});
+			const response = await asyncTry(options.fetch, request, context(res))
+				.catch(error => fullOptions.onError(error, request))
+				.catch(error => this.DEFAULT_ON_ERROR(error, request));
 
 			// request was aborted before the handler was finished
-			if (aborted) {
+			if (controller.signal.aborted) {
 				return;
 			}
 
@@ -176,7 +201,7 @@ export class KaitoServer implements Disposable {
 			}
 
 			const writeNext = async (data: Uint8Array): Promise<void> => {
-				if (aborted) {
+				if (controller.signal.aborted) {
 					return;
 				}
 
@@ -192,7 +217,7 @@ export class KaitoServer implements Disposable {
 						res.onWritable(availableSpace => {
 							let ok: boolean | undefined;
 
-							if (aborted) {
+							if (controller.signal.aborted) {
 								reject();
 								return false;
 							}
@@ -220,7 +245,7 @@ export class KaitoServer implements Disposable {
 			try {
 				const reader = response.body.getReader();
 
-				while (!aborted) {
+				while (!controller.signal.aborted) {
 					const {done, value} = await reader.read();
 
 					if (done) {
@@ -232,7 +257,7 @@ export class KaitoServer implements Disposable {
 					}
 				}
 			} finally {
-				if (!aborted) {
+				if (!controller.signal.aborted) {
 					res.cork(() => res.end());
 				}
 			}
