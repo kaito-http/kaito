@@ -70,21 +70,12 @@ export class KaitoServer implements Disposable {
 	private static getRequestBodyStream(res: uWS.HttpResponse) {
 		return new ReadableStream<Uint8Array>({
 			start(controller) {
-				let buffer: Uint8Array | undefined;
-
 				res.onData((ab, isLast) => {
 					const chunk = new Uint8Array(ab.slice(0));
 
-					if (buffer) {
-						buffer = new Uint8Array([...buffer, ...chunk]);
-					} else {
-						buffer = chunk;
-					}
+					controller.enqueue(chunk);
 
 					if (isLast) {
-						if (buffer) {
-							controller.enqueue(buffer);
-						}
 						controller.close();
 					}
 				});
@@ -147,7 +138,12 @@ export class KaitoServer implements Disposable {
 				controller.abort();
 			});
 
-			const response = await STORE.run(lazyRemoteAddress(res), options.fetch, request);
+			const response = await STORE.run(lazyRemoteAddress(res), options.fetch, request).catch(e => {
+				console.error('[@kaito-http/uws] Error in fetch handler:');
+				console.error(e);
+
+				return new Response('Internal Server Error', {status: 500});
+			});
 
 			// request was aborted before the handler was finished
 			if (aborted) {

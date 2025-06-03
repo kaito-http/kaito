@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import {type AddressInfo, createServer} from 'node:net';
+import {text} from 'node:stream/consumers';
 import {describe, test} from 'node:test';
 import {KaitoServer, type ServeUserOptions} from './index.ts';
 
@@ -73,8 +74,8 @@ describe('KaitoServer', () => {
 		assert.equal(await res.text(), 'ok');
 	});
 
-	test('POST request with large body (streaming)', async () => {
-		const largeData = Buffer.alloc(100_000).fill('x').toString();
+	test('POST request with large body', async () => {
+		const largeData = Buffer.alloc(100_000_000, 'x').toString();
 
 		using server = await createTestServer({
 			fetch: async req => {
@@ -89,6 +90,7 @@ describe('KaitoServer', () => {
 			method: 'POST',
 			body: largeData,
 		});
+
 		assert.equal(await res.text(), 'ok');
 	});
 
@@ -97,14 +99,21 @@ describe('KaitoServer', () => {
 		const expectedBody = chunks.join('');
 		const encoder = new TextEncoder();
 
-		let called = false;
-
 		using server = await createTestServer({
 			fetch: async req => {
 				assert.equal(req.method, 'POST');
-				const body = await req.text();
-				assert.equal(body, expectedBody);
-				called = true;
+				assert(req.body instanceof ReadableStream);
+				const [a, b] = req.body.tee();
+
+				const body = text(a);
+
+				let i = 0;
+				for await (const chunk of b) {
+					assert.equal(Buffer.from(chunk).toString('utf-8'), chunks[i] ?? '');
+					i++;
+				}
+
+				assert.equal(await body, expectedBody);
 				return new Response('ok');
 			},
 		});
@@ -130,7 +139,6 @@ describe('KaitoServer', () => {
 		});
 
 		assert.equal(await res.text(), 'ok');
-		assert.equal(called, true, 'fetch should have been called');
 	});
 
 	test('custom headers', async () => {
