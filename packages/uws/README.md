@@ -68,19 +68,38 @@ const server = await KaitoServer.serve({
 
 ## Remote Address Access
 
-Get the client's IP address using the `getRemoteAddress()` function:
+Get the client's IP address from the `context` parameter:
 
 ```typescript
-import {KaitoServer, getRemoteAddress} from '@kaito-http/uws';
+import {KaitoServer} from '@kaito-http/uws';
 
 const server = await KaitoServer.serve({
 	port: 3000,
-	fetch: async request => {
-		// This only works inside the fetch handler or nested functions
-		const clientIP = getRemoteAddress();
-		console.log(`Request from: ${clientIP}`);
+	fetch: async (request, context) => {
+		console.log(`Request from: ${context.remoteAddress}`);
+		return new Response(`Your IP is: ${context.remoteAddress}`);
+	},
+});
+```
 
-		return new Response(`Your IP is: ${clientIP}`);
+If you need to access the IP address in nested functions or route handlers, use AsyncLocalStorage:
+
+```typescript
+import {AsyncLocalStorage} from 'node:async_hooks';
+import {KaitoServer} from '@kaito-http/uws';
+
+const ipStore = new AsyncLocalStorage<string>();
+
+function handleRequest() {
+	const clientIP = ipStore.getStore()!;
+	return new Response(`Your IP is: ${clientIP}`);
+}
+
+const server = await KaitoServer.serve({
+	port: 3000,
+	fetch: async (request, context) => {
+		// Store IP in AsyncLocalStorage for access in nested functions
+		return ipStore.run(context.remoteAddress, () => handleRequest());
 	},
 });
 ```
