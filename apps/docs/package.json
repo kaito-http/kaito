@@ -1,7 +1,7 @@
 {
 	"name": "@kaito-http/docs",
 	"private": true,
-	"version": "3.2.0",
+	"version": "3.2.1",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
 	"dependencies": {

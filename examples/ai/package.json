@@ -7,7 +7,7 @@
 	"homepage": "https://github.com/kaito-http/kaito",
 	"repository": "https://github.com/kaito-http/kaito",
 	"license": "MIT",
-	"version": "3.2.0",
+	"version": "3.2.1",
 	"scripts": {
 		"dev": "node --watch --import=tsx src/index.ts",
 		"start": "node --import=tsx src/index.ts",
