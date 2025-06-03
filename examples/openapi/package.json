@@ -1,5 +1,5 @@
 {
-	"name": "@kaito-http-examples/deno",
+	"name": "@kaito-http-examples/openapi",
 	"private": true,
 	"type": "module",
 	"author": "Alistair Smith <hi@alistair.sh>",
@@ -9,12 +9,14 @@
 	"license": "MIT",
 	"version": "4.0.0-beta.13",
 	"scripts": {
-		"start": "deno --allow-net src/index.ts"
+		"dev": "node --import=tsx --watch src/index.ts",
+		"start": "node --import=tsx src/index.ts"
 	},
 	"dependencies": {
 		"@kaito-http/core": "workspace:^"
 	},
 	"devDependencies": {
+		"tsx": "^4.19.2",
 		"typescript": "^5.7.3"
 	},
 	"keywords": [

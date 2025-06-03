@@ -1,6 +1,6 @@
 {
 	"name": "@kaito-http/client",
-	"version": "3.0.4",
+	"version": "4.0.0-beta.13",
 	"type": "module",
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"description": "Functional HTTP Framework for TypeScript",
@@ -32,7 +32,8 @@
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.17.2",
 		"@kaito-http/core": "workspace:^",
-		"tsup": "^8.3.5"
+		"tsup": "^8.3.5",
+		"typescript": "^5.7.3"
 	},
 	"dependencies": {
 		"pathcat": "^1.4.0"

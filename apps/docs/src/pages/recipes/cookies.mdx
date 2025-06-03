@@ -11,20 +11,23 @@ bun i cookie
 ```
 
 ```ts
+import {create} from '@kaito-http/core';
 import {serialize, parse, type SerializeOptions} from 'cookie';
 
-export const {getContext, router} = createUtilities(async (req, res) => {
-	return {
-		req,
-		res,
-		get cookies() {
-			const header = req.headers.get('cookie');
-			return header ? parse(header) : {};
-		},
-		setCookie(name: string, value: string, options: SerializeOptions) {
-			res.headers.append('Set-Cookie', serialize(name, value, options));
-		},
-	};
+export const router = create({
+	getContext: async (req, head) => {
+		return {
+			req,
+			res,
+			get cookies() {
+				const header = req.headers.get('cookie');
+				return header ? parse(header) : {};
+			},
+			setCookie(name: string, value: string, options: SerializeOptions) {
+				res.headers.append('Set-Cookie', serialize(name, value, options));
+			},
+		};
+	},
 });
 ```
 

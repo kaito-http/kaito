@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import {type AddressInfo, createServer} from 'node:net';
 import {describe, test} from 'node:test';
-import {KaitoServer, type ServeUserOptions} from './index.ts';
+import {getRemoteAddress, KaitoServer, type ServeUserOptions} from './index.ts';
 
 async function getPort(): Promise<number> {
 	const server = createServer();
@@ -242,29 +242,82 @@ describe('KaitoServer', () => {
 		}
 	});
 
-	// test('static routes', async () => {
-	// 	const server = await createTestServer({
-	// 		static: {
-	// 			'/static/file.txt': new Response('Hello, world!'),
-	// 			'/static/stream': new Response(
-	// 				new ReadableStream({
-	// 					async start(controller) {
-	// 						controller.enqueue(new TextEncoder().encode('Hello, world!'));
-	// 						controller.close();
-	// 					},
-	// 				}),
-	// 			),
-	// 		},
-	// 	});
+	test('Accessing remote ip', async () => {
+		const server = await createTestServer({
+			fetch: async req => new Response(`Your IP is ${getRemoteAddress(req)}`),
+		});
 
-	// 	try {
-	// 		const res = await fetch(server.url + '/static/file.txt');
-	// 		assert.equal(await res.text(), 'Hello, world!');
+		try {
+			const res = await fetch(server.url);
+			assert.equal(await res.text(), 'Your IP is 127.0.0.1');
+		} finally {
+			server.close();
+		}
+	});
 
-	// 		const streamed = await fetch(server.url + '/static/file.txt');
-	// 		assert.equal(await streamed.text(), 'Hello, world!');
-	// 	} finally {
-	// 		server.close();
-	// 	}
-	// });
+	test('static routes', async () => {
+		const server = await createTestServer({
+			static: {
+				'/static/file.txt': new Response('Hello, world!'),
+				'/static/stream': new Response(
+					new ReadableStream({
+						async start(controller) {
+							controller.enqueue(new TextEncoder().encode('Hello, world!'));
+							controller.close();
+						},
+					}),
+				),
+			},
+		});
+
+		try {
+			const res = await fetch(server.url + '/static/file.txt');
+			assert.equal(await res.text(), 'Hello, world!');
+
+			const streamed = await fetch(server.url + '/static/file.txt');
+			assert.equal(await streamed.text(), 'Hello, world!');
+		} finally {
+			server.close();
+		}
+	});
+
+	test('server detects client disconnect during streaming response', async () => {
+		let disconnectDetected = false;
+		const encoder = new TextEncoder();
+
+		const server = await createTestServer({
+			fetch: async () => {
+				const stream = new ReadableStream({
+					async start(controller) {
+						controller.enqueue(encoder.encode('chunk1'));
+						await new Promise(r => setTimeout(r, 200));
+						controller.enqueue(encoder.encode('chunk2'));
+						await new Promise(r => setTimeout(r, 200));
+						controller.enqueue(encoder.encode('chunk3'));
+						controller.close();
+					},
+					cancel() {
+						disconnectDetected = true;
+					},
+				});
+
+				return new Response(stream);
+			},
+		});
+
+		try {
+			const controller = new AbortController();
+			const res = await fetch(server.url, {signal: controller.signal});
+			const reader = res.body!.getReader();
+
+			await reader.read();
+			controller.abort(); // disconnect before next chunks
+
+			await new Promise(r => setTimeout(r, 200)); // short processing time so server can detect disconnect
+
+			assert.equal(disconnectDetected, true, 'Server should detect client disconnect');
+		} finally {
+			server.close();
+		}
+	});
 });

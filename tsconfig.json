@@ -25,6 +25,9 @@
 		},
 		{
 			"path": "./examples/deno"
+		},
+		{
+			"path": "./examples/openapi"
 		}
 	]
 }

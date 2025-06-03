@@ -12,7 +12,7 @@ Creating a route requires us to have a router already established. If you don't,
 Here's an extremely basic example of a ping/pong route.
 
 ```ts
-const app = router().get('/ping', async () => 'pong');
+const app = router.get('/ping', async () => 'pong');
 ```
 
 <Callout>You must either return something JSON serializable, a `Response` object, or throw an error</Callout>
@@ -61,19 +61,19 @@ Ultimately the important thing to understand here is that if you return a `Respo
 
 ## Input
 
-Routes can also take a query and body schema provided by Zod. Internally, Kaito wil validate all request bodies and query params so you can be absolutely certain you are processing the right data.
+Routes can take a query and body schema using Kaito's built-in schema system. Internally, Kaito will validate all request bodies and query params so you can be absolutely certain you are processing the right data.
 
 Route query schemas should always take a string, or array of strings as the input. This is because query params are always strings. It is safe to transform them into other types, but you should always be able to handle a string.
 
 ```ts
-import {z} from 'zod';
+import {k} from '@kaito-http/core';
 
-const router = router().post('/echo', {
+const router = router.post('/echo', {
 	query: {
-		skip: z.string().transform(value => parseInt(value)),
-		take: z.string().transform(value => parseInt(value)),
+		skip: k.string().transform(value => parseInt(value)),
+		take: k.string().transform(value => parseInt(value)),
 	},
-	body: z.number(),
+	body: k.number(),
 	async run({body, query}) {
 		// Echo it back
 		return {body, query};
@@ -81,4 +81,4 @@ const router = router().post('/echo', {
 });
 ```
 
-Zod schemas can be of any shape or size, including objects, booleans, numbers and literals. For more reference, please read the <Link href="https://github.com/colinhacks/zod#basic-usage">Zod Documentation</Link>.
+Kaito schemas can be of any shape or size, including objects, booleans, numbers and literals. See the documentation for more details on the built-in schema system.

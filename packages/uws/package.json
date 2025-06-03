@@ -1,7 +1,7 @@
 {
 	"name": "@kaito-http/uws",
 	"type": "module",
-	"version": "3.0.4",
+	"version": "4.0.0-beta.13",
 	"description": "Functional HTTP Framework for TypeScript",
 	"scripts": {
 		"build": "tsup",
@@ -30,10 +30,11 @@
 	"repository": "https://github.com/kaito-http/kaito",
 	"license": "MIT",
 	"dependencies": {
-		"uWebSockets.js": "https://github.com/kaito-http/uWebSockets.js#v20.51.0"
+		"uWebSockets.js": "https://github.com/uNetworking/uWebSockets.js#v20.52.0"
 	},
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.17.2",
-		"tsup": "^8.3.5"
+		"tsup": "^8.3.5",
+		"typescript": "^5.7.3"
 	}
 }

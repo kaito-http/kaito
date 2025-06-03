@@ -1,0 +1,163 @@
+name: OHA Performance Test
+
+on:
+  push:
+
+jobs:
+  test-oha:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: 'Cache cargo'
+        id: cache-cargo
+        uses: 'actions/cache/restore@v4'
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install oha
+        run: command -v oha || cargo install oha
+
+      - name: 'Save cargo cache'
+        uses: 'actions/cache/save@v4'
+        if: always()
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Node.js and Yarn
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+          cache: 'yarn'
+
+      - name: Start web server and run tests
+        run: |
+          yarn install
+          yarn build
+
+          # Now move to examples and start server
+          cd examples/basic
+          yarn install
+
+          # Start server in background and redirect output to log file
+          yarn start > server.log 2>&1 &
+          SERVER_PID=$!
+
+          # Wait and check if server is running
+
+          sleep 5
+          if ! ps -p $SERVER_PID > /dev/null; then
+            echo "Server failed to start"
+            echo "Server logs:"
+            cat server.log
+            exit 1
+          fi
+
+          # Run performance test
+          oha http://127.0.0.1:3000 -z 5sec --json --no-tui > oha-results.json || true
+
+          # Kill server
+          kill $SERVER_PID || true
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: oha-results
+          path: |
+            examples/basic/oha-results.json
+            examples/basic/server.log
+
+      - name: Read and comment results
+        run: |
+          RESULTS=$(cat examples/basic/oha-results.json)
+
+          # Get system specifications
+          CPU_INFO=$(lscpu | grep "Model name:" | sed -r 's/Model name:\s{1,}//g')
+          TOTAL_MEM=$(free -h | awk '/^Mem:/ {print $2}')
+          CPU_CORES=$(nproc)
+
+          # Extract key metrics using jq
+          AVG_LATENCY=$(echo "$RESULTS" | jq -r '.summary.average * 1000 | floor / 1000')
+          RPS=$(echo "$RESULTS" | jq -r '.summary.requestsPerSec | floor')
+          SUCCESS_RATE=$(echo "$RESULTS" | jq -r '.summary.successRate * 100')
+          P95_LATENCY=$(echo "$RESULTS" | jq -r '.latencyPercentiles.p95 * 1000 | floor / 1000')
+          P99_LATENCY=$(echo "$RESULTS" | jq -r '.latencyPercentiles.p99 * 1000 | floor / 1000')
+
+          # Get status code distribution
+          STATUS_CODES=$(echo "$RESULTS" | jq -r '.statusCodeDistribution | to_entries | map("- **\(.key)**: \(.value) requests") | join("\n")')
+
+          # Format the message with more details
+          echo "MESSAGE<<EOF" >> $GITHUB_ENV
+          echo "📊 **Performance Test Results**" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "**Runner Specifications:**" >> $GITHUB_ENV
+          echo "- CPU: ${CPU_INFO}" >> $GITHUB_ENV
+          echo "- CPU Cores: ${CPU_CORES}" >> $GITHUB_ENV
+          echo "- Memory: ${TOTAL_MEM}" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "| Metric | Value |" >> $GITHUB_ENV
+          echo "| --- | --- |" >> $GITHUB_ENV
+          echo "| Average Latency | ${AVG_LATENCY}ms |" >> $GITHUB_ENV
+          echo "| P95 Latency | ${P95_LATENCY}ms |" >> $GITHUB_ENV
+          echo "| P99 Latency | ${P99_LATENCY}ms |" >> $GITHUB_ENV
+          echo "| Requests/sec | ${RPS} |" >> $GITHUB_ENV
+          echo "| Success Rate | ${SUCCESS_RATE}% |" >> $GITHUB_ENV
+          echo "" >> $GITHUB_ENV
+          echo "**Status Code Distribution:**" >> $GITHUB_ENV
+          echo "${STATUS_CODES}" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = process.env.MESSAGE;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: message
+            });
+        env:
+          MESSAGE: ${{ env.MESSAGE }}
+
+      - name: Comment on Commit # When testing on a branch -- helpful
+        if: github.event_name == 'push'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = process.env.MESSAGE;
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: message
+            });
+        env:
+          MESSAGE: ${{ env.MESSAGE }}

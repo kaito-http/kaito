@@ -9,7 +9,7 @@ function assertNever(x: never): never {
 	throw new Error(`Unhandled case: ${JSON.stringify(x)}`);
 }
 
-const getResponse = await api.get('/v1/response/', {
+const getResponse = await api.get('/v1/response', {
 	response: true,
 });
 

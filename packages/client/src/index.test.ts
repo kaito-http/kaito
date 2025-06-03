@@ -52,6 +52,7 @@ describe('KaitoHTTPClient', () => {
 			const result = await client.post('/users', {
 				body: {name: 'New User'},
 			});
+
 			assert.deepEqual(result, {id: 1, name: 'New User'});
 		});
 
@@ -59,6 +60,7 @@ describe('KaitoHTTPClient', () => {
 			const mockFetch = async (req: Request) => {
 				assert.equal(req.method, 'GET');
 				assert.equal(req.url, 'http://api.example.com/users/123');
+
 				return new Response(
 					JSON.stringify({
 						success: true,
@@ -75,6 +77,7 @@ describe('KaitoHTTPClient', () => {
 			const result = await client.get('/users/:id', {
 				params: {id: '123'},
 			});
+
 			assert.deepEqual(result, {id: 123, name: 'Test User'});
 		});
 

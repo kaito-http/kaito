@@ -11,16 +11,19 @@ export class WrappedError<T> extends Error {
 		return new WrappedError(data);
 	}
 
-	private constructor(public readonly data: T) {
+	public readonly data: T;
+
+	private constructor(data: T) {
 		super('Something was thrown, but it was not an instance of Error, so a WrappedError was created.');
+		this.data = data;
 	}
 }
 
 export class KaitoError extends Error {
-	constructor(
-		public readonly status: number,
-		message: string,
-	) {
+	public readonly status: number;
+
+	constructor(status: number, message: string) {
 		super(message);
+		this.status = status;
 	}
 }
