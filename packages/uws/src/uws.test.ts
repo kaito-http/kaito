@@ -108,6 +108,51 @@ describe('KaitoServer', () => {
 		}
 	});
 
+	test('POST request with streaming body', async () => {
+		const chunks = ['chunk1', 'chunk2', 'chunk3'];
+		const expectedBody = chunks.join('');
+		const encoder = new TextEncoder();
+
+		let called = false;
+
+		const server = await createTestServer({
+			fetch: async req => {
+				assert.equal(req.method, 'POST');
+				const body = await req.text();
+				assert.equal(body, expectedBody);
+				called = true;
+				return new Response('ok');
+			},
+		});
+
+		try {
+			const stream = new ReadableStream({
+				async start(controller) {
+					for (const chunk of chunks) {
+						controller.enqueue(encoder.encode(chunk));
+						await new Promise(resolve => setTimeout(resolve, 50));
+					}
+					controller.close();
+				},
+			});
+
+			const res = await fetch(server.url, {
+				method: 'POST',
+				body: stream,
+				// @ts-expect-error - duplex is not in @types/node
+				duplex: 'half',
+				headers: {
+					'Content-Type': 'text/plain',
+				},
+			});
+
+			assert.equal(await res.text(), 'ok');
+			assert.equal(called, true, 'fetch should have been called');
+		} finally {
+			server.close();
+		}
+	});
+
 	test('custom headers', async () => {
 		const server = await createTestServer({
 			fetch: async req => {
