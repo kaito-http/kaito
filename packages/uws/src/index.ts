@@ -66,7 +66,7 @@ export function getRemoteAddress() {
 	return store.remoteAddress;
 }
 
-export class KaitoServer {
+export class KaitoServer implements Disposable {
 	private static getRequestBodyStream(res: uWS.HttpResponse) {
 		return new ReadableStream<Uint8Array>({
 			start(controller) {
@@ -261,6 +261,10 @@ export class KaitoServer {
 	private constructor(app: ReturnType<typeof uWS.App>, options: ServeOptions) {
 		this.app = app;
 		this.options = options;
+	}
+
+	[Symbol.dispose](): void {
+		return this.close();
 	}
 
 	public close() {
