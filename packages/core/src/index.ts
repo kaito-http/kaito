@@ -6,6 +6,7 @@ export * from './head.ts';
 export * from './request.ts';
 export * from './route.ts';
 export * from './router/router.ts';
+export * from './schema/schema.ts';
 export * from './util.ts';
 
 /**
