@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
 import {type AddressInfo, createServer} from 'node:net';
+import {text} from 'node:stream/consumers';
 import {describe, test} from 'node:test';
 import {getRemoteAddress, KaitoServer, type ServeUserOptions} from './index.ts';
 
@@ -73,8 +74,8 @@ describe('KaitoServer', () => {
 		assert.equal(await res.text(), 'ok');
 	});
 
-	test('POST request with large body (streaming)', async () => {
-		const largeData = Buffer.alloc(100_000).fill('x').toString();
+	test('POST request with large body', async () => {
+		const largeData = Buffer.alloc(100_000_000, 'x').toString();
 
 		using server = await createTestServer({
 			fetch: async req => {
@@ -89,6 +90,54 @@ describe('KaitoServer', () => {
 			method: 'POST',
 			body: largeData,
 		});
+
+		assert.equal(await res.text(), 'ok');
+	});
+
+	test('POST request with streaming body', async () => {
+		const chunks = ['chunk1', 'chunk2', 'chunk3'];
+		const expectedBody = chunks.join('');
+		const encoder = new TextEncoder();
+
+		using server = await createTestServer({
+			fetch: async req => {
+				assert.equal(req.method, 'POST');
+				assert(req.body instanceof ReadableStream);
+				const [a, b] = req.body.tee();
+
+				const body = text(a);
+
+				let i = 0;
+				for await (const chunk of b) {
+					assert.equal(Buffer.from(chunk).toString('utf-8'), chunks[i] ?? '');
+					i++;
+				}
+
+				assert.equal(await body, expectedBody);
+				return new Response('ok');
+			},
+		});
+
+		const stream = new ReadableStream({
+			async start(controller) {
+				for (const chunk of chunks) {
+					controller.enqueue(encoder.encode(chunk));
+					await new Promise(resolve => setTimeout(resolve, 50));
+				}
+				controller.close();
+			},
+		});
+
+		const res = await fetch(server.url, {
+			method: 'POST',
+			body: stream,
+			// @ts-expect-error - duplex is not in @types/node
+			duplex: 'half',
+			headers: {
+				'Content-Type': 'text/plain',
+			},
+		});
+
 		assert.equal(await res.text(), 'ok');
 	});
 
@@ -231,47 +280,6 @@ describe('KaitoServer', () => {
 
 		const streamed = await fetch(server.url + '/static/file.txt');
 		assert.equal(await streamed.text(), 'Hello, world!');
-	});
-
-	test('POST request with streaming body', async () => {
-		const chunks = ['chunk1', 'chunk2', 'chunk3'];
-		const expectedBody = chunks.join('');
-		const encoder = new TextEncoder();
-
-		let called = false;
-
-		using server = await createTestServer({
-			fetch: async req => {
-				assert.equal(req.method, 'POST');
-				const body = await req.text();
-				assert.equal(body, expectedBody);
-				called = true;
-				return new Response('ok');
-			},
-		});
-
-		const stream = new ReadableStream({
-			async start(controller) {
-				for (const chunk of chunks) {
-					controller.enqueue(encoder.encode(chunk));
-					await new Promise(resolve => setTimeout(resolve, 50));
-				}
-				controller.close();
-			},
-		});
-
-		const res = await fetch(server.url, {
-			method: 'POST',
-			body: stream,
-			// @ts-expect-error - duplex is not in @types/node
-			duplex: 'half',
-			headers: {
-				'Content-Type': 'text/plain',
-			},
-		});
-
-		assert.equal(await res.text(), 'ok');
-		assert.equal(called, true, 'fetch should have been called');
 	});
 
 	test('server detects client disconnect during streaming response', async () => {
