@@ -212,7 +212,6 @@ const exampleOfThrough = router()
 
 const root = router()
 	// Basic inline access context
-	.get('/', async ({ctx}) => ctx.ip)
 	.get('/uptime', async ({ctx}) => ctx.uptime)
 	.post('/uptime', async ({ctx}) => ctx.uptime)
 
