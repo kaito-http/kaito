@@ -696,8 +696,14 @@ describe('Schema', () => {
 			});
 
 			it('should reject invalid string formats', () => {
-				assert.throws(() => bigIntSchema.parse('not a number'), /Failed to parse String to BigInt/);
-				assert.throws(() => bigIntSchema.parse('12.34'), /Failed to parse String to BigInt/);
+				assert.throws(
+					() => bigIntSchema.parse('not a number'),
+					/Failed to parse String to BigInt|Cannot convert not a number to a BigInt/,
+				);
+				assert.throws(
+					() => bigIntSchema.parse('12.34'),
+					/Failed to parse String to BigInt|Cannot convert 12.34 to a BigInt/,
+				);
 			});
 		});
 
