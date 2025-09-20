@@ -192,7 +192,7 @@ export class Router<
 
 			methodToRoutesMap.get(route.method)!.set(route.path, {
 				...route,
-				fastQuerySchema: route.query ? k.object(route.query) : undefined,
+				fastQuerySchema: route.query ? k.objectFromURLSearchParams(route.query) : undefined,
 			});
 		}
 
@@ -333,7 +333,7 @@ export class Router<
 		info: OpenAPI.InfoObject;
 		servers?: Partial<Record<(`https://` | `http://`) | ({} & string), string>>;
 	}) => {
-		const OPENAPI_VERSION = '3.0.3';
+		const OPENAPI_VERSION: OpenAPI.OpenAPIObject['openapi'] = '3.1.0';
 
 		const paths: OpenAPI.PathsObject = {};
 

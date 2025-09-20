@@ -52,8 +52,8 @@ describe('Schema', () => {
 			it('should validate against regex pattern', () => {
 				const schema = k.string().regex(/^[a-z]+$/);
 				assert.strictEqual(schema.parse('hello'), 'hello');
-				assert.throws(() => schema.parse('hello123'), /does not match pattern/);
-				assert.throws(() => schema.parse('Hello'), /does not match pattern/);
+				assert.throws(() => schema.parse('hello123'), /String must match/);
+				assert.throws(() => schema.parse('Hello'), /String must match/);
 			});
 
 			it('should use custom error message', () => {
@@ -581,8 +581,8 @@ describe('Schema', () => {
 			});
 
 			it('should reject invalid string formats', () => {
-				assert.throws(() => bigIntSchema.parse('not a number'), /Cannot convert/);
-				assert.throws(() => bigIntSchema.parse('12.34'), /Cannot convert/);
+				assert.throws(() => bigIntSchema.parse('not a number'), /Failed to parse String to BigInt/);
+				assert.throws(() => bigIntSchema.parse('12.34'), /Failed to parse String to BigInt/);
 			});
 		});
 

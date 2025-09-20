@@ -64,7 +64,7 @@ export class ParseContext {
 	public static result<T>(fn: (ctx: ParseContext) => T | typeof ParseContext.ISSUE): ParseResult<T> {
 		const result = ParseContext.with(fn);
 
-		if (result.type === 'FATAL') {
+		if (result.type === 'FATAL' || result.issues.size > 0) {
 			return {
 				success: false,
 				issues: result.issues,
@@ -73,16 +73,16 @@ export class ParseContext {
 
 		return {
 			success: true,
-			result: result.result,
+			result: result.data,
 		};
 	}
 
 	public static with<T>(fn: (ctx: ParseContext) => T | typeof ParseContext.ISSUE) {
 		const ctx = new ParseContext();
 
-		const result = fn(ctx);
+		const data = fn(ctx);
 
-		if (result === ParseContext.ISSUE) {
+		if (data === ParseContext.ISSUE) {
 			return {
 				type: 'FATAL' as const,
 				issues: ctx.issues,
@@ -92,7 +92,7 @@ export class ParseContext {
 		return {
 			type: 'PARSED' as const,
 			issues: ctx.issues,
-			result,
+			data,
 		};
 	}
 }
@@ -223,7 +223,7 @@ export class KString extends BaseSchema<string, string, StringDef> {
 	 * @param min The minimum length of the string
 	 * @returns A clone of the schema with the minimum length set
 	 */
-	public max(min: number, message?: string): this {
+	public min(min: number, message?: string): this {
 		return this.setCheck({type: 'min', val: min, message});
 	}
 
@@ -233,7 +233,7 @@ export class KString extends BaseSchema<string, string, StringDef> {
 	 * @param max The maximum length of the string
 	 * @returns A clone of the schema with the maximum length set
 	 */
-	public min(max: number, message?: string): this {
+	public max(max: number, message?: string): this {
 		return this.setCheck({type: 'max', val: max, message});
 	}
 
@@ -307,11 +307,11 @@ export class KString extends BaseSchema<string, string, StringDef> {
 			}
 
 			if (this.def.min !== undefined && json.length < this.def.min.val) {
-				ctx.addIssue(this.def.min.message ?? `String must be at least ${this.def.min.val} characters long`, []);
+				ctx.addIssue(this.def.min.message ?? `String must be at least ${this.def.min.val} characters`, []);
 			}
 
 			if (this.def.max !== undefined && json.length > this.def.max.val) {
-				ctx.addIssue(this.def.max.message ?? `String must be at most ${this.def.max.val} characters long`, []);
+				ctx.addIssue(this.def.max.message ?? `String must be at most ${this.def.max.val} characters`, []);
 			}
 
 			if (this.def.regex !== undefined && !this.def.regex.regex.test(json)) {
@@ -347,6 +347,22 @@ export class KString extends BaseSchema<string, string, StringDef> {
 					case 'date':
 						if (!STRING_FORMAT_REGEXES.date.test(json)) {
 							ctx.addIssue(this.def.format.message ?? 'Invalid date format', []);
+						} else {
+							// Additional validation for actual date validity
+							const matches = json.match(STRING_FORMAT_REGEXES.date);
+							if (matches) {
+								const [, year, month, day] = matches;
+								if (year && month && day) {
+									const date = new Date(`${year}-${month}-${day}T00:00:00Z`);
+									if (
+										date.getUTCFullYear() !== parseInt(year, 10) ||
+										date.getUTCMonth() !== parseInt(month, 10) - 1 ||
+										date.getUTCDate() !== parseInt(day, 10)
+									) {
+										ctx.addIssue(this.def.format.message ?? 'Invalid date format', []);
+									}
+								}
+							}
 						}
 						break;
 
@@ -363,8 +379,16 @@ export class KString extends BaseSchema<string, string, StringDef> {
 						break;
 
 					case 'uri':
-						if (!STRING_FORMAT_REGEXES.uri.test(json)) {
+						// Check for minimal URI structure - must have scheme and something meaningful after it
+						const uriMatch = json.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):(.*)$/);
+						if (!uriMatch || !uriMatch[1]) {
 							ctx.addIssue(this.def.format.message ?? 'Invalid URI format', []);
+						} else {
+							// Reject URIs that are just scheme:// with nothing after
+							const afterScheme = uriMatch[2];
+							if (!afterScheme || afterScheme === '//' || !afterScheme.replace(/^\/\//, '').trim()) {
+								ctx.addIssue(this.def.format.message ?? 'Invalid URI format', []);
+							}
 						}
 						break;
 
@@ -488,6 +512,9 @@ export class KNumber extends BaseSchema<number, number, NumberDef> {
 	}
 
 	public multipleOf(multipleOf: number): this {
+		if (multipleOf <= 0) {
+			throw new Error('multipleOf must be a positive number');
+		}
 		return this.setCheck({type: 'multipleOf', val: multipleOf});
 	}
 
@@ -500,11 +527,11 @@ export class KNumber extends BaseSchema<number, number, NumberDef> {
 	}
 
 	public int32(): this {
-		return this.setCheck({type: 'format', format: 'int32'});
+		return this.setCheck({type: 'format', format: 'int32'}).integer();
 	}
 
 	public int64(): this {
-		return this.setCheck({type: 'format', format: 'int64'});
+		return this.setCheck({type: 'format', format: 'int64'}).integer();
 	}
 
 	public parseSafe(json: unknown): ParseResult<number> {
@@ -514,22 +541,19 @@ export class KNumber extends BaseSchema<number, number, NumberDef> {
 			}
 
 			if (this.def.integer && !Number.isInteger(json)) {
-				return ctx.addIssue(this.def.integer.message ?? 'Expected integer', []);
+				ctx.addIssue(this.def.integer.message ?? 'Expected integer', []);
 			}
 
 			if (this.def.min !== undefined && json < this.def.min.val) {
-				return ctx.addIssue(this.def.min.message ?? `Number must be greater than ${this.def.min.val}`, []);
+				ctx.addIssue(this.def.min.message ?? `Number must be greater than or equal to ${this.def.min.val}`, []);
 			}
 
 			if (this.def.max !== undefined && json > this.def.max.val) {
-				return ctx.addIssue(this.def.max.message ?? `Number must be less than ${this.def.max.val}`, []);
+				ctx.addIssue(this.def.max.message ?? `Number must be less than or equal to ${this.def.max.val}`, []);
 			}
 
 			if (this.def.multipleOf !== undefined && json % this.def.multipleOf.val !== 0) {
-				return ctx.addIssue(
-					this.def.multipleOf.message ?? `Number must be a multiple of ${this.def.multipleOf.val}`,
-					[],
-				);
+				ctx.addIssue(this.def.multipleOf.message ?? `Number must be multiple of ${this.def.multipleOf.val}`, []);
 			}
 
 			return json;
@@ -648,15 +672,15 @@ export class KArray<Input extends JSONValue, Output> extends BaseSchema<Input[],
 			}
 
 			if (this.def.minItems !== undefined && json.length < this.def.minItems.val) {
-				return ctx.addIssue(this.def.minItems.message ?? `Array must have at least ${this.def.minItems.val} items`, []);
+				ctx.addIssue(this.def.minItems.message ?? `Array must have at least ${this.def.minItems.val} items`, []);
 			}
 
 			if (this.def.maxItems !== undefined && json.length > this.def.maxItems.val) {
-				return ctx.addIssue(this.def.maxItems.message ?? `Array must have at most ${this.def.maxItems.val} items`, []);
+				ctx.addIssue(this.def.maxItems.message ?? `Array must have at most ${this.def.maxItems.val} items`, []);
 			}
 
-			if (this.def.uniqueItems !== undefined && new Set(json).size !== json.length) {
-				return ctx.addIssue(this.def.uniqueItems.message ?? 'Array must have unique items', []);
+			if (this.def.uniqueItems?.val === true && new Set(json).size !== json.length) {
+				ctx.addIssue(this.def.uniqueItems.message ?? 'Array items must be unique', []);
 			}
 
 			const items: Output[] = [];
@@ -666,10 +690,10 @@ export class KArray<Input extends JSONValue, Output> extends BaseSchema<Input[],
 				const result = this.def.items.parseSafe(item);
 
 				if (!result.success) {
-					return ctx.addIssues(result.issues, [i.toString()]);
+					ctx.addIssues(result.issues, [i.toString()]);
+				} else {
+					items.push(result.result);
 				}
-
-				items.push(result.result);
 			}
 
 			return items;
@@ -825,6 +849,56 @@ export class KObject<
 	}
 }
 
+export class KObjectFromURLSearchParams<
+	Input extends Record<keyof Output, JSONValue>,
+	Output extends Record<keyof Input, JSONValue>,
+> extends KObject<Input, Output> {
+	public static override create = <
+		Input extends Record<keyof Output, JSONValue>,
+		Output extends Record<keyof Input, JSONValue>,
+	>(shape: {
+		[K in keyof Input | keyof Output]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K]>>;
+	}) => new KObjectFromURLSearchParams({shape});
+
+	override serialize(value: Output): Input {
+		return super.serialize(value);
+	}
+
+	override toOpenAPI(): SchemaObject {
+		return super.toOpenAPI();
+	}
+
+	public override parseSafe(json: unknown): ParseResult<Output> {
+		return ParseContext.result<Output>(ctx => {
+			if (!(json instanceof URLSearchParams)) {
+				return ctx.addIssue(`Expected URLSearchParams, got ${typeof json}`, []);
+			}
+
+			const result: Output = {} as Output;
+
+			for (const key in this.def.shape) {
+				if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
+					const value = json.get(key);
+
+					if (value === null) {
+						return ctx.addIssue(`Missing required property: ${key}`, [key]);
+					}
+
+					const parseResult = this.def.shape[key]!.parseSafe(value);
+
+					if (!parseResult.success) {
+						return ctx.addIssues(parseResult.issues, [key]);
+					}
+
+					result[key] = parseResult.result;
+				}
+			}
+
+			return result;
+		});
+	}
+}
+
 /////////////////////////////////////////////////////
 ////////////////////// KREF //////////////////////
 /////////////////////////////////////////////////////
@@ -964,7 +1038,11 @@ export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresent
 			if (!jsonValue.success) {
 				return ctx.addIssues(jsonValue.issues, []);
 			}
-			return this.def.toServer(jsonValue.result);
+			try {
+				return this.def.toServer(jsonValue.result);
+			} catch (error) {
+				return ctx.addIssue(error instanceof Error ? error.message : 'Conversion failed', []);
+			}
 		});
 	}
 
@@ -1052,4 +1130,10 @@ export const k = {
 	object: KObject.create,
 	scalar: KScalar.create,
 	union: KUnion.create,
+
+	/**
+	 * @internal
+	 * @experimental
+	 */
+	objectFromURLSearchParams: KObjectFromURLSearchParams.create,
 };

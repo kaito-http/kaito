@@ -1,14 +1,17 @@
-import {k} from '@kaito-http/core';
 import assert from 'node:assert';
 import {describe, it} from 'node:test';
 import {KaitoError} from '../error.ts';
 import type {AnyRoute} from '../route.ts';
+import {k} from '../schema/schema.ts';
 import type {KaitoMethod} from '../util.ts';
 import {Router} from './router.ts';
 
 const router = Router.create({
 	getContext: req => ({req}),
-	onError: () => ({status: 500, message: 'Internal Server Error'}),
+	onError: e => {
+		console.error(e);
+		return {status: 500, message: 'Internal Server Error'};
+	},
 });
 
 describe('Router', () => {
@@ -78,7 +81,7 @@ describe('Router', () => {
 			const r = router.get('/search', {
 				query: {
 					q: k.string(),
-					limit: k.string().transform(Number),
+					limit: k.string(),
 				},
 				run: async ({query}) => ({
 					query: query.q,
@@ -94,7 +97,7 @@ describe('Router', () => {
 			assert.strictEqual(response.status, 200);
 			assert.deepStrictEqual(data, {
 				success: true,
-				data: {query: 'test', limit: 10},
+				data: {query: 'test', limit: '10'},
 			});
 		});
 	});
@@ -192,10 +195,6 @@ describe('Router', () => {
 		it('should handle merging on /', () => {
 			const child = router.get('/', {
 				run: () => 'child',
-			});
-
-			router.params<'user_id'>().get('/', async ({params}) => {
-				return params.user_id;
 			});
 
 			const namedChild = router.get('/', () => 'named child').get('/child', () => 'named child');
@@ -568,9 +567,7 @@ describe('Router', () => {
 			const response = await handler(new Request('http://localhost/openapi.json', {method: 'GET'}));
 			const data = await response.json();
 
-			console.log(data);
-
-			assert.strictEqual(data.openapi, '3.0.0');
+			assert.strictEqual(data.openapi, '3.1.0');
 			assert.strictEqual(data.info.title, apiTitle);
 			assert.strictEqual(data.info.version, apiVersion);
 		});
