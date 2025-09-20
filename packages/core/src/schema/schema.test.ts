@@ -172,15 +172,55 @@ describe('Schema', () => {
 				const schema = k.string().uri();
 
 				it('should validate valid URIs', () => {
+					// Standard web URLs
 					assert.strictEqual(schema.parse('https://example.com'), 'https://example.com');
 					assert.strictEqual(schema.parse('http://localhost:3000'), 'http://localhost:3000');
 					assert.strictEqual(schema.parse('ftp://files.example.com'), 'ftp://files.example.com');
+
+					// URLs with paths and query strings
+					assert.strictEqual(schema.parse('https://example.com/path/to/resource'), 'https://example.com/path/to/resource');
+					assert.strictEqual(schema.parse('http://example.com?query=param'), 'http://example.com?query=param');
+					assert.strictEqual(schema.parse('https://example.com#fragment'), 'https://example.com#fragment');
+					assert.strictEqual(schema.parse('https://example.com/path?query=1#section'), 'https://example.com/path?query=1#section');
+
+					// Other URI schemes
+					assert.strictEqual(schema.parse('mailto:user@example.com'), 'mailto:user@example.com');
+					assert.strictEqual(schema.parse('tel:+1234567890'), 'tel:+1234567890');
+					assert.strictEqual(schema.parse('data:text/plain;base64,SGVsbG8='), 'data:text/plain;base64,SGVsbG8=');
+					assert.strictEqual(schema.parse('file:///home/user/file.txt'), 'file:///home/user/file.txt');
+					assert.strictEqual(schema.parse('ssh://user@host.com:22'), 'ssh://user@host.com:22');
+					assert.strictEqual(schema.parse('git://github.com/user/repo.git'), 'git://github.com/user/repo.git');
+
+					// Edge cases that should be valid
+					assert.strictEqual(schema.parse('http://127.0.0.1'), 'http://127.0.0.1');
+					assert.strictEqual(schema.parse('https://[::1]:8080'), 'https://[::1]:8080'); // IPv6
+					assert.strictEqual(schema.parse('http://user:pass@example.com'), 'http://user:pass@example.com'); // Auth
 				});
 
 				it('should reject invalid URIs', () => {
+					// No scheme
 					assert.throws(() => schema.parse('invalid'), /Invalid URI format/);
+					assert.throws(() => schema.parse('example.com'), /Invalid URI format/);
+					assert.throws(() => schema.parse('//example.com'), /Invalid URI format/);
+
+					// Empty or incomplete schemes
 					assert.throws(() => schema.parse('http://'), /Invalid URI format/);
+					assert.throws(() => schema.parse('https://'), /Invalid URI format/);
+					assert.throws(() => schema.parse('ftp://'), /Invalid URI format/);
 					assert.throws(() => schema.parse('://example.com'), /Invalid URI format/);
+
+					// Invalid scheme format
+					assert.throws(() => schema.parse('123://example.com'), /Invalid URI format/); // Scheme can't start with number
+					assert.throws(() => schema.parse('-http://example.com'), /Invalid URI format/); // Scheme can't start with dash
+					assert.throws(() => schema.parse('ht!tp://example.com'), /Invalid URI format/); // Invalid character in scheme
+
+					// Just scheme with colon but nothing after
+					assert.throws(() => schema.parse('http:'), /Invalid URI format/);
+					assert.throws(() => schema.parse('https:'), /Invalid URI format/);
+
+					// Missing colon
+					assert.throws(() => schema.parse('http//example.com'), /Invalid URI format/);
+					assert.throws(() => schema.parse('httpsexample.com'), /Invalid URI format/);
 				});
 			});
 
