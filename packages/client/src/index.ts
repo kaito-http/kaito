@@ -118,7 +118,7 @@ export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements Asyn
 	// - Cuts an event in the middle
 	private buffer = '';
 
-	public constructor(stream: ReadableStream<Uint8Array>) {
+	public constructor(stream: ReadableStream<Uint8Array<ArrayBuffer>>) {
 		this.stream = stream.pipeThrough(new TextDecoderStream());
 	}
 
