@@ -63,6 +63,76 @@ describe('Schema', () => {
 			});
 		});
 
+		describe('startsWith validation', () => {
+			it('should validate strings that start with prefix', () => {
+				const schema = k.string().startsWith('hello');
+				assert.strictEqual(schema.parse('hello world'), 'hello world');
+				assert.strictEqual(schema.parse('hello'), 'hello');
+				assert.throws(() => schema.parse('hi there'), /String must start with "hello"/);
+				assert.throws(() => schema.parse('HELLO world'), /String must start with "hello"/);
+			});
+
+			it('should use custom error message', () => {
+				const schema = k.string().startsWith('https://', 'URL must use HTTPS');
+				assert.strictEqual(schema.parse('https://example.com'), 'https://example.com');
+				assert.throws(() => schema.parse('http://example.com'), /URL must use HTTPS/);
+			});
+
+			it('should work with empty prefix', () => {
+				const schema = k.string().startsWith('');
+				assert.strictEqual(schema.parse('anything'), 'anything');
+				assert.strictEqual(schema.parse(''), '');
+			});
+		});
+
+		describe('endsWith validation', () => {
+			it('should validate strings that end with suffix', () => {
+				const schema = k.string().endsWith('.com');
+				assert.strictEqual(schema.parse('example.com'), 'example.com');
+				assert.strictEqual(schema.parse('.com'), '.com');
+				assert.throws(() => schema.parse('example.org'), /String must end with "\.com"/);
+				assert.throws(() => schema.parse('example.COM'), /String must end with "\.com"/);
+			});
+
+			it('should use custom error message', () => {
+				const schema = k.string().endsWith('.ts', 'must be a TypeScript file');
+				assert.strictEqual(schema.parse('index.ts'), 'index.ts');
+				assert.throws(() => schema.parse('index.js'), /must be a TypeScript file/);
+			});
+
+			it('should work with empty suffix', () => {
+				const schema = k.string().endsWith('');
+				assert.strictEqual(schema.parse('anything'), 'anything');
+				assert.strictEqual(schema.parse(''), '');
+			});
+		});
+
+		describe('combined string validations', () => {
+			it('should work with startsWith and endsWith together', () => {
+				const schema = k.string().startsWith('hello').endsWith('world');
+				assert.strictEqual(schema.parse('hello world'), 'hello world');
+				assert.strictEqual(schema.parse('hello beautiful world'), 'hello beautiful world');
+				assert.throws(() => schema.parse('hi world'), /String must start with "hello"/);
+				assert.throws(() => schema.parse('hello earth'), /String must end with "world"/);
+			});
+
+			it('should work with length and prefix/suffix', () => {
+				const schema = k.string().min(10).startsWith('test_');
+				assert.strictEqual(schema.parse('test_12345'), 'test_12345');
+				assert.throws(() => schema.parse('test_'), /at least 10 characters/);
+				assert.throws(() => schema.parse('prod_12345'), /String must start with "test_"/);
+			});
+
+			it('should collect all validation errors', () => {
+				const schema = k.string().min(10).startsWith('hello').endsWith('world');
+				assert.throws(() => schema.parse('hi'));
+
+				const result = schema.parseSafe('hi');
+				assert.strictEqual(result.success, false);
+				assert.strictEqual(result.issues.size, 3);
+			});
+		});
+
 		describe('format validation', () => {
 			describe('email', () => {
 				const schema = k.string().email();
@@ -104,7 +174,7 @@ describe('Schema', () => {
 				const schema = k.string().date();
 
 				it('should validate valid dates', () => {
-					assert.strictEqual(schema.parse('2024-02-29'), '2024-02-29'); // Leap year
+					assert.strictEqual(schema.parse('2024-02-29'), '2024-02-29');
 					assert.strictEqual(schema.parse('2023-12-31'), '2023-12-31');
 					assert.strictEqual(schema.parse('2023-01-01'), '2023-01-01');
 				});
@@ -642,7 +712,7 @@ describe('Schema', () => {
 				const result = dateSchema.parse('2023-12-31');
 				assert(result instanceof Date);
 				assert.strictEqual(result.getUTCFullYear(), 2023);
-				assert.strictEqual(result.getUTCMonth(), 11); // 0-based
+				assert.strictEqual(result.getUTCMonth(), 11);
 				assert.strictEqual(result.getUTCDate(), 31);
 			});
 

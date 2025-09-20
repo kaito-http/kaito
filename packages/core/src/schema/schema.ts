@@ -180,6 +180,8 @@ export interface StringChecks {
 	max?: Check<'max', {val: number}>;
 	regex?: Check<'regex', {regex: RegExp}>;
 	format?: Check<'format', {format: StringFormat}>;
+	startsWith?: Check<'startsWith', {prefix: string}>;
+	endsWith?: Check<'endsWith', {suffix: string}>;
 }
 
 export interface StringDef extends BaseSchemaDef<string>, StringChecks {}
@@ -239,6 +241,14 @@ export class KString extends BaseSchema<string, string, StringDef> {
 
 	public regex(regex: RegExp, message?: string): this {
 		return this.setCheck({type: 'regex', regex, message});
+	}
+
+	public startsWith(prefix: string, message?: string): this {
+		return this.setCheck({type: 'startsWith', prefix, message});
+	}
+
+	public endsWith(suffix: string, message?: string): this {
+		return this.setCheck({type: 'endsWith', suffix, message});
 	}
 
 	private format(format: StringFormat, message?: string): this {
@@ -316,6 +326,14 @@ export class KString extends BaseSchema<string, string, StringDef> {
 
 			if (this.def.regex !== undefined && !this.def.regex.regex.test(json)) {
 				ctx.addIssue(this.def.regex.message ?? `String must match ${this.def.regex.regex.source}`, []);
+			}
+
+			if (this.def.startsWith !== undefined && !json.startsWith(this.def.startsWith.prefix)) {
+				ctx.addIssue(this.def.startsWith.message ?? `String must start with "${this.def.startsWith.prefix}"`, []);
+			}
+
+			if (this.def.endsWith !== undefined && !json.endsWith(this.def.endsWith.suffix)) {
+				ctx.addIssue(this.def.endsWith.message ?? `String must end with "${this.def.endsWith.suffix}"`, []);
 			}
 
 			if (this.def.format !== undefined) {
