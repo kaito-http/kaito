@@ -21,7 +21,7 @@ bun i @kaito-http/uws
 ```typescript
 import {KaitoServer} from '@kaito-http/uws';
 
-const server = await KaitoServer.serve({
+using server = await KaitoServer.serve({
 	port: 3000,
 	fetch: async request => {
 		return new Response('Hello World!');
@@ -38,7 +38,7 @@ The server automatically provides an `AbortSignal` on each request that gets tri
 ```typescript
 import {KaitoServer} from '@kaito-http/uws';
 
-const server = await KaitoServer.serve({
+using server = await KaitoServer.serve({
 	port: 3000,
 	fetch: async request => {
 		// The request.signal is automatically set up
@@ -73,7 +73,7 @@ Get the client's IP address from the `context` parameter:
 ```typescript
 import {KaitoServer} from '@kaito-http/uws';
 
-const server = await KaitoServer.serve({
+using server = await KaitoServer.serve({
 	port: 3000,
 	fetch: async (request, context) => {
 		console.log(`Request from: ${context.remoteAddress}`);
@@ -87,7 +87,7 @@ const server = await KaitoServer.serve({
 ```typescript
 import {KaitoServer} from '@kaito-http/uws';
 
-const server = await KaitoServer.serve({
+using server = await KaitoServer.serve({
 	port: 3000,
 	host: '127.0.0.1', // defaults to '0.0.0.0'
 	fetch: async request => {
@@ -99,7 +99,4 @@ const server = await KaitoServer.serve({
 // Server properties
 console.log('Server address:', server.address); // "127.0.0.1:3000"
 console.log('Server URL:', server.url); // "http://127.0.0.1:3000"
-
-// Close the server
-server.close();
 ```
