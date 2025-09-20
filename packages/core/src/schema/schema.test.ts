@@ -178,10 +178,16 @@ describe('Schema', () => {
 					assert.strictEqual(schema.parse('ftp://files.example.com'), 'ftp://files.example.com');
 
 					// URLs with paths and query strings
-					assert.strictEqual(schema.parse('https://example.com/path/to/resource'), 'https://example.com/path/to/resource');
+					assert.strictEqual(
+						schema.parse('https://example.com/path/to/resource'),
+						'https://example.com/path/to/resource',
+					);
 					assert.strictEqual(schema.parse('http://example.com?query=param'), 'http://example.com?query=param');
 					assert.strictEqual(schema.parse('https://example.com#fragment'), 'https://example.com#fragment');
-					assert.strictEqual(schema.parse('https://example.com/path?query=1#section'), 'https://example.com/path?query=1#section');
+					assert.strictEqual(
+						schema.parse('https://example.com/path?query=1#section'),
+						'https://example.com/path?query=1#section',
+					);
 
 					// Other URI schemes
 					assert.strictEqual(schema.parse('mailto:user@example.com'), 'mailto:user@example.com');
