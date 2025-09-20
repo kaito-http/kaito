@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Install Node ${{ matrix.node }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
 
@@ -29,8 +29,6 @@ jobs:
 
       - name: Build
         run: yarn build
-        env:
-          SKIP_WASM: "${{ matrix.os == 'windows-latest' }}"
 
       - name: Run tests
         run: yarn test-all
