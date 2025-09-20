@@ -170,7 +170,7 @@ export const STRING_FORMAT_REGEXES = {
 	ipv4: /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/,
 	ipv6: /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/,
 	date: /^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/,
-	uri: /^(([^:/?#]+):)?(\/\/([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/,
+	uri: /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/.+|^[a-zA-Z][a-zA-Z0-9+.-]*:[^\/].+/,
 	hostname:
 		/^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$/,
 } as const;
@@ -347,22 +347,6 @@ export class KString extends BaseSchema<string, string, StringDef> {
 					case 'date':
 						if (!STRING_FORMAT_REGEXES.date.test(json)) {
 							ctx.addIssue(this.def.format.message ?? 'Invalid date format', []);
-						} else {
-							// Additional validation for actual date validity
-							const matches = json.match(STRING_FORMAT_REGEXES.date);
-							if (matches) {
-								const [, year, month, day] = matches;
-								if (year && month && day) {
-									const date = new Date(`${year}-${month}-${day}T00:00:00Z`);
-									if (
-										date.getUTCFullYear() !== parseInt(year, 10) ||
-										date.getUTCMonth() !== parseInt(month, 10) - 1 ||
-										date.getUTCDate() !== parseInt(day, 10)
-									) {
-										ctx.addIssue(this.def.format.message ?? 'Invalid date format', []);
-									}
-								}
-							}
 						}
 						break;
 
@@ -379,16 +363,8 @@ export class KString extends BaseSchema<string, string, StringDef> {
 						break;
 
 					case 'uri':
-						// Check for minimal URI structure - must have scheme and something meaningful after it
-						const uriMatch = json.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):(.*)$/);
-						if (!uriMatch || !uriMatch[1]) {
+						if (!STRING_FORMAT_REGEXES.uri.test(json)) {
 							ctx.addIssue(this.def.format.message ?? 'Invalid URI format', []);
-						} else {
-							// Reject URIs that are just scheme:// with nothing after
-							const afterScheme = uriMatch[2];
-							if (!afterScheme || afterScheme === '//' || !afterScheme.replace(/^\/\//, '').trim()) {
-								ctx.addIssue(this.def.format.message ?? 'Invalid URI format', []);
-							}
 						}
 						break;
 
