@@ -45,11 +45,13 @@ const root = router
 		run: async () => {
 			const text = "This is an example of text being streamed every 100ms by using Kaito's sse() function";
 
-			return sse(async function* () {
+			const result = sse(async function* () {
 				for (const word in text.split(' ')) {
-					yield {data: word, event: 'cool', retry: 1000};
+					yield {data: word, event: 'cool2', retry: 1000};
 				}
 			});
+
+			return result;
 		},
 	})
 	.through(async ctx => {

@@ -1129,6 +1129,41 @@ export class KUnion<Input extends JSONValue, Output> extends BaseSchema<Input, O
 	}
 }
 
+export interface LiteralDef<Value extends string | number | boolean> extends BaseSchemaDef<Value> {
+	value: Value;
+}
+
+export class KLiteral<Value extends string | number | boolean> extends BaseSchema<Value, Value, LiteralDef<Value>> {
+	public override parse(json: unknown): Value {
+		const result = this.parseSafe(json);
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+		return result.result;
+	}
+
+	public static create = <Value extends string | number | boolean>(value: Value) => new KLiteral({value});
+
+	public serialize(value: Value): Value {
+		return value;
+	}
+
+	public toOpenAPI(): SchemaObject {
+		const type = typeof this.def.value as 'string' | 'number' | 'boolean';
+		return {type, enum: [this.def.value]};
+	}
+
+	public parseSafe(json: unknown): ParseResult<Value> {
+		return ParseContext.result(ctx => {
+			if (json !== this.def.value) {
+				return ctx.addIssue(`Expected ${this.def.value}`, []);
+			}
+
+			return this.def.value;
+		});
+	}
+}
+
 export const k = {
 	string: KString.create,
 	number: KNumber.create,
@@ -1138,6 +1173,7 @@ export const k = {
 	ref: KRef.create,
 	object: KObject.create,
 	scalar: KScalar.create,
+	literal: KLiteral.create,
 	union: KUnion.create,
 
 	/**
