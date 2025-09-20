@@ -890,7 +890,7 @@ __metadata:
   resolution: "@kaito-http/core@workspace:packages/core"
   dependencies:
     "@arethetypeswrong/cli": "npm:^0.17.2"
-    openapi3-ts: "npm:^4.4.0"
+    openapi3-ts: "npm:^4.5.0"
     tsup: "npm:^8.3.5"
     typescript: "npm:^5.7.3"
   languageName: unknown
@@ -5596,12 +5596,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"openapi3-ts@npm:^4.4.0":
-  version: 4.4.0
-  resolution: "openapi3-ts@npm:4.4.0"
+"openapi3-ts@npm:^4.5.0":
+  version: 4.5.0
+  resolution: "openapi3-ts@npm:4.5.0"
   dependencies:
-    yaml: "npm:^2.5.0"
-  checksum: 10c0/900b834279fc8a43c545728ad75ec7c26934ec5344225b60d1e1c0df44d742d7e7379aea18d9034e03031f079d3308ba5a68600682eece3ed41cdbdd10346a9e
+    yaml: "npm:^2.8.0"
+  checksum: 10c0/97de2d24e9ceffb89e1388e137e4a6e17ee57a02dce0c938a5e98b1338ac72b31e8b2ce8dd28945ad43fae8bee2a145892cb548ba5ae60b0930f1b6b79b0747d
   languageName: node
   linkType: hard
 
@@ -7394,12 +7394,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yaml@npm:^2.5.0":
-  version: 2.7.0
-  resolution: "yaml@npm:2.7.0"
+"yaml@npm:^2.8.0":
+  version: 2.8.1
+  resolution: "yaml@npm:2.8.1"
   bin:
     yaml: bin.mjs
-  checksum: 10c0/886a7d2abbd70704b79f1d2d05fe9fb0aa63aefb86e1cb9991837dced65193d300f5554747a872b4b10ae9a12bc5d5327e4d04205f70336e863e35e89d8f4ea9
+  checksum: 10c0/7c587be00d9303d2ae1566e03bc5bc7fe978ba0d9bf39cc418c3139d37929dfcb93a230d9749f2cb578b6aa5d9ebebc322415e4b653cb83acd8bc0bc321707f3
   languageName: node
   linkType: hard
 

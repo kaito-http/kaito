@@ -1,3 +1,4 @@
+import * as OpenAPI from 'openapi3-ts/oas31';
 import type {KaitoConfig} from '../config.ts';
 import {KaitoError, WrappedError} from '../error.ts';
 import {KaitoHead} from '../head.ts';
@@ -48,7 +49,7 @@ export class Router<
 	R extends AnyRoute,
 	Input extends readonly unknown[],
 > {
-	private readonly state: RouterState<ContextFrom, ContextTo, RequiredParams, R, Input>;
+	readonly #state: RouterState<ContextFrom, ContextTo, RequiredParams, R, Input>;
 
 	public static create = <Context = null, Input extends readonly unknown[] = []>(
 		config: KaitoConfig<Context, Input> = {},
@@ -61,11 +62,11 @@ export class Router<
 	};
 
 	protected constructor(state: RouterState<ContextFrom, ContextTo, RequiredParams, R, Input>) {
-		this.state = state;
+		this.#state = state;
 	}
 
 	public get routes() {
-		return this.state.routes;
+		return this.#state.routes;
 	}
 
 	private readonly add = <
@@ -93,21 +94,21 @@ export class Router<
 		Input
 	> => {
 		const merged: Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body> = {
-			...((typeof route === 'object' ? route : {run: route}) as {run: never}),
+			...(typeof route === 'object' ? route : {run: route}),
 			method,
 			path,
 			router: this,
 		};
 
 		return new Router({
-			...this.state,
-			routes: new Set([...this.state.routes, merged]),
+			...this.#state,
+			routes: new Set([...this.#state.routes, merged]),
 		});
 	};
 
-	public readonly params: [R] extends [never]
+	public readonly params: [RequiredParams] extends [never]
 		? <NextParams extends string>() => Router<ContextFrom, ContextTo, NextParams, R, Input>
-		: 'router.params() can only be called before any routes are attached' = (() => this) as never;
+		: undefined = (() => this) as never;
 
 	public readonly merge = <
 		PathPrefix extends `/${string}`,
@@ -125,7 +126,7 @@ export class Router<
 		Extract<R | PrefixRoutesPath<PathPrefix, Extract<OtherRoutes, AnyRoute>>, AnyRoute>,
 		Input
 	> => {
-		const newRoutes = [...other.state.routes].map(route => ({
+		const newRoutes = [...other.#state.routes].map(route => ({
 			...route,
 			// handle pathPrefix = / & route.path = / case causing //
 			// we intentionally are replacing on the joining path and not the pathPrefix, in case of
@@ -134,8 +135,8 @@ export class Router<
 		}));
 
 		return new Router({
-			...this.state,
-			routes: new Set([...this.state.routes, ...newRoutes] as never),
+			...this.#state,
+			routes: new Set([...this.#state.routes, ...newRoutes] as never),
 		});
 	};
 
@@ -184,7 +185,7 @@ export class Router<
 			>
 		>();
 
-		for (const route of this.state.routes) {
+		for (const route of this.#state.routes) {
 			if (!methodToRoutesMap.has(route.method)) {
 				methodToRoutesMap.set(route.method, new Map());
 			}
@@ -221,12 +222,12 @@ export class Router<
 				const body = route.body ? await route.body.parse(await req.json()) : undefined;
 				const query = route.fastQuerySchema ? route.fastQuerySchema.parse(url.searchParams) : {};
 
-				const ctx = await route.router.state.through(
-					(await this.state.config.getContext?.(request, head, ...args)) ?? null,
+				const ctx: unknown = await route.router.#state.through(
+					(await this.#state.config.getContext?.(request, head, ...args)) ?? null,
 					rawParams,
 				);
 
-				const result = await route.run({
+				const result: unknown = await route.run({
 					ctx,
 					body,
 					query,
@@ -265,7 +266,7 @@ export class Router<
 					});
 				}
 
-				if (!this.state.config.onError) {
+				if (!this.#state.config.onError) {
 					return head.status(500).toResponse({
 						success: false,
 						data: null,
@@ -274,7 +275,7 @@ export class Router<
 				}
 
 				try {
-					const {status, message} = await this.state.config.onError(error, request);
+					const {status, message} = await this.#state.config.onError(error, request);
 
 					return head.status(status).toResponse({
 						success: false,
@@ -282,7 +283,7 @@ export class Router<
 						message,
 					});
 				} catch (e) {
-					console.error('KAITO - Failed to handle error inside `.onError()`, returning 500 and Internal Server Error');
+					console.error('[Kaito] Failed to handle error inside `.onError()`, returning 500 and Internal Server Error');
 					console.error(e);
 
 					return head.status(500).toResponse({
@@ -295,12 +296,12 @@ export class Router<
 		};
 
 		return async (request: Request, ...args: Input): Promise<Response> => {
-			if (this.state.config.before) {
-				const result = await this.state.config.before(request);
+			if (this.#state.config.before) {
+				const result = await this.#state.config.before(request);
 
 				if (result instanceof Response) {
-					if (this.state.config.transform) {
-						const transformed = await this.state.config.transform(request, result);
+					if (this.#state.config.transform) {
+						const transformed = await this.#state.config.transform(request, result);
 
 						if (transformed instanceof Response) {
 							return result;
@@ -313,8 +314,8 @@ export class Router<
 
 			const response = await handle(request, ...args);
 
-			if (this.state.config.transform) {
-				const transformed = await this.state.config.transform(request, response);
+			if (this.#state.config.transform) {
+				const transformed = await this.#state.config.transform(request, response);
 
 				if (transformed instanceof Response) {
 					return transformed;
@@ -325,22 +326,18 @@ export class Router<
 		};
 	};
 
-	public openapi = (_highLevelSpec: {
-		info: {
-			version: string;
-			title: string;
-			description?: string;
-		};
+	public openapi = ({
+		info,
+		servers,
+	}: {
+		info: OpenAPI.InfoObject;
 		servers?: Partial<Record<(`https://` | `http://`) | ({} & string), string>>;
 	}) => {
-		return this;
-		/*
+		const OPENAPI_VERSION = '3.0.3';
 
-		const OPENAPI_VERSION = '3.0.0';
+		const paths: OpenAPI.PathsObject = {};
 
-		const paths: ZodOpenApiPathsObject = {};
-
-		for (const route of this.state.routes) {
+		for (const route of this.#state.routes) {
 			const path = route.path;
 
 			if (!route.openapi) {
@@ -353,26 +350,27 @@ export class Router<
 				paths[pathWithColonParamsReplaceWithCurlyBraces] = {};
 			}
 
-			const content: ZodOpenApiContentObject =
+			const content: Record<string, OpenAPI.MediaTypeObject> =
 				route.openapi.body.type === 'json'
 					? {
 							'application/json': {
-								schema: z.object({
-									success: z.literal(true).openapi({
-										type: 'boolean',
-										enum: [true], // Need this as zod-openapi doesn't properly work with literals
-									}),
-									data: route.openapi.body.schema,
-								}),
+								// schema: z.object({
+								// 	success: z.literal(true).openapi({
+								// 		type: 'boolean',
+								// 		enum: [true], // Need this as zod-openapi doesn't properly work with literals
+								// 	}),
+								// 	data: route.openapi.body.schema,
+								// }),
+								schema: route.openapi.body.schema.toOpenAPI(),
 							},
 						}
 					: {
 							'text/event-stream': {
-								schema: route.openapi.body.schema,
+								schema: route.openapi.body.schema.toOpenAPI(),
 							},
 						};
 
-			const item: ZodOpenApiOperationObject = {
+			const item: OpenAPI.OperationObject = {
 				description: route.openapi?.description ?? 'Successful response',
 				responses: {
 					200: {
@@ -385,39 +383,19 @@ export class Router<
 			if (route.body) {
 				item.requestBody = {
 					content: {
-						'application/json': {schema: route.body},
+						'application/json': {schema: route.body.toOpenAPI()},
 					},
 				};
 			}
 
-			const params: NonNullable<ZodOpenApiOperationObject['requestParams']> = {};
-
-			if (route.query) {
-				params.query = z.object(route.query);
-			}
-
-			const urlParams = path.match(/:(\w+)/g);
-
-			if (urlParams) {
-				const pathParams = {} as Record<string, z.ZodType>;
-
-				for (const param of urlParams) {
-					pathParams[param.slice(1)] = z.string();
-				}
-
-				params.path = z.object(pathParams);
-			}
-
-			item.requestParams = params;
-
 			paths[pathWithColonParamsReplaceWithCurlyBraces][route.method.toLowerCase() as Lowercase<KaitoMethod>] = item;
 		}
 
-		const doc = createDocument({
+		const doc: OpenAPI.OpenAPIObject = {
 			openapi: OPENAPI_VERSION,
+			info,
 			paths,
-			...highLevelSpec,
-			servers: Object.entries(highLevelSpec.servers ?? {}).map(entry => {
+			servers: Object.entries(servers ?? {}).map(entry => {
 				const [url, description] = entry as [string, string];
 
 				return {
@@ -425,11 +403,9 @@ export class Router<
 					description,
 				};
 			}),
-		});
+		};
 
 		return this.get('/openapi.json', () => Response.json(doc));
-	
-	*/
 	};
 
 	private readonly method = <M extends KaitoMethod>(method: M) => {
@@ -458,8 +434,8 @@ export class Router<
 		through: (context: ContextTo, params: RequiredParams) => MaybePromise<NextContext>,
 	): Router<ContextFrom, NextContext, RequiredParams, R, Input> => {
 		return new Router<ContextFrom, NextContext, RequiredParams, R, Input>({
-			...this.state,
-			through: async (context, params) => await through(await this.state.through(context, params), params),
+			...this.#state,
+			through: async (context, params) => await through(await this.#state.through(context, params), params),
 		});
 	};
 }

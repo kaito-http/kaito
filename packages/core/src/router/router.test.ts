@@ -194,6 +194,10 @@ describe('Router', () => {
 				run: () => 'child',
 			});
 
+			router.params<'user_id'>().get('/', async ({params}) => {
+				return params.user_id;
+			});
+
 			const namedChild = router.get('/', () => 'named child').get('/child', () => 'named child');
 
 			const parent = router
@@ -563,6 +567,8 @@ describe('Router', () => {
 			const handler = openapiRouter.serve();
 			const response = await handler(new Request('http://localhost/openapi.json', {method: 'GET'}));
 			const data = await response.json();
+
+			console.log(data);
 
 			assert.strictEqual(data.openapi, '3.0.0');
 			assert.strictEqual(data.info.title, apiTitle);

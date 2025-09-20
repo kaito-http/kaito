@@ -56,7 +56,7 @@ export type Route<
 	router: Router<unknown, ContextTo, AdditionalParams, AnyRoute, any>;
 	run(
 		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>,
-	): Promise<Result> | Result;
+	): Promise<Result | Response> | Response | Result;
 };
 
 export type AnyRoute = Route<any, any, any, any, any, any, any>;

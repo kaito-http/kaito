@@ -3,6 +3,10 @@ import type {ReferenceObject, SchemaObject} from 'openapi3-ts/oas31';
 export type JSONPrimitive = string | number | boolean | null;
 export type JSONValue = JSONPrimitive | JSONValue[] | {[key: string]: JSONValue};
 
+export function isPrimitiveJSONValue(value: unknown): value is JSONPrimitive {
+	return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null;
+}
+
 export interface BaseSchemaDef<Input extends JSONValue> {
 	example?: Input | undefined;
 	description?: string | undefined;
@@ -440,6 +444,28 @@ export class KNumber extends BaseSchema<number, number, NumberDef> {
 		if (this.def.integer) {
 			schema.type = 'integer';
 		}
+
+		if (this.def.format) {
+			switch (this.def.format.format) {
+				case 'float':
+					schema.format = 'float';
+					schema.type = 'number';
+					break;
+				case 'double':
+					schema.format = 'double';
+					schema.type = 'number';
+					break;
+				case 'int32':
+					schema.format = 'int32';
+					schema.type = 'integer';
+					break;
+				case 'int64':
+					schema.format = 'int64';
+					schema.type = 'integer';
+					break;
+			}
+		}
+
 		if (this.def.format) {
 			schema.format = this.def.format.format;
 		}
@@ -592,6 +618,7 @@ export class KArray<Input extends JSONValue, Output> extends BaseSchema<Input[],
 		return {
 			type: 'array',
 			items: this.def.items.toOpenAPI(),
+			...(this.def.description ? {description: this.def.description} : {}),
 			...(this.def.minItems !== undefined ? {minItems: this.def.minItems.val} : {}),
 			...(this.def.maxItems !== undefined ? {maxItems: this.def.maxItems.val} : {}),
 			...(this.def.uniqueItems !== undefined ? {uniqueItems: this.def.uniqueItems.val} : {}),
@@ -979,6 +1006,7 @@ export class KUnion<Input extends JSONValue, Output> extends BaseSchema<Input, O
 				return option.serialize(value);
 			} catch {}
 		}
+
 		throw new Error('Value does not match any union option for serialization');
 	}
 
@@ -991,14 +1019,17 @@ export class KUnion<Input extends JSONValue, Output> extends BaseSchema<Input, O
 
 	public parseSafe(json: unknown): ParseResult<Output> {
 		let lastIssues: Set<Issue> | undefined;
+
 		for (const option of this.def.items) {
 			const result = option.parseSafe(json);
+
 			if (result.success) {
 				return {success: true, result: result.result};
 			} else {
 				lastIssues = result.issues;
 			}
 		}
+
 		return {success: false, issues: lastIssues ?? new Set([{message: 'No union option matched', path: []}])};
 	}
 
