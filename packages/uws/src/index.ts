@@ -90,10 +90,6 @@ export class KaitoServer {
 		});
 	}
 
-	[Symbol.dispose](): void {
-		return this.close();
-	}
-
 	public static async serve(options: ServeUserOptions) {
 		const fullOptions = {
 			host: '0.0.0.0',
@@ -268,6 +264,10 @@ export class KaitoServer {
 	private constructor(app: ReturnType<typeof uWS.App>, options: ServeOptions) {
 		this.app = app;
 		this.options = options;
+	}
+
+	public [Symbol.dispose](): void {
+		return this.close();
 	}
 
 	public close() {
