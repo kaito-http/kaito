@@ -33,7 +33,7 @@
 		"@arethetypeswrong/cli": "^0.17.2",
 		"@kaito-http/core": "workspace:^",
 		"tsup": "^8.3.5",
-		"typescript": "^5.7.3"
+		"typescript": "5.9.2"
 	},
 	"dependencies": {
 		"pathcat": "^1.4.0"

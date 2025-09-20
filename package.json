@@ -34,7 +34,7 @@
 	"devDependencies": {
 		"prettier": "^3.4.2",
 		"tsup": "^8.3.5",
-		"typescript": "^5.7.3"
+		"typescript": "5.9.2"
 	},
-	"packageManager": "yarn@4.9.1"
+	"packageManager": "yarn@4.10.2"
 }

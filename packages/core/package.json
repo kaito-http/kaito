@@ -10,7 +10,7 @@
 	"devDependencies": {
 		"@arethetypeswrong/cli": "^0.17.2",
 		"tsup": "^8.3.5",
-		"typescript": "^5.7.3"
+		"typescript": "5.9.2"
 	},
 	"exports": {
 		"./package.json": "./package.json",

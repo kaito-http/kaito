@@ -995,10 +995,25 @@ export class KRef<
 	}
 }
 
-export interface ScalarOptions<ClientRepresentation extends JSONPrimitive, ServerRepresentation> {
+export interface ScalarOptions<ClientRepresentation extends JSONValue, ServerRepresentation> {
+	/**
+	 * Parse the value from the unsafe JSON
+	 */
 	schema: BaseSchema<ClientRepresentation, ClientRepresentation, BaseSchemaDef<ClientRepresentation>>;
+
+	/**
+	 * Turn the parsed JSON value into something the server can use
+	 * @param jsonValue The parsed JSON value
+	 * @returns The server representation
+	 */
 	toServer: (jsonValue: ClientRepresentation) => ServerRepresentation;
-	toClient: (clientValue: ServerRepresentation) => ClientRepresentation;
+
+	/**
+	 * Turn the server respresentation back into a JSON value
+	 * @param serverValue The value from the server we want to convert back into the client
+	 * @returns Convert the data back into a JSON value that the server can understand
+	 */
+	toClient: (serverValue: ServerRepresentation) => ClientRepresentation;
 }
 
 export interface ScalarDef<ClientRepresentation extends JSONPrimitive, ServerRepresentation>

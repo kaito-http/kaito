@@ -177,6 +177,8 @@ describe('Router', () => {
 
 			const mainRouter = router.merge('/api', userRouter);
 
+			mainRouter.routes;
+
 			const handler = mainRouter.serve();
 
 			const response = await handler(new Request('http://localhost/api/1', {method: 'GET'}));

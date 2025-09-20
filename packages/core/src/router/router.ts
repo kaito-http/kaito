@@ -118,7 +118,7 @@ export class Router<
 		pathPrefix: [NextRequiredParams] extends [ExtractRouteParams<PathPrefix> | RequiredParams]
 			? PathPrefix
 			: `Missing ${Exclude<NextRequiredParams, ExtractRouteParams<PathPrefix> | RequiredParams>}`,
-		other: Router<ContextFrom, unknown, NextRequiredParams, OtherRoutes, Input>,
+		other: Router<ContextFrom, ContextTo, NextRequiredParams, OtherRoutes, Input>,
 	): Router<
 		ContextFrom,
 		ContextTo,
