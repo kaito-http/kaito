@@ -12,13 +12,8 @@ export const isNodeLikeDev =
 export type ErroredAPIResponse = {success: false; data: null; message: string};
 export type SuccessfulAPIResponse<T> = {success: true; data: T};
 export type APIResponse<T> = ErroredAPIResponse | SuccessfulAPIResponse<T>;
-export type AnyResponse = APIResponse<unknown>;
-export type MakeOptional<T, K extends keyof T> = T extends T ? Omit<T, K> & Partial<Pick<T, K>> : never;
 export type MaybePromise<T> = T | Promise<T>;
 export type KaitoMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
-export type NotReadonly<T> = {
-	-readonly [K in keyof T]: T[K];
-};
 
 export type ExtractRouteParams<T extends string> = string extends T
 	? string

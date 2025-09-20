@@ -2,7 +2,7 @@ import type {KaitoError} from './error.ts';
 import type {KaitoRequest} from './request.ts';
 import type {GetContext, MaybePromise} from './util.ts';
 
-export type KaitoConfig<ContextFrom, Input extends readonly unknown[]> = {
+export interface KaitoConfig<ContextFrom, Input extends readonly unknown[]> {
 	/**
 	 * A function that is called to get the context for a request.
 	 *
@@ -59,4 +59,4 @@ export type KaitoConfig<ContextFrom, Input extends readonly unknown[]> = {
 	 * ```
 	 */
 	transform?: (req: Request, res: Response) => MaybePromise<Response | void | undefined>;
-};
+}

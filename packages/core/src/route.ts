@@ -31,13 +31,12 @@ export type JSONOutputSpec<Result extends JSONValue> = {
 
 export type OutputSpec<Result extends JSONValue> = {
 	description?: string;
-	body: NoInfer<
-		Result extends KaitoSSEResponse<infer R> ? SSEOutputSpec<Extract<R, JSONValue>> : JSONOutputSpec<Result>
-	>;
+	body: Result extends KaitoSSEResponse<infer R> ? SSEOutputSpec<Extract<R, JSONValue>> : JSONOutputSpec<Result>;
 };
 
 export type Route<
 	// Router context
+	ContextFrom,
 	ContextTo,
 	// Route information
 	Result extends JSONValue,
@@ -53,10 +52,10 @@ export type Route<
 	path: Path;
 	method: Method;
 	openapi?: OutputSpec<NoInfer<Result>>;
-	router: Router<unknown, ContextTo, AdditionalParams, AnyRoute, any>;
+	router: Router<ContextFrom, ContextTo, AdditionalParams, AnyRoute, any>;
 	run(
 		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>,
 	): Promise<Result | Response> | Response | Result;
 };
 
-export type AnyRoute = Route<any, any, any, any, any, any, any>;
+export type AnyRoute = Route<any, any, any, any, any, any, any, any>;

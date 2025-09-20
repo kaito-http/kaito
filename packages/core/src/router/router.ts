@@ -15,6 +15,7 @@ import {
 
 type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 	R extends Route<
+		infer ContextFrom,
 		infer ContextTo,
 		infer Result,
 		infer Path,
@@ -23,7 +24,16 @@ type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 		infer Query,
 		infer BodyOutput
 	>
-		? Route<ContextTo, Result, `${Prefix}${Path extends '/' ? '' : Path}`, AdditionalParams, Method, Query, BodyOutput>
+		? Route<
+				ContextFrom,
+				ContextTo,
+				Result,
+				`${Prefix}${Path extends '/' ? '' : Path}`,
+				AdditionalParams,
+				Method,
+				Query,
+				BodyOutput
+			>
 		: never;
 
 type PrefixRoutesPath<Prefix extends `/${string}`, R extends AnyRoute> = R extends R
@@ -38,7 +48,7 @@ export type RouterState<
 	Input extends readonly unknown[],
 > = {
 	routes: Set<Routes>;
-	through: (context: unknown, params: RequiredParams) => Promise<ContextTo>;
+	through: (context: ContextFrom, params: RequiredParams) => Promise<ContextTo> | ContextTo;
 	config: KaitoConfig<ContextFrom, Input>;
 };
 
@@ -55,7 +65,7 @@ export class Router<
 		config: KaitoConfig<Context, Input> = {},
 	): Router<Context, Context, never, never, Input> => {
 		return new Router({
-			through: async context => context as Context,
+			through: context => context,
 			routes: new Set(),
 			config,
 		});
@@ -81,19 +91,22 @@ export class Router<
 		route:
 			| (Method extends 'GET'
 					? Omit<
-							Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body>,
+							Route<ContextFrom, ContextTo, Result, Path, RequiredParams, Method, Query, Body>,
 							'body' | 'path' | 'method' | 'router'
 						>
-					: Omit<Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body>, 'path' | 'method' | 'router'>)
-			| Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body>['run'],
+					: Omit<
+							Route<ContextFrom, ContextTo, Result, Path, RequiredParams, Method, Query, Body>,
+							'path' | 'method' | 'router'
+						>)
+			| Route<ContextFrom, ContextTo, Result, Path, RequiredParams, Method, Query, Body>['run'],
 	): Router<
 		ContextFrom,
 		ContextTo,
 		RequiredParams,
-		R | Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body>,
+		R | Route<ContextFrom, ContextTo, Result, Path, RequiredParams, Method, Query, Body>,
 		Input
 	> => {
-		const merged: Route<ContextTo, Result, Path, RequiredParams, Method, Query, Body> = {
+		const merged: Route<ContextFrom, ContextTo, Result, Path, RequiredParams, Method, Query, Body> = {
 			...(typeof route === 'object' ? route : {run: route}),
 			method,
 			path,
@@ -108,7 +121,7 @@ export class Router<
 
 	public readonly params: [RequiredParams] extends [never]
 		? <NextParams extends string>() => Router<ContextFrom, ContextTo, NextParams, R, Input>
-		: undefined = (() => this) as never;
+		: () => Router<ContextFrom, ContextTo, RequiredParams, R, Input> = (() => this) as never;
 
 	public readonly merge = <
 		PathPrefix extends `/${string}`,
@@ -117,7 +130,7 @@ export class Router<
 	>(
 		pathPrefix: [NextRequiredParams] extends [ExtractRouteParams<PathPrefix> | RequiredParams]
 			? PathPrefix
-			: `Missing ${Exclude<NextRequiredParams, ExtractRouteParams<PathPrefix> | RequiredParams>}`,
+			: `${string}/:${Exclude<NextRequiredParams, ExtractRouteParams<PathPrefix> | RequiredParams>}`,
 		other: Router<ContextFrom, ContextTo, NextRequiredParams, OtherRoutes, Input>,
 	): Router<
 		ContextFrom,
@@ -414,11 +427,14 @@ export class Router<
 			route:
 				| (M extends 'GET'
 						? Omit<
-								Route<ContextTo, Result, Path, RequiredParams, M, Query, Body>,
+								Route<ContextFrom, ContextTo, Result, Path, RequiredParams, M, Query, Body>,
 								'body' | 'path' | 'method' | 'router'
 							>
-						: Omit<Route<ContextTo, Result, Path, RequiredParams, M, Query, Body>, 'path' | 'method' | 'router'>)
-				| Route<ContextTo, Result, Path, RequiredParams, M, Query, Body>['run'],
+						: Omit<
+								Route<ContextFrom, ContextTo, Result, Path, RequiredParams, M, Query, Body>,
+								'path' | 'method' | 'router'
+							>)
+				| Route<ContextFrom, ContextTo, Result, Path, RequiredParams, M, Query, Body>['run'],
 		) => this.add<Result, Path, M, Query, Body>(method, path, route);
 	};
 
