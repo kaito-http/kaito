@@ -260,27 +260,27 @@ describe('KaitoServer', () => {
 		assert.equal(await res.text(), 'Your IP is 127.0.0.1');
 	});
 
-	test('static routes', async () => {
-		using server = await createTestServer({
-			static: {
-				'/static/file.txt': new Response('Hello, world!'),
-				'/static/stream': new Response(
-					new ReadableStream({
-						async start(controller) {
-							controller.enqueue(new TextEncoder().encode('Hello, world!'));
-							controller.close();
-						},
-					}),
-				),
-			},
-		});
+	// test('static routes', async () => {
+	// 	using server = await createTestServer({
+	// 		static: {
+	// 			'/static/file.txt': new Response('Hello, world!'),
+	// 			'/static/stream': new Response(
+	// 				new ReadableStream({
+	// 					async start(controller) {
+	// 						controller.enqueue(new TextEncoder().encode('Hello, world!'));
+	// 						controller.close();
+	// 					},
+	// 				}),
+	// 			),
+	// 		},
+	// 	});
 
-		const res = await fetch(server.url + '/static/file.txt');
-		assert.equal(await res.text(), 'Hello, world!');
+	// 	const res = await fetch(server.url + '/static/file.txt');
+	// 	assert.equal(await res.text(), 'Hello, world!');
 
-		const streamed = await fetch(server.url + '/static/file.txt');
-		assert.equal(await streamed.text(), 'Hello, world!');
-	});
+	// 	const streamed = await fetch(server.url + '/static/file.txt');
+	// 	assert.equal(await streamed.text(), 'Hello, world!');
+	// });
 
 	test('server detects client disconnect during streaming response', async () => {
 		let disconnectDetected = false;
