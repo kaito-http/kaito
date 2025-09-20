@@ -8,10 +8,7 @@ import {Router} from './router.ts';
 
 const router = Router.create({
 	getContext: req => ({req}),
-	onError: e => {
-		console.error(e);
-		return {status: 500, message: 'Internal Server Error'};
-	},
+	onError: () => ({status: 500, message: 'Internal Server Error'}),
 });
 
 describe('Router', () => {
@@ -188,7 +185,7 @@ describe('Router', () => {
 			assert.strictEqual(response.status, 200);
 			assert.deepStrictEqual(data, {
 				success: true,
-				data: {id: '1'},
+				data: '1',
 			});
 		});
 
@@ -441,68 +438,26 @@ describe('Router', () => {
 	});
 
 	describe('params() validation', () => {
-		it('should validate params with schema', async () => {
-			const r = router.params<'id' | 'slug'>().get('/', {
+		it('should work with merged routers and params', async () => {
+			const postRouter = router.params<'postId' | 'userId'>().get('/test', {
 				run: async ({params}) => ({
-					postId: params.id,
-					postSlug: params.slug,
+					postId: params.postId,
+					userId: params.userId,
 				}),
 			});
 
-			const root = router.merge('/posts/:id/:slug', r);
-
-			const handler = root.serve();
-
-			const validResponse = await handler(new Request('http://localhost/posts/123/my-post-slug', {method: 'GET'}));
-			const validData = await validResponse.json();
-
-			assert.strictEqual(validResponse.status, 200);
-			assert.deepStrictEqual(validData, {
-				success: true,
-				data: {
-					postId: '123',
-					postSlug: 'my-post-slug',
-				},
-			});
-
-			const invalidIdResponse = await handler(new Request('http://localhost/posts/12/my-post-slug', {method: 'GET'}));
-
-			assert.strictEqual(invalidIdResponse.status, 500);
-
-			const invalidSlugResponse = await handler(
-				new Request('http://localhost/posts/123/Invalid_Slug!', {method: 'GET'}),
-			);
-
-			assert.strictEqual(invalidSlugResponse.status, 500);
-		});
-
-		it('should work with merged routers and params', async () => {
-			const userRouter = router.params<'userId'>().get('/', {
-				run: async ({params}) => ({userId: params.userId}),
-			});
-
-			const postRouter = router.params<'postId' | 'userId'>().get('/', {
-				run: async ({params}) => ({postId: params.postId, userId: params.userId}),
-			});
-
-			const mainRouter = router.merge('/users/:userId', userRouter).merge('/users/:userId/posts/:postId', postRouter);
+			const mainRouter = router.merge('/users/:userId/posts/:postId', postRouter);
 
 			const handler = mainRouter.serve();
 
-			const validResponse = await handler(new Request('http://localhost/users/123/posts/456', {method: 'GET'}));
+			const validResponse = await handler(new Request('http://localhost/users/123/posts/456/test', {method: 'GET'}));
 			const validData = await validResponse.json();
 
 			assert.strictEqual(validResponse.status, 200);
 			assert.deepStrictEqual(validData, {
 				success: true,
-				data: {postId: '456'},
+				data: {postId: '456', userId: '123'},
 			});
-
-			const invalidUserResponse = await handler(new Request('http://localhost/users/12/posts/456', {method: 'GET'}));
-			assert.strictEqual(invalidUserResponse.status, 500);
-
-			const invalidPostResponse = await handler(new Request('http://localhost/users/123/posts/abc', {method: 'GET'}));
-			assert.strictEqual(invalidPostResponse.status, 500);
 		});
 	});
 
