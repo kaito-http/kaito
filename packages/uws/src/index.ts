@@ -73,22 +73,12 @@ export class KaitoServer {
 	private static getRequestBodyStream(res: uWS.HttpResponse) {
 		return new ReadableStream<Uint8Array>({
 			start(controller) {
-				let buffer: Uint8Array | undefined;
-
 				res.onData((ab, isLast) => {
 					const chunk = new Uint8Array(ab.slice(0));
 
-					if (buffer) {
-						buffer = new Uint8Array([...buffer, ...chunk]);
-					} else {
-						buffer = chunk;
-					}
+					controller.enqueue(chunk);
 
 					if (isLast) {
-						if (buffer) {
-							controller.enqueue(buffer);
-						}
-
 						controller.close();
 					}
 				});
@@ -98,6 +88,10 @@ export class KaitoServer {
 				});
 			},
 		});
+	}
+
+	[Symbol.dispose](): void {
+		return this.close();
 	}
 
 	public static async serve(options: ServeUserOptions) {
