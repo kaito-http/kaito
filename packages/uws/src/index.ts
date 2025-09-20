@@ -3,8 +3,8 @@ import uWS from 'uWebSockets.js';
 export interface ServeOptions {
 	port: number;
 	host?: string;
-	static?: Record<`/${string}`, Response>;
-	fetch: (request: Request) => Promise<Response>;
+	// static?: Record<`/${string}`, Response>;
+	fetch: (request: Request) => Promise<Response> | Response;
 }
 
 export type ServeUserOptions = Omit<ServeOptions, 'host'> & Partial<Pick<ServeOptions, 'host'>>;
@@ -104,38 +104,24 @@ export class KaitoServer {
 
 		const app = uWS.App();
 
-		const staticPromises = Object.entries(fullOptions.static ?? {}).map(async ([path, response]) => {
-			const timeout = setTimeout(() => {
-				const lines = [
-					'⚠️ [KAITO STARTUP WARNING] ⚠️',
-					`The static path on ${path} is taking more than 3s to load. This suggests you are waiting for a stream to finish.`,
-					'We suggest you do one of the following:',
-					'	1. Use `new Response(new Response(stream).arrayBuffer(), { ... })` if you really need to wait for a stream',
-					"	2. Don't use a stream in the first place",
-				];
+		// const staticPromises = Object.entries(fullOptions.static ?? {}).map(async ([path, response]) => {
+		// 	const buffer = await response.arrayBuffer();
 
-				console.log(lines.join('\n'));
-			}, 3000);
+		// 	const statusAsBuffer = Buffer.from(response.status.toString().concat(SPACE, response.statusText));
+		// 	const headersFastArray = Array.from(response.headers.entries());
 
-			const buffer = await response.arrayBuffer();
+		// 	app.any(path, res => {
+		// 		res.writeStatus(statusAsBuffer);
 
-			clearTimeout(timeout);
+		// 		for (const [header, value] of headersFastArray) {
+		// 			res.writeHeader(header, value);
+		// 		}
 
-			const statusAsBuffer = Buffer.from(response.status.toString().concat(SPACE, response.statusText));
-			const headersFastArray = Array.from(response.headers.entries());
+		// 		res.end(buffer, true);
+		// 	});
+		// });
 
-			app.any(path, res => {
-				res.writeStatus(statusAsBuffer);
-
-				for (const [header, value] of headersFastArray) {
-					res.writeHeader(header, value);
-				}
-
-				res.end(buffer);
-			});
-		});
-
-		await Promise.all(staticPromises);
+		// await Promise.all(staticPromises);
 
 		app.any('/*', async (res, req) => {
 			const controller = new AbortController();
