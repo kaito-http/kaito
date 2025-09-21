@@ -108,9 +108,21 @@ export abstract class BaseSchema<Input extends JSONValue, Output, Def extends Ba
 	abstract parse(json: unknown): Output;
 	abstract parseSafe(json: unknown): ParseResult<Output>;
 	abstract serialize(value: Output): Input;
-	abstract toOpenAPI(): SchemaObject | ReferenceObject;
 
 	protected readonly def: Def;
+
+	abstract toOpenAPI(): SchemaObject | ReferenceObject;
+
+	protected getSchemaObject(): SchemaObject {
+		const schema: SchemaObject = {};
+		if (this.def.description !== undefined) {
+			schema.description = this.def.description;
+		}
+		if (this.def.example !== undefined) {
+			schema.example = this.def.example;
+		}
+		return schema;
+	}
 
 	protected clone(def: Partial<Def>): this {
 		// @ts-expect-error
@@ -203,8 +215,10 @@ export class KString extends BaseSchema<string, string, StringDef> {
 		return this.clone({[check.type]: check});
 	}
 
-	public toOpenAPI(): SchemaObject | ReferenceObject {
+	public override toOpenAPI(): SchemaObject | ReferenceObject {
+		const baseSchema = this.getSchemaObject();
 		const schema: SchemaObject = {
+			...baseSchema,
 			type: 'string',
 		};
 		if (this.def.regex) {
@@ -218,9 +232,6 @@ export class KString extends BaseSchema<string, string, StringDef> {
 		}
 		if (this.def.max !== undefined) {
 			schema.maxLength = this.def.max.val;
-		}
-		if (this.def.description) {
-			schema.description = this.def.description;
 		}
 		return schema;
 	}
@@ -454,8 +465,12 @@ export class KNumber extends BaseSchema<number, number, NumberDef> {
 		return this.clone({[check.type]: check});
 	}
 
-	public toOpenAPI(): SchemaObject | ReferenceObject {
-		const schema: SchemaObject = {type: 'number'};
+	public override toOpenAPI(): SchemaObject | ReferenceObject {
+		const baseSchema = this.getSchemaObject();
+		const schema: SchemaObject = {
+			...baseSchema,
+			type: 'number',
+		};
 		if (this.def.min !== undefined) {
 			schema.minimum = this.def.min.val;
 		}
@@ -492,9 +507,6 @@ export class KNumber extends BaseSchema<number, number, NumberDef> {
 
 		if (this.def.format) {
 			schema.format = this.def.format.format;
-		}
-		if (this.def.description) {
-			schema.description = this.def.description;
 		}
 		return schema;
 	}
@@ -584,10 +596,11 @@ export class KBoolean extends BaseSchema<boolean, boolean, BooleanDef> {
 		return value;
 	}
 
-	public toOpenAPI(): SchemaObject | ReferenceObject {
+	public override toOpenAPI(): SchemaObject | ReferenceObject {
+		const baseSchema = this.getSchemaObject();
 		return {
+			...baseSchema,
 			type: 'boolean',
-			...(this.def.description ? {description: this.def.description} : {}),
 		};
 	}
 
@@ -638,11 +651,12 @@ export class KArray<Input extends JSONValue, Output> extends BaseSchema<Input[],
 		return this.clone({[check.type]: check});
 	}
 
-	public toOpenAPI(): SchemaObject | ReferenceObject {
+	public override toOpenAPI(): SchemaObject | ReferenceObject {
+		const baseSchema = this.getSchemaObject();
 		return {
+			...baseSchema,
 			type: 'array',
 			items: this.def.items.toOpenAPI(),
-			...(this.def.description ? {description: this.def.description} : {}),
 			...(this.def.minItems !== undefined ? {minItems: this.def.minItems.val} : {}),
 			...(this.def.maxItems !== undefined ? {maxItems: this.def.maxItems.val} : {}),
 			...(this.def.uniqueItems !== undefined ? {uniqueItems: this.def.uniqueItems.val} : {}),
@@ -724,10 +738,11 @@ export class KNull extends BaseSchema<null, null, NullDef> {
 		return value;
 	}
 
-	public toOpenAPI(): SchemaObject | ReferenceObject {
+	public override toOpenAPI(): SchemaObject | ReferenceObject {
+		const baseSchema = this.getSchemaObject();
 		return {
+			...baseSchema,
 			type: 'null',
-			...(this.def.description ? {description: this.def.description} : {}),
 		};
 	}
 
@@ -790,7 +805,9 @@ export class KObject<
 	}
 
 	override toOpenAPI(): SchemaObject {
+		const baseSchema = this.getSchemaObject();
 		return {
+			...baseSchema,
 			type: 'object',
 			properties: Object.fromEntries(
 				Object.entries(this.def.shape).map(entry => {
@@ -803,7 +820,6 @@ export class KObject<
 				}),
 			),
 			required: Object.keys(this.def.shape),
-			...(this.def.description ? {description: this.def.description} : {}),
 		};
 	}
 
@@ -938,7 +954,13 @@ export class KRef<
 		return result as Input;
 	}
 
+	override example(): never {
+		throw new Error('Cannot set an example on a KRef');
+	}
+
 	override toOpenAPI(): ReferenceObject {
+		// For references, we need to handle this differently since $ref cannot have sibling properties in OpenAPI 3.0
+		// So we return just the reference without description/example
 		return {
 			$ref: `#/components/schemas/${this.def.name}`,
 			...(this.def.description ? {description: this.def.description} : {}),
@@ -1103,10 +1125,11 @@ export class KUnion<Input extends JSONValue, Output> extends BaseSchema<Input, O
 		throw new Error('Value does not match any union option for serialization');
 	}
 
-	public toOpenAPI(): SchemaObject | ReferenceObject {
+	public override toOpenAPI(): SchemaObject | ReferenceObject {
+		const baseSchema = this.getSchemaObject();
 		return {
+			...baseSchema,
 			oneOf: this.def.items.map(option => option.toOpenAPI()),
-			...(this.def.description ? {description: this.def.description} : {}),
 		} as SchemaObject;
 	}
 
@@ -1154,9 +1177,14 @@ export class KLiteral<Value extends string | number | boolean> extends BaseSchem
 		return value;
 	}
 
-	public toOpenAPI(): SchemaObject {
+	public override toOpenAPI(): SchemaObject {
+		const baseSchema = this.getSchemaObject();
 		const type = typeof this.def.value as 'string' | 'number' | 'boolean';
-		return {type, enum: [this.def.value]};
+		return {
+			...baseSchema,
+			type,
+			enum: [this.def.value],
+		};
 	}
 
 	public parseSafe(json: unknown): ParseResult<Value> {

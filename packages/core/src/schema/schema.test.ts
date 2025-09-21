@@ -830,4 +830,153 @@ describe('Schema', () => {
 			assert(k.union([k.string(), k.number()]) instanceof KUnion);
 		});
 	});
+
+	describe('OpenAPI example and description support', () => {
+		it('should include example and description in string schema', () => {
+			const schema = k.string()
+				.description('User email address')
+				.example('user@example.com');
+
+			const openapi = schema.toOpenAPI();
+			assert.deepStrictEqual(openapi, {
+				type: 'string',
+				description: 'User email address',
+				example: 'user@example.com',
+			});
+		});
+
+		it('should include example and description in number schema', () => {
+			const schema = k.number()
+				.description('User age')
+				.example(25);
+
+			const openapi = schema.toOpenAPI();
+			assert.deepStrictEqual(openapi, {
+				type: 'number',
+				description: 'User age',
+				example: 25,
+			});
+		});
+
+		it('should include example and description in boolean schema', () => {
+			const schema = k.boolean()
+				.description('Is user active')
+				.example(true);
+
+			const openapi = schema.toOpenAPI();
+			assert.deepStrictEqual(openapi, {
+				type: 'boolean',
+				description: 'Is user active',
+				example: true,
+			});
+		});
+
+		it('should include example and description in array schema', () => {
+			const schema = k.array(k.string())
+				.description('List of tags')
+				.example(['tag1', 'tag2']);
+
+			const openapi = schema.toOpenAPI();
+			assert.deepStrictEqual(openapi, {
+				type: 'array',
+				items: { type: 'string' },
+				description: 'List of tags',
+				example: ['tag1', 'tag2'],
+			});
+		});
+
+		it('should include example and description in object schema', () => {
+			const schema = k.object({
+				name: k.string(),
+				age: k.number(),
+			})
+				.description('User object')
+				.example({ name: 'John', age: 30 });
+
+			const openapi = schema.toOpenAPI();
+			assert.deepStrictEqual(openapi, {
+				type: 'object',
+				properties: {
+					name: { type: 'string' },
+					age: { type: 'number' },
+				},
+				required: ['name', 'age'],
+				description: 'User object',
+				example: { name: 'John', age: 30 },
+			});
+		});
+
+		it('should include example and description in null schema', () => {
+			const schema = k.null()
+				.description('Always null value')
+				.example(null);
+
+			const openapi = schema.toOpenAPI();
+			assert.deepStrictEqual(openapi, {
+				type: 'null',
+				description: 'Always null value',
+				example: null,
+			});
+		});
+
+		it('should include example and description in union schema', () => {
+			const schema = k.union([k.string(), k.number()])
+				.description('String or number')
+				.example('test');
+
+			const openapi = schema.toOpenAPI() as any;
+			assert.strictEqual(openapi.description, 'String or number');
+			assert.strictEqual(openapi.example, 'test');
+			assert(Array.isArray(openapi.oneOf));
+		});
+
+		it('should include example and description in literal schema', () => {
+			const schema = k.literal('active')
+				.description('Status must be active')
+				.example('active');
+
+			const openapi = schema.toOpenAPI();
+			assert.deepStrictEqual(openapi, {
+				type: 'string',
+				enum: ['active'],
+				description: 'Status must be active',
+				example: 'active',
+			});
+		});
+
+		it('should handle nested schemas with examples', () => {
+			const schema = k.object({
+				user: k.object({
+					email: k.string().example('test@example.com'),
+					age: k.number().example(25),
+				}).example({ email: 'john@example.com', age: 30 }),
+			});
+
+			const openapi = schema.toOpenAPI() as any;
+			const userSchema = openapi.properties.user;
+			assert.strictEqual(userSchema.example.email, 'john@example.com');
+			assert.strictEqual(userSchema.example.age, 30);
+			assert.strictEqual(userSchema.properties.email.example, 'test@example.com');
+			assert.strictEqual(userSchema.properties.age.example, 25);
+		});
+
+		it('should properly include example in KScalar OpenAPI output', () => {
+			const schema = k
+				.scalar({
+					schema: k.string().description('String representation').example('12345'),
+					toServer: value => BigInt(value),
+					toClient: value => value.toString(),
+				})
+				.description('A big integer ID')
+				.example('67890');
+
+			// KScalar delegates to its inner schema, which should include both its own example and description
+			const openapi = schema.toOpenAPI();
+			assert.deepStrictEqual(openapi, {
+				type: 'string',
+				description: 'String representation',
+				example: '12345',
+			});
+		});
+	});
 });
