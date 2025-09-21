@@ -356,44 +356,46 @@ export class Router<
 		const paths: OpenAPI.PathsObject = {};
 
 		for (const route of this.#state.routes) {
-			const path = route.path;
-
 			if (!route.openapi) {
 				continue;
 			}
 
-			const pathWithColonParamsReplaceWithCurlyBraces = path.replace(/:(\w+)/g, '{$1}');
+			const pathWithColonParamsReplaceWithCurlyBraces = route.path.replace(/:(\w+)/g, '{$1}');
 
 			if (!paths[pathWithColonParamsReplaceWithCurlyBraces]) {
 				paths[pathWithColonParamsReplaceWithCurlyBraces] = {};
 			}
 
-			const content: Record<string, OpenAPI.MediaTypeObject> =
-				route.openapi.body.type === 'json'
-					? {
-							'application/json': {
-								// schema: z.object({
-								// 	success: z.literal(true).openapi({
-								// 		type: 'boolean',
-								// 		enum: [true], // Need this as zod-openapi doesn't properly work with literals
-								// 	}),
-								// 	data: route.openapi.body.schema,
-								// }),
-								schema: route.openapi.body.schema.toOpenAPI(),
-							},
-						}
-					: {
-							'text/event-stream': {
-								schema: route.openapi.body.schema.toOpenAPI(),
-							},
-						};
+			let contentType: string;
+			const type = route.openapi.type;
+			switch (type) {
+				case 'json':
+					contentType = 'application/json';
+					break;
+
+				case 'sse':
+					contentType = 'text/event-stream';
+					break;
+
+				default:
+					throw new Error(`Unknown output type in route ${route.method} ${route.path}: ${type}`);
+			}
 
 			const item: OpenAPI.OperationObject = {
 				description: route.openapi?.description ?? 'Successful response',
 				responses: {
 					200: {
 						description: route.openapi?.description ?? 'Successful response',
-						content,
+						content: {
+							[contentType]: {
+								schema: k
+									.object({
+										success: k.literal(true),
+										data: route.openapi.schema,
+									})
+									.toOpenAPI(),
+							},
+						},
 					},
 				},
 			};

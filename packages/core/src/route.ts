@@ -29,12 +29,12 @@ export type JSONOutputSpec<Result extends JSONValue> = {
 	description?: string;
 };
 
-export type OutputSpec<Result> = {
-	description?: string;
-	body: Result extends KaitoSSEResponse<infer R>
+export type OutputSpec<Result> =
+	Result extends KaitoSSEResponse<infer R>
 		? SSEOutputSpec<Extract<R, JSONValue>>
-		: JSONOutputSpec<Extract<Result, JSONValue>>;
-};
+		: JSONOutputSpec<Extract<Result, JSONValue>> & {
+				description?: string;
+			};
 
 export type Route<
 	// Router context
@@ -54,11 +54,11 @@ export type Route<
 	query?: {[Key in keyof Query]: AnySchemaFor<Query[Key]>};
 	path: Path;
 	method: Method;
-	openapi?: OutputSpec<NoInfer<Result>>;
+	openapi?: NoInfer<OutputSpec<Result>>;
 	router: Router<ContextFrom, ContextTo, AdditionalParams, AnyRoute, RouterInput>;
 	run(
 		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>,
 	): Promise<Result> | Result;
 };
 
-export type AnyRoute = Route<any, any, any, any, any, any, any, any, any>;
+export type AnyRoute = Route<any, any, any, any, string, any, KaitoMethod, any, any>;
