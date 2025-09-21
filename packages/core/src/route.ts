@@ -20,21 +20,20 @@ export type Through<From, To, RequiredParams extends string> = (
 export type SSEOutputSpec<Result extends JSONValue> = {
 	type: 'sse';
 	schema: AnySchemaFor<Result>;
-	description?: string;
+	description?: string | undefined;
 };
 
 export type JSONOutputSpec<ResultInput, ResultOutput extends JSONValue> = {
 	type: 'json';
 	schema: BaseSchema<ResultOutput, ResultInput, BaseSchemaDef<ResultOutput>>;
-	description?: string;
+	description?: string | undefined;
 };
 
-export type OutputSpec<ResultInput, ResultOutput> =
-	ResultOutput extends KaitoSSEResponse<infer R>
-		? SSEOutputSpec<Extract<R, JSONValue>>
-		: JSONOutputSpec<ResultInput, Extract<ResultOutput, JSONValue>> & {
-				description?: string;
-			};
+export type OutputSpec<ResultOutput, ResultInput> = (ResultOutput extends KaitoSSEResponse<infer R>
+	? SSEOutputSpec<Extract<R, JSONValue>>
+	: JSONOutputSpec<ResultOutput, Extract<ResultInput, JSONValue>>) & {
+	description?: string;
+};
 
 export type Route<
 	// Router context
@@ -58,9 +57,32 @@ export type Route<
 	method: Method;
 	openapi?: OutputSpec<ResultOutput, ResultInput>;
 	router: Router<ContextFrom, ContextTo, AdditionalParams, AnyRoute, RouterInput>;
-	run(
-		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>,
-	): Promise<ResultOutput> | ResultOutput;
+	run(data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>): ResultOutput;
 };
 
-export type AnyRoute = Route<any, any, any, any, any, string, any, KaitoMethod, any, any>;
+// TODO: This type has caused us so many fucking issues to do with
+// assignability. We should really remove lots of other code to be using `never`
+// more sparingly, or remove usage of AnyRoute or refactor it in a way that
+// doesn't make it so awkward to use.
+export type AnyRoute = Route<
+	// ContextFrom
+	any,
+	// ContextTo
+	any,
+	// RouterInput
+	any,
+	// ResultInput
+	any,
+	// ResultOutput
+	any,
+	// Path
+	any,
+	// AdditionalParams
+	any,
+	// Method
+	any,
+	// Query
+	any,
+	// Body
+	any
+>;

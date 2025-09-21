@@ -18,8 +18,8 @@ type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 		infer ContextFrom,
 		infer ContextTo,
 		infer RouterInput,
-		infer ResultOutput,
 		infer ResultInput,
+		infer ResultOutput,
 		infer Path,
 		infer AdditionalParams,
 		infer Method,
@@ -86,7 +86,7 @@ export class Router<
 	private readonly add = <
 		Method extends KaitoMethod,
 		Path extends string,
-		Result,
+		ResultInput,
 		ResultOutput,
 		Query extends AnyQuery,
 		Body extends JSONValue,
@@ -96,26 +96,59 @@ export class Router<
 		route:
 			| (Method extends 'GET'
 					? Omit<
-							Route<ContextFrom, ContextTo, Input, Result, ResultOutput, Path, RequiredParams, Method, Query, Body>,
+							Route<
+								ContextFrom,
+								ContextTo,
+								Input,
+								ResultInput,
+								ResultOutput,
+								Path,
+								RequiredParams,
+								Method,
+								Query,
+								Body
+							>,
 							'body' | 'path' | 'method' | 'router'
 						>
 					: Omit<
-							Route<ContextFrom, ContextTo, Input, Result, ResultOutput, Path, RequiredParams, Method, Query, Body>,
+							Route<
+								ContextFrom,
+								ContextTo,
+								Input,
+								ResultInput,
+								ResultOutput,
+								Path,
+								RequiredParams,
+								Method,
+								Query,
+								Body
+							>,
 							'path' | 'method' | 'router'
 						>)
-			| Route<ContextFrom, ContextTo, Input, Result, ResultOutput, Path, RequiredParams, Method, Query, Body>['run'],
+			| Route<
+					ContextFrom,
+					ContextTo,
+					Input,
+					ResultInput,
+					ResultOutput,
+					Path,
+					RequiredParams,
+					Method,
+					Query,
+					Body
+			  >['run'],
 	): Router<
 		ContextFrom,
 		ContextTo,
 		RequiredParams,
-		R | Route<ContextFrom, ContextTo, Input, Result, ResultOutput, Path, RequiredParams, Method, Query, Body>,
+		R | Route<ContextFrom, ContextTo, Input, ResultInput, ResultOutput, Path, RequiredParams, Method, Query, Body>,
 		Input
 	> => {
 		const merged: Route<
 			ContextFrom,
 			ContextTo,
 			Input,
-			Result,
+			ResultInput,
 			ResultOutput,
 			Path,
 			RequiredParams,
@@ -148,13 +181,7 @@ export class Router<
 			? PathPrefix
 			: `/:${Exclude<NextRequiredParams, ExtractRouteParams<PathPrefix> | RequiredParams>}`,
 		other: Router<ContextFrom, ContextTo, NextRequiredParams, OtherRoutes, Input>,
-	): Router<
-		ContextFrom,
-		ContextTo,
-		RequiredParams,
-		Extract<R | PrefixRoutesPath<PathPrefix, Extract<OtherRoutes, AnyRoute>>, AnyRoute>,
-		Input
-	> => {
+	): Router<ContextFrom, ContextTo, RequiredParams, R | PrefixRoutesPath<PathPrefix, OtherRoutes>, Input> => {
 		const newRoutes = [...other.#state.routes].map(route => ({
 			...route,
 			// handle pathPrefix = / & route.path = / case causing //
@@ -166,7 +193,7 @@ export class Router<
 		return new Router({
 			...this.#state,
 			routes: new Set([...this.#state.routes, ...newRoutes] as Extract<
-				R | PrefixRoutesPath<PathPrefix, Extract<OtherRoutes, AnyRoute>>,
+				R | PrefixRoutesPath<PathPrefix, OtherRoutes>,
 				AnyRoute
 			>[]),
 		});

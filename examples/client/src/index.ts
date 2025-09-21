@@ -5,10 +5,18 @@ const api = createKaitoHTTPClient<App>({
 	base: 'http://localhost:3000',
 });
 
-const test = await api.get('/hello');
+const test = await api.get('/hello/:test', {
+	params: {
+		test: '123',
+	},
+	query: {
+		limit: 0,
+	},
+});
+
 console.log(test);
 
-const stream = await api.get('/stream', {
+const stream = await api.post('/stream', {
 	sse: true,
 });
 
