@@ -14,7 +14,7 @@ const app = router
 		query: {
 			limit: k.number(),
 		},
-		run: () => 'hi' as const,
+		run: async () => 'hi' as const,
 	})
 	.post('/stream', () => {
 		const text = "This is an example of text being streamed every 100ms by using Kaito's sse() function";

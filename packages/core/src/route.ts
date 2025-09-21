@@ -60,7 +60,9 @@ export type Route<
 	method: Method;
 	openapi?: OutputSpec<ResultInput, ResultOutput>;
 	router: Router<ContextFrom, ContextTo, AdditionalParams, AnyRoute, RouterInput>;
-	run(data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>): ResultOutput;
+	run(
+		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>,
+	): Promise<ResultOutput> | ResultOutput;
 };
 
 // TODO: This type has caused us so many fucking issues to do with

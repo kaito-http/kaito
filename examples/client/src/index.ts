@@ -5,8 +5,6 @@ const api = createKaitoHTTPClient<App>({
 	base: 'http://localhost:3000',
 });
 
-api.x;
-
 const test = await api.get('/hello/:test', {
 	params: {
 		test: '123',

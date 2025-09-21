@@ -485,7 +485,7 @@ export class Router<
 		return <
 			Path extends string,
 			ResultInput = never,
-			ResultOutput = never,
+			ResultOutput = ResultInput,
 			Query extends AnyQuery = {},
 			Body extends JSONValue = never,
 		>(
