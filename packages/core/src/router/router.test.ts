@@ -2,7 +2,6 @@ import assert from 'node:assert';
 import {describe, it} from 'node:test';
 import {KaitoError} from '../error.ts';
 import type {KaitoRequest} from '../request.ts';
-import type {AnyRoute} from '../route.ts';
 import {k} from '../schema/schema.ts';
 import type {KaitoMethod} from '../util.ts';
 import {Router} from './router.ts';
@@ -277,12 +276,7 @@ describe('Router', () => {
 			['PUT', new Map([['/users/:id', dummyHandler]])],
 		]);
 
-		class ExposedInternalsRouter<
-			ContextFrom,
-			ContextTo,
-			R extends AnyRoute,
-			Input extends readonly unknown[],
-		> extends Router<ContextFrom, ContextTo, never, R, Input> {
+		class ExposedInternalsRouter extends Router<never, never, never, never, never> {
 			public static override getFindRoute = Router.getFindRoute;
 		}
 
