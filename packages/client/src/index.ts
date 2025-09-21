@@ -1,5 +1,5 @@
 import type {
-	AnySchemaFor,
+	AnyRoute,
 	APIResponse,
 	ErroredAPIResponse,
 	ExtractRouteParams,
@@ -179,16 +179,7 @@ export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements Asyn
 export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any> = never>(
 	rootOptions: KaitoHTTPClientRootOptions,
 ) {
-	type ROUTES = Extract<
-		APP['routes'] extends Set<infer R> ? R : never,
-		{
-			method: KaitoMethod;
-			path: string;
-			run: (...args: any) => any;
-			body?: any;
-			query?: Record<string, AnySchemaFor<any>>;
-		}
-	>;
+	type ROUTES = Extract<APP['routes'] extends Set<infer R> ? R : never, AnyRoute>;
 
 	type ReturnTypeFor<M extends KaitoMethod, Path extends Extract<ROUTES, {method: M}>['path']> = Awaited<
 		ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>

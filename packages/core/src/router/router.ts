@@ -60,10 +60,10 @@ export class Router<
 	ContextFrom,
 	ContextTo,
 	RequiredParams extends string,
-	R extends AnyRoute,
+	Routes extends AnyRoute,
 	Input extends readonly unknown[],
 > {
-	readonly #state: RouterState<ContextFrom, ContextTo, RequiredParams, R, Input>;
+	readonly #state: RouterState<ContextFrom, ContextTo, RequiredParams, Routes, Input>;
 
 	public static create = <Context = null, Input extends readonly unknown[] = []>(
 		config: KaitoConfig<Context, Input> = {},
@@ -75,7 +75,7 @@ export class Router<
 		});
 	};
 
-	protected constructor(state: RouterState<ContextFrom, ContextTo, RequiredParams, R, Input>) {
+	protected constructor(state: RouterState<ContextFrom, ContextTo, RequiredParams, Routes, Input>) {
 		this.#state = state;
 	}
 
@@ -141,7 +141,7 @@ export class Router<
 		ContextFrom,
 		ContextTo,
 		RequiredParams,
-		R | Route<ContextFrom, ContextTo, Input, ResultInput, ResultOutput, Path, RequiredParams, Method, Query, Body>,
+		Routes | Route<ContextFrom, ContextTo, Input, ResultInput, ResultOutput, Path, RequiredParams, Method, Query, Body>,
 		Input
 	> => {
 		const merged: Route<
@@ -169,8 +169,8 @@ export class Router<
 	};
 
 	public readonly params: [RequiredParams] extends [never]
-		? <NextParams extends string>() => Router<ContextFrom, ContextTo, NextParams, R, Input>
-		: () => Router<ContextFrom, ContextTo, RequiredParams, R, Input> = (() => this) as never;
+		? <NextParams extends string>() => Router<ContextFrom, ContextTo, NextParams, Routes, Input>
+		: () => Router<ContextFrom, ContextTo, RequiredParams, Routes, Input> = (() => this) as never;
 
 	public readonly merge = <
 		PathPrefix extends `/${string}`,
@@ -181,7 +181,7 @@ export class Router<
 			? PathPrefix
 			: `/:${Exclude<NextRequiredParams, ExtractRouteParams<PathPrefix> | RequiredParams>}`,
 		other: Router<ContextFrom, ContextTo, NextRequiredParams, OtherRoutes, Input>,
-	): Router<ContextFrom, ContextTo, RequiredParams, R | PrefixRoutesPath<PathPrefix, OtherRoutes>, Input> => {
+	): Router<ContextFrom, ContextTo, RequiredParams, Routes | PrefixRoutesPath<PathPrefix, OtherRoutes>, Input> => {
 		const newRoutes = [...other.#state.routes].map(route => ({
 			...route,
 			// handle pathPrefix = / & route.path = / case causing //
@@ -192,10 +192,7 @@ export class Router<
 
 		return new Router({
 			...this.#state,
-			routes: new Set([...this.#state.routes, ...newRoutes] as Extract<
-				R | PrefixRoutesPath<PathPrefix, OtherRoutes>,
-				AnyRoute
-			>[]),
+			routes: new Set([...this.#state.routes, ...newRoutes] as (Routes | PrefixRoutesPath<PathPrefix, OtherRoutes>)[]),
 		});
 	};
 
@@ -487,8 +484,8 @@ export class Router<
 	private readonly method = <M extends KaitoMethod>(method: M) => {
 		return <
 			Path extends string,
+			ResultInput,
 			ResultOutput,
-			ResultInput = ResultOutput,
 			Query extends AnyQuery = {},
 			Body extends JSONValue = never,
 		>(
@@ -517,8 +514,8 @@ export class Router<
 
 	public through = <NextContext>(
 		through: (context: ContextTo, params: Record<RequiredParams, string>) => MaybePromise<NextContext>,
-	): Router<ContextFrom, NextContext, RequiredParams, R, Input> => {
-		return new Router<ContextFrom, NextContext, RequiredParams, R, Input>({
+	): Router<ContextFrom, NextContext, RequiredParams, Routes, Input> => {
+		return new Router<ContextFrom, NextContext, RequiredParams, Routes, Input>({
 			...this.#state,
 			through: (context, params) => {
 				const next = this.#state.through(context, params);
