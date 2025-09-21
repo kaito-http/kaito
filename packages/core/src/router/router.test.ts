@@ -382,7 +382,7 @@ describe('Router', () => {
 			const beforeRouter = Router.create({
 				before: () => Response.json({blocked: true}, {status: 403}),
 			}).get('/should-not-run', {
-				run: async () => ({should: 'not-run'}),
+				run: () => ({should: 'not-run'}),
 			});
 
 			const handler = beforeRouter.serve();
@@ -523,5 +523,37 @@ describe('Router', () => {
 			assert.strictEqual(data.info.title, apiTitle);
 			assert.strictEqual(data.info.version, apiVersion);
 		});
+	});
+
+	describe('OpenAPI', () => {
+		const app = router
+			.openapi({
+				info: {
+					title: 'Test API',
+					version: '1.0.0',
+					description: 'This is a test API',
+				},
+			})
+			.get('/@me', {
+				openapi: {
+					description: 'Get the current user',
+					type: 'json',
+					schema: k.object({
+						id: k.string().example('1234567890').description('The id of the user'),
+						username: k.string().example('ali').description('The username of the user'),
+					}),
+				},
+				run: async ({ctx}) => {
+					const user = {
+						id: BigInt(1234567890),
+						username: 'ali',
+					};
+
+					return {
+						...user,
+						id: user.id.toString(),
+					};
+				},
+			});
 	});
 });
