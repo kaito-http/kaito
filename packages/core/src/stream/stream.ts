@@ -39,25 +39,25 @@ export type SSEEvent<T, E extends string> = (
  * @returns A stringified version
  */
 export function sseEventToString(event: SSEEvent<JSONValue, string>): string {
-	let result = '';
+	const lines: string[] = [];
 
 	if (event.event) {
-		result += `event:${event.event}\n`;
+		lines.push(`event:${event.event}`);
 	}
 
 	if (event.id) {
-		result += `id:${event.id}\n`;
+		lines.push(`id:${event.id}`);
 	}
 
 	if (event.retry) {
-		result += `retry:${event.retry}\n`;
+		lines.push(`retry:${event.retry}`);
 	}
 
 	if (event.data !== undefined) {
-		result += `data:${JSON.stringify(event.data)}`;
+		lines.push(`data:${JSON.stringify(event.data)}`);
 	}
 
-	return result;
+	return lines.join('\n');
 }
 
 export class SSEController<U extends JSONValue, E extends string> implements Disposable {
