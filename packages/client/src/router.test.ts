@@ -6,10 +6,10 @@ interface Ctx {}
 export type App = Router<
 	Ctx,
 	Ctx,
-	{},
-	| Route<Ctx, {id: number; name: string}[], '/users', {}, 'GET', {limit: string}, never>
-	| Route<Ctx, {id: number; name: string}, '/users', {}, 'POST', {}, {name: string}>
-	| Route<Ctx, {id: number; name: string}, '/users/:id', {}, 'GET', {}, never>
-	| Route<Ctx, KaitoSSEResponse<SSEEvent<unknown, string>>, '/stream', {}, 'GET', {}, never>,
-	never
+	never,
+	| Route<Ctx, Ctx, [], {id: number; name: string}[], '/users', never, 'GET', {limit: string}, never>
+	| Route<Ctx, Ctx, [], {id: number; name: string}, '/users', never, 'POST', {}, {name: string}>
+	| Route<Ctx, Ctx, [], {id: number; name: string}, '/users/:id', never, 'GET', {}, never>
+	| Route<Ctx, Ctx, [], KaitoSSEResponse<SSEEvent<unknown, string>>, '/stream', never, 'GET', {}, never>,
+	[]
 >;

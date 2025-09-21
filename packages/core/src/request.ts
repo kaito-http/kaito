@@ -28,7 +28,7 @@ export class KaitoRequest {
 		return this._request.formData();
 	}
 
-	public async bytes(): Promise<Uint8Array> {
+	public async bytes(): Promise<Uint8Array<ArrayBuffer>> {
 		const buffer = await this.arrayBuffer();
 		return new Uint8Array(buffer);
 	}

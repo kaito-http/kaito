@@ -5,6 +5,7 @@ import type {KaitoRequest} from '../request.ts';
 import {k} from '../schema/schema.ts';
 import type {KaitoMethod} from '../util.ts';
 import {Router} from './router.ts';
+import {sse} from '../stream/stream.ts';
 
 type Tc = {req: KaitoRequest};
 const router = Router.create<Tc>({
@@ -439,6 +440,7 @@ describe('Router', () => {
 				run: async ({params}) => ({
 					postId: params.postId,
 					userId: params.userId,
+					hello: 'world',
 				}),
 			});
 
@@ -452,7 +454,15 @@ describe('Router', () => {
 			assert.strictEqual(validResponse.status, 200);
 			assert.deepStrictEqual(validData, {
 				success: true,
-				data: {postId: '456', userId: '123'},
+				data: {postId: '456', userId: '123', hello: 'world'},
+			});
+		});
+	});
+
+	describe('usage of sse()', () => {
+		it('should return a KaitoSSEResponse', async () => {
+			const sseRouter = router.get('/sse', {
+				run: async () => sse({data: 'hello'}),
 			});
 		});
 	});

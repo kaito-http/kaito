@@ -1,3 +1,5 @@
+import type {JSONValue} from '../schema/schema.ts';
+
 export class KaitoSSEResponse<_T> extends Response {
 	public constructor(body: ReadableStream<string>, init?: ResponseInit) {
 		const headers = new Headers(init?.headers);
@@ -36,7 +38,7 @@ export type SSEEvent<T, E extends string> = (
  * @param event The SSE Event
  * @returns A stringified version
  */
-export function sseEventToString(event: SSEEvent<unknown, string>): string {
+export function sseEventToString(event: SSEEvent<JSONValue, string>): string {
 	let result = '';
 
 	if (event.event) {
@@ -58,7 +60,7 @@ export function sseEventToString(event: SSEEvent<unknown, string>): string {
 	return result;
 }
 
-export class SSEController<U, E extends string> implements Disposable {
+export class SSEController<U extends JSONValue, E extends string> implements Disposable {
 	private readonly controller: ReadableStreamDefaultController<string>;
 
 	public constructor(controller: ReadableStreamDefaultController<string>) {
@@ -78,13 +80,13 @@ export class SSEController<U, E extends string> implements Disposable {
 	}
 }
 
-export interface SSESource<U, E extends string> {
+export interface SSESource<U extends JSONValue, E extends string> {
 	cancel?: UnderlyingSourceCancelCallback;
 	start?(controller: SSEController<U, E>): Promise<void>;
 	pull?(controller: SSEController<U, E>): Promise<void>;
 }
 
-function sseFromSource<U, E extends string>(source: SSESource<U, E>) {
+function sseFromSource<U extends JSONValue, E extends string>(source: SSESource<U, E>) {
 	const start = source.start;
 	const pull = source.pull;
 	const cancel = source.cancel;
@@ -112,7 +114,7 @@ function sseFromSource<U, E extends string>(source: SSESource<U, E>) {
 	return new KaitoSSEResponse<SSEEvent<U, E>>(readable);
 }
 
-export function sse<U, E extends string, T extends SSEEvent<U, E>>(
+export function sse<U extends JSONValue, E extends string, T extends SSEEvent<U, E>>(
 	source: SSESource<U, E> | AsyncGenerator<T, unknown, unknown> | (() => AsyncGenerator<T, unknown, unknown>),
 ): KaitoSSEResponse<T> {
 	const evaluated = typeof source === 'function' ? source() : source;
@@ -140,11 +142,11 @@ export function sse<U, E extends string, T extends SSEEvent<U, E>>(
 	}
 }
 
-export function sseFromAnyReadable<R, U, E extends string>(
+export function sseFromAnyReadable<R, U extends JSONValue, E extends string>(
 	stream: ReadableStream<R>,
 	transform: (chunk: R) => SSEEvent<U, E>,
 ): KaitoSSEResponse<SSEEvent<U, E>> {
-	const transformer = new TransformStream({
+	const transformer = new TransformStream<R, SSEEvent<U, E>>({
 		transform: (chunk, controller) => {
 			controller.enqueue(transform(chunk));
 		},

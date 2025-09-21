@@ -29,9 +29,11 @@ export type JSONOutputSpec<Result extends JSONValue> = {
 	description?: string;
 };
 
-export type OutputSpec<Result extends JSONValue> = {
+export type OutputSpec<Result> = {
 	description?: string;
-	body: Result extends KaitoSSEResponse<infer R> ? SSEOutputSpec<Extract<R, JSONValue>> : JSONOutputSpec<Result>;
+	body: Result extends KaitoSSEResponse<infer R>
+		? SSEOutputSpec<Extract<R, JSONValue>>
+		: JSONOutputSpec<Extract<Result, JSONValue>>;
 };
 
 export type Route<
@@ -40,7 +42,7 @@ export type Route<
 	ContextTo,
 	RouterInput extends readonly unknown[],
 	// Route information
-	Result extends JSONValue,
+	Result,
 	Path extends string,
 	AdditionalParams extends string,
 	Method extends KaitoMethod,
