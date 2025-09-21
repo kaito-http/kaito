@@ -130,7 +130,7 @@ export class Router<
 	>(
 		pathPrefix: [NextRequiredParams] extends [ExtractRouteParams<PathPrefix> | RequiredParams]
 			? PathPrefix
-			: `${string}/:${Exclude<NextRequiredParams, ExtractRouteParams<PathPrefix> | RequiredParams>}`,
+			: `/:${Exclude<NextRequiredParams, ExtractRouteParams<PathPrefix> | RequiredParams>}`,
 		other: Router<ContextFrom, ContextTo, NextRequiredParams, OtherRoutes, Input>,
 	): Router<
 		ContextFrom,
@@ -149,7 +149,10 @@ export class Router<
 
 		return new Router({
 			...this.#state,
-			routes: new Set([...this.#state.routes, ...newRoutes] as never),
+			routes: new Set([...this.#state.routes, ...newRoutes] as Extract<
+				R | PrefixRoutesPath<PathPrefix, Extract<OtherRoutes, AnyRoute>>,
+				AnyRoute
+			>[]),
 		});
 	};
 
