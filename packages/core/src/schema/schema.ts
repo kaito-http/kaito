@@ -1059,7 +1059,11 @@ export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresent
 	) => new KScalar(options);
 
 	public constructor(def: ScalarDef<ClientRepresentation, ServerRepresentation>) {
-		super(def);
+		super({
+			...def,
+			example: def.schema.example(),
+			description: def.schema.description(),
+		});
 	}
 
 	override serialize(value: ServerRepresentation): ClientRepresentation {
@@ -1067,7 +1071,11 @@ export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresent
 	}
 
 	override toOpenAPI(): SchemaObject | ReferenceObject {
-		return this.def.schema.toOpenAPI();
+		return {
+			...this.def.schema.toOpenAPI(),
+			...(this.def.description ? {description: this.def.description} : {}),
+			...(this.def.example ? {example: this.def.example} : {}),
+		};
 	}
 
 	override parseSafe(json: unknown): ParseResult<ServerRepresentation> {
@@ -1082,26 +1090,6 @@ export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresent
 				return ctx.addIssue(error instanceof Error ? error.message : 'Conversion failed', []);
 			}
 		});
-	}
-
-	public override example(example: ClientRepresentation): this;
-	public override example(): ClientRepresentation | undefined;
-	public override example(example?: ClientRepresentation) {
-		if (example === undefined) {
-			return this.def.example;
-		}
-
-		return this.clone({example} as Partial<ScalarDef<ClientRepresentation, ServerRepresentation>>);
-	}
-
-	public override description(description: string): this;
-	public override description(): string | undefined;
-	public override description(description?: string) {
-		if (description === undefined) {
-			return this.def.schema.description();
-		}
-
-		return this.clone({description} as Partial<ScalarDef<ClientRepresentation, ServerRepresentation>>);
 	}
 
 	override parse(json: unknown): ServerRepresentation {
