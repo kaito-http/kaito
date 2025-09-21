@@ -777,12 +777,9 @@ export interface ObjectDef<Input extends Record<keyof Output, JSONValue>, Output
 
 export class KObject<
 	Input extends Record<keyof Output, JSONValue>,
-	Output extends Record<keyof Input, JSONValue>,
+	Output extends Record<keyof Input, any>,
 > extends BaseSchema<Input, Output, ObjectDef<Input, Output>> {
-	public static create = <
-		Input extends Record<keyof Output, JSONValue>,
-		Output extends Record<keyof Input, JSONValue>,
-	>(shape: {
+	public static create = <Input extends Record<keyof Output, any>, Output extends Record<keyof Input, any>>(shape: {
 		[K in keyof Input | keyof Output]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K]>>;
 	}) => new KObject({shape});
 
