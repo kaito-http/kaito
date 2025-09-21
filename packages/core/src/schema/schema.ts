@@ -862,6 +862,10 @@ export class KObject<
 	}
 }
 
+////////////////////////////////////////////////////////////////////////
+////////////////// KOBJECT FROM URL SEARCH PARAMS //////////////////////
+////////////////////////////////////////////////////////////////////////
+
 export class KObjectFromURLSearchParams<
 	Input extends Record<keyof Output, JSONValue>,
 	Output extends Record<keyof Input, JSONValue>,
@@ -913,7 +917,7 @@ export class KObjectFromURLSearchParams<
 }
 
 /////////////////////////////////////////////////////
-////////////////////// KREF //////////////////////
+////////////////////// KREF /////////////////////////
 /////////////////////////////////////////////////////
 
 export interface RefDef<Input extends Record<keyof Output, JSONValue>, Output extends Record<keyof Input, JSONValue>>
@@ -924,7 +928,7 @@ export interface RefDef<Input extends Record<keyof Output, JSONValue>, Output ex
 
 export class KRef<
 	Input extends Record<keyof Output, JSONValue>,
-	Output extends Record<keyof Input, JSONValue>,
+	Output extends Record<keyof Input, any>,
 > extends BaseSchema<Input, Output, RefDef<Input, Output>> {
 	public static create = <Input extends Record<keyof Output, JSONValue>, Output extends Record<keyof Input, JSONValue>>(
 		name: string,
