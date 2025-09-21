@@ -397,6 +397,27 @@ export class Router<
 		};
 	};
 
+	/**
+	 * Create a `/openapi.json` route on this router.
+	 *
+	 * Any routes defined AFTER this method call will NOT be included in the
+	 * file. This is because all methods in Kaito are immutable, so there's no
+	 * way for the router to know about routes that were created in the future
+	 * on another router.
+	 *
+	 * @example
+	 * ```ts
+	 * router.get("/", () => "hey").openapi({
+	 * 	info: {
+	 * 		title: "My API",
+	 * 		version: "1.0.0",
+	 * 	},
+	 * });
+	 * ```
+	 *
+	 * @param options Options object
+	 * @returns
+	 */
 	public openapi = ({
 		info,
 		servers,
