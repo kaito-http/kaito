@@ -968,7 +968,7 @@ export class KRef<
 	Input extends Record<keyof Output, JSONValue>,
 	Output extends Record<keyof Input, any>,
 > extends BaseSchema<Input, Output, RefDef<Input, Output>> {
-	public static create = <Input extends Record<keyof Output, JSONValue>, Output extends Record<keyof Input, JSONValue>>(
+	public static create = <Input extends Record<keyof Output, JSONValue>, Output extends Record<keyof Input, any>>(
 		name: string,
 		shape: {
 			[K in keyof Input | keyof Output]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K]>>;
