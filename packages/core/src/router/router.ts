@@ -484,8 +484,8 @@ export class Router<
 	private readonly method = <M extends KaitoMethod>(method: M) => {
 		return <
 			Path extends string,
-			ResultInput,
-			ResultOutput,
+			ResultInput = never,
+			ResultOutput = never,
 			Query extends AnyQuery = {},
 			Body extends JSONValue = never,
 		>(
