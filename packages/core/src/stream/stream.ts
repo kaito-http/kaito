@@ -60,14 +60,14 @@ export function sseEventToString(event: SSEEvent<JSONValue, string>): string {
 	return lines.join('\n');
 }
 
-export class SSEController<U extends JSONValue, E extends string> implements Disposable {
+export class SSEController<U extends JSONValue, E extends string, T extends SSEEvent<U, E>> implements Disposable {
 	private readonly controller: ReadableStreamDefaultController<string>;
 
 	public constructor(controller: ReadableStreamDefaultController<string>) {
 		this.controller = controller;
 	}
 
-	public enqueue(event: SSEEvent<U, E>): void {
+	public enqueue(event: T): void {
 		this.controller.enqueue(sseEventToString(event) + '\n\n');
 	}
 
@@ -80,13 +80,13 @@ export class SSEController<U extends JSONValue, E extends string> implements Dis
 	}
 }
 
-export interface SSESource<U extends JSONValue, E extends string> {
+export interface SSESource<U extends JSONValue, E extends string, T extends SSEEvent<U, E>> {
 	cancel?: UnderlyingSourceCancelCallback;
-	start?(controller: SSEController<U, E>): Promise<void>;
-	pull?(controller: SSEController<U, E>): Promise<void>;
+	start?(controller: SSEController<U, E, T>): Promise<void>;
+	pull?(controller: SSEController<U, E, T>): Promise<void>;
 }
 
-function sseFromSource<U extends JSONValue, E extends string>(source: SSESource<U, E>) {
+function sseFromSource<U extends JSONValue, E extends string, T extends SSEEvent<U, E>>(source: SSESource<U, E, T>) {
 	const start = source.start;
 	const pull = source.pull;
 	const cancel = source.cancel;
@@ -97,7 +97,7 @@ function sseFromSource<U extends JSONValue, E extends string>(source: SSESource<
 		...(start
 			? {
 					start: async controller => {
-						await start(new SSEController<U, E>(controller));
+						await start(new SSEController<U, E, T>(controller));
 					},
 				}
 			: {}),
@@ -105,7 +105,7 @@ function sseFromSource<U extends JSONValue, E extends string>(source: SSESource<
 		...(pull
 			? {
 					pull: async controller => {
-						await pull(new SSEController<U, E>(controller));
+						await pull(new SSEController<U, E, T>(controller));
 					},
 				}
 			: {}),
@@ -115,13 +115,13 @@ function sseFromSource<U extends JSONValue, E extends string>(source: SSESource<
 }
 
 export function sse<U extends JSONValue, E extends string, T extends SSEEvent<U, E>>(
-	source: SSESource<U, E> | AsyncGenerator<T, unknown, unknown> | (() => AsyncGenerator<T, unknown, unknown>),
+	source: SSESource<U, E, T> | AsyncGenerator<T, unknown, unknown> | (() => AsyncGenerator<T, unknown, unknown>),
 ): KaitoSSEResponse<T> {
 	const evaluated = typeof source === 'function' ? source() : source;
 
 	if ('next' in evaluated) {
 		const generator = evaluated;
-		return sseFromSource<U, E>({
+		return sseFromSource<U, E, T>({
 			async start(controller) {
 				// TODO: use `using` once Node.js supports it
 				// // ensures close is called on controller when we're done
@@ -138,7 +138,7 @@ export function sse<U extends JSONValue, E extends string, T extends SSEEvent<U,
 	} else {
 		// if the SSESource interface is used only strings are permitted.
 		// serialization / deserialization for objects is left to the user
-		return sseFromSource<U, E>(evaluated);
+		return sseFromSource<U, E, T>(evaluated);
 	}
 }
 

@@ -82,9 +82,9 @@ export class Router<
 	}
 
 	private readonly add = <
-		Result extends JSONValue,
-		Path extends string,
 		Method extends KaitoMethod,
+		Path extends string,
+		Result,
 		Query extends AnyQuery,
 		Body extends JSONValue,
 	>(
@@ -427,7 +427,7 @@ export class Router<
 	};
 
 	private readonly method = <M extends KaitoMethod>(method: M) => {
-		return <Result extends JSONValue, Path extends string, Query extends AnyQuery = {}, Body extends JSONValue = never>(
+		return <Path extends string, Result, Query extends AnyQuery = {}, Body extends JSONValue = never>(
 			path: Path,
 			route:
 				| (M extends 'GET'
@@ -440,7 +440,7 @@ export class Router<
 								'path' | 'method' | 'router'
 							>)
 				| Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, M, Query, Body>['run'],
-		) => this.add<Result, Path, M, Query, Body>(method, path, route);
+		) => this.add<M, Path, Result, Query, Body>(method, path, route);
 	};
 
 	public get = this.method('GET');

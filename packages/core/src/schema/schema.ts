@@ -124,6 +124,12 @@ export abstract class BaseSchema<Input extends JSONValue, Output, Def extends Ba
 		this.def = def;
 	}
 
+	public or<OtherInput extends JSONValue, OtherOutput, Def extends BaseSchemaDef<OtherInput>>(
+		other: BaseSchema<OtherInput, OtherOutput, Def>,
+	) {
+		return k.union([this, other]);
+	}
+
 	example(example: Input): this;
 	example(): Input | undefined;
 	example(example?: Input) {

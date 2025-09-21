@@ -30,23 +30,26 @@ const v1 = router
 	})
 	.get('/stories', {
 		query: {
-			topic: k.string(),
+			topic: k
+				.string()
+				.description('The topic of the story')
+				.or(k.null().description('If no topic is provided, a default topic will be used')),
 		},
 		run: async ({query}) => {
 			console.error('story query', query);
 
-			return sse(async function* () {
+			const stream = sse(async function* () {
 				console.error('getting story');
 				const storyGenerator = tellMeAStory(gemini, {
 					topic: query.topic || 'kaito, a typesafe Functional HTTP Framework for TypeScript',
 				});
 
 				for await (const chunk of storyGenerator) {
-					yield {
-						data: chunk,
-					};
+					yield {data: chunk};
 				}
 			});
+
+			return stream;
 		},
 	});
 
