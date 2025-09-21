@@ -38,6 +38,7 @@ export type Route<
 	// Router context
 	ContextFrom,
 	ContextTo,
+	RouterInput extends readonly unknown[],
 	// Route information
 	Result extends JSONValue,
 	Path extends string,
@@ -52,10 +53,10 @@ export type Route<
 	path: Path;
 	method: Method;
 	openapi?: OutputSpec<NoInfer<Result>>;
-	router: Router<ContextFrom, ContextTo, AdditionalParams, AnyRoute, any>;
+	router: Router<ContextFrom, ContextTo, AdditionalParams, AnyRoute, RouterInput>;
 	run(
 		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>,
 	): Promise<Result | Response> | Response | Result;
 };
 
-export type AnyRoute = Route<any, any, any, any, any, any, any, any>;
+export type AnyRoute = Route<any, any, any, any, any, any, any, any, any>;

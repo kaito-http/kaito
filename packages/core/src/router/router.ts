@@ -17,6 +17,7 @@ type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 	R extends Route<
 		infer ContextFrom,
 		infer ContextTo,
+		infer RouterInput,
 		infer Result,
 		infer Path,
 		infer AdditionalParams,
@@ -27,6 +28,7 @@ type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 		? Route<
 				ContextFrom,
 				ContextTo,
+				RouterInput,
 				Result,
 				`${Prefix}${Path extends '/' ? '' : Path}`,
 				AdditionalParams,
@@ -48,7 +50,7 @@ export type RouterState<
 	Input extends readonly unknown[],
 > = {
 	routes: Set<Routes>;
-	through: (context: ContextFrom, params: RequiredParams) => Promise<ContextTo> | ContextTo;
+	through: (context: ContextFrom, params: Record<RequiredParams, string>) => Promise<ContextTo> | ContextTo;
 	config: KaitoConfig<ContextFrom, Input>;
 };
 
@@ -91,22 +93,22 @@ export class Router<
 		route:
 			| (Method extends 'GET'
 					? Omit<
-							Route<ContextFrom, ContextTo, Result, Path, RequiredParams, Method, Query, Body>,
+							Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, Method, Query, Body>,
 							'body' | 'path' | 'method' | 'router'
 						>
 					: Omit<
-							Route<ContextFrom, ContextTo, Result, Path, RequiredParams, Method, Query, Body>,
+							Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, Method, Query, Body>,
 							'path' | 'method' | 'router'
 						>)
-			| Route<ContextFrom, ContextTo, Result, Path, RequiredParams, Method, Query, Body>['run'],
+			| Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, Method, Query, Body>['run'],
 	): Router<
 		ContextFrom,
 		ContextTo,
 		RequiredParams,
-		R | Route<ContextFrom, ContextTo, Result, Path, RequiredParams, Method, Query, Body>,
+		R | Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, Method, Query, Body>,
 		Input
 	> => {
-		const merged: Route<ContextFrom, ContextTo, Result, Path, RequiredParams, Method, Query, Body> = {
+		const merged: Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, Method, Query, Body> = {
 			...(typeof route === 'object' ? route : {run: route}),
 			method,
 			path,
@@ -430,14 +432,14 @@ export class Router<
 			route:
 				| (M extends 'GET'
 						? Omit<
-								Route<ContextFrom, ContextTo, Result, Path, RequiredParams, M, Query, Body>,
+								Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, M, Query, Body>,
 								'body' | 'path' | 'method' | 'router'
 							>
 						: Omit<
-								Route<ContextFrom, ContextTo, Result, Path, RequiredParams, M, Query, Body>,
+								Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, M, Query, Body>,
 								'path' | 'method' | 'router'
 							>)
-				| Route<ContextFrom, ContextTo, Result, Path, RequiredParams, M, Query, Body>['run'],
+				| Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, M, Query, Body>['run'],
 		) => this.add<Result, Path, M, Query, Body>(method, path, route);
 	};
 
@@ -450,11 +452,17 @@ export class Router<
 	public options = this.method('OPTIONS');
 
 	public through = <NextContext>(
-		through: (context: ContextTo, params: RequiredParams) => MaybePromise<NextContext>,
+		through: (context: ContextTo, params: Record<RequiredParams, string>) => MaybePromise<NextContext>,
 	): Router<ContextFrom, NextContext, RequiredParams, R, Input> => {
 		return new Router<ContextFrom, NextContext, RequiredParams, R, Input>({
 			...this.#state,
-			through: async (context, params) => await through(await this.#state.through(context, params), params),
+			through: (context, params) => {
+				const next = this.#state.through(context, params);
+				if (next instanceof Promise) {
+					return next.then(next => through(next, params));
+				}
+				return through(next, params);
+			},
 		});
 	};
 }
