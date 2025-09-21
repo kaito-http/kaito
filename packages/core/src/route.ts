@@ -1,5 +1,5 @@
 import type {Router} from './router/router.ts';
-import type {AnySchemaFor, JSONValue} from './schema/schema.ts';
+import type {AnySchemaFor, BaseSchema, BaseSchemaDef, JSONValue} from './schema/schema.ts';
 import type {KaitoSSEResponse} from './stream/stream.ts';
 import type {ExtractRouteParams, KaitoMethod} from './util.ts';
 
@@ -23,16 +23,16 @@ export type SSEOutputSpec<Result extends JSONValue> = {
 	description?: string;
 };
 
-export type JSONOutputSpec<Result extends JSONValue> = {
+export type JSONOutputSpec<ResultInput, ResultOutput extends JSONValue> = {
 	type: 'json';
-	schema: AnySchemaFor<Result>;
+	schema: BaseSchema<ResultOutput, ResultInput, BaseSchemaDef<ResultOutput>>;
 	description?: string;
 };
 
-export type OutputSpec<Result> =
-	Result extends KaitoSSEResponse<infer R>
+export type OutputSpec<ResultInput, ResultOutput> =
+	ResultOutput extends KaitoSSEResponse<infer R>
 		? SSEOutputSpec<Extract<R, JSONValue>>
-		: JSONOutputSpec<Extract<Result, JSONValue>> & {
+		: JSONOutputSpec<ResultInput, Extract<ResultOutput, JSONValue>> & {
 				description?: string;
 			};
 
@@ -41,8 +41,10 @@ export type Route<
 	ContextFrom,
 	ContextTo,
 	RouterInput extends readonly unknown[],
-	// Route information
-	Result,
+	// Result information
+	ResultInput,
+	ResultOutput,
+	//Route information
 	Path extends string,
 	AdditionalParams extends string,
 	Method extends KaitoMethod,
@@ -54,11 +56,11 @@ export type Route<
 	query?: {[Key in keyof Query]: AnySchemaFor<Query[Key]>};
 	path: Path;
 	method: Method;
-	openapi?: OutputSpec<Result>;
+	openapi?: OutputSpec<ResultOutput, ResultInput>;
 	router: Router<ContextFrom, ContextTo, AdditionalParams, AnyRoute, RouterInput>;
 	run(
 		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>,
-	): Promise<Result> | Result;
+	): Promise<ResultOutput> | ResultOutput;
 };
 
-export type AnyRoute = Route<any, any, any, any, string, any, KaitoMethod, any, any>;
+export type AnyRoute = Route<any, any, any, any, any, string, any, KaitoMethod, any, any>;

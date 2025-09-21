@@ -1083,6 +1083,26 @@ export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresent
 		});
 	}
 
+	public override example(example: ClientRepresentation): this;
+	public override example(): ClientRepresentation | undefined;
+	public override example(example?: ClientRepresentation) {
+		if (example === undefined) {
+			return this.def.example;
+		}
+
+		return this.clone({example} as Partial<ScalarDef<ClientRepresentation, ServerRepresentation>>);
+	}
+
+	public override description(description: string): this;
+	public override description(): string | undefined;
+	public override description(description?: string) {
+		if (description === undefined) {
+			return this.def.schema.description();
+		}
+
+		return this.clone({description} as Partial<ScalarDef<ClientRepresentation, ServerRepresentation>>);
+	}
+
 	override parse(json: unknown): ServerRepresentation {
 		const result = this.parseSafe(json);
 		if (!result.success) {

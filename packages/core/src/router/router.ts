@@ -18,7 +18,8 @@ type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 		infer ContextFrom,
 		infer ContextTo,
 		infer RouterInput,
-		infer Result,
+		infer ResultOutput,
+		infer ResultInput,
 		infer Path,
 		infer AdditionalParams,
 		infer Method,
@@ -29,7 +30,8 @@ type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 				ContextFrom,
 				ContextTo,
 				RouterInput,
-				Result,
+				ResultInput,
+				ResultOutput,
 				`${Prefix}${Path extends '/' ? '' : Path}`,
 				AdditionalParams,
 				Method,
@@ -85,6 +87,7 @@ export class Router<
 		Method extends KaitoMethod,
 		Path extends string,
 		Result,
+		ResultOutput,
 		Query extends AnyQuery,
 		Body extends JSONValue,
 	>(
@@ -93,22 +96,33 @@ export class Router<
 		route:
 			| (Method extends 'GET'
 					? Omit<
-							Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, Method, Query, Body>,
+							Route<ContextFrom, ContextTo, Input, Result, ResultOutput, Path, RequiredParams, Method, Query, Body>,
 							'body' | 'path' | 'method' | 'router'
 						>
 					: Omit<
-							Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, Method, Query, Body>,
+							Route<ContextFrom, ContextTo, Input, Result, ResultOutput, Path, RequiredParams, Method, Query, Body>,
 							'path' | 'method' | 'router'
 						>)
-			| Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, Method, Query, Body>['run'],
+			| Route<ContextFrom, ContextTo, Input, Result, ResultOutput, Path, RequiredParams, Method, Query, Body>['run'],
 	): Router<
 		ContextFrom,
 		ContextTo,
 		RequiredParams,
-		R | Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, Method, Query, Body>,
+		R | Route<ContextFrom, ContextTo, Input, Result, ResultOutput, Path, RequiredParams, Method, Query, Body>,
 		Input
 	> => {
-		const merged: Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, Method, Query, Body> = {
+		const merged: Route<
+			ContextFrom,
+			ContextTo,
+			Input,
+			Result,
+			ResultOutput,
+			Path,
+			RequiredParams,
+			Method,
+			Query,
+			Body
+		> = {
 			...(typeof route === 'object' ? route : {run: route}),
 			method,
 			path,
@@ -267,6 +281,21 @@ export class Router<
 					}
 
 					return result;
+				}
+
+				if (route.openapi?.schema) {
+					if (route.openapi.type !== 'json') {
+						throw new Error(
+							`Cannot use openapi schema for ${route.method} ${route.path} because it is not a json output type`,
+						);
+					}
+
+					const parsed = route.openapi.schema.serialize(result);
+
+					return head.toResponse({
+						success: true,
+						data: parsed,
+					});
 				}
 
 				return head.toResponse({
@@ -429,29 +458,35 @@ export class Router<
 	};
 
 	private readonly method = <M extends KaitoMethod>(method: M) => {
-		return <Path extends string, Result, Query extends AnyQuery = {}, Body extends JSONValue = never>(
+		return <
+			Path extends string,
+			ResultOutput,
+			ResultInput = ResultOutput,
+			Query extends AnyQuery = {},
+			Body extends JSONValue = never,
+		>(
 			path: Path,
 			route:
 				| (M extends 'GET'
 						? Omit<
-								Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, M, Query, Body>,
+								Route<ContextFrom, ContextTo, Input, ResultInput, ResultOutput, Path, RequiredParams, M, Query, Body>,
 								'body' | 'path' | 'method' | 'router'
 							>
 						: Omit<
-								Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, M, Query, Body>,
+								Route<ContextFrom, ContextTo, Input, ResultInput, ResultOutput, Path, RequiredParams, M, Query, Body>,
 								'path' | 'method' | 'router'
 							>)
-				| Route<ContextFrom, ContextTo, Input, Result, Path, RequiredParams, M, Query, Body>['run'],
-		) => this.add<M, Path, Result, Query, Body>(method, path, route);
+				| Route<ContextFrom, ContextTo, Input, ResultInput, ResultOutput, Path, RequiredParams, M, Query, Body>['run'],
+		) => this.add<M, Path, ResultInput, ResultOutput, Query, Body>(method, path, route);
 	};
 
-	public get = this.method('GET');
-	public post = this.method('POST');
-	public put = this.method('PUT');
-	public patch = this.method('PATCH');
-	public delete = this.method('DELETE');
-	public head = this.method('HEAD');
-	public options = this.method('OPTIONS');
+	public readonly get = this.method('GET');
+	public readonly post = this.method('POST');
+	public readonly put = this.method('PUT');
+	public readonly patch = this.method('PATCH');
+	public readonly delete = this.method('DELETE');
+	public readonly head = this.method('HEAD');
+	public readonly options = this.method('OPTIONS');
 
 	public through = <NextContext>(
 		through: (context: ContextTo, params: Record<RequiredParams, string>) => MaybePromise<NextContext>,

@@ -9,7 +9,7 @@ import {Router} from './router.ts';
 type Tc = {req: KaitoRequest};
 const router = Router.create<Tc>({
 	getContext: req => ({req}),
-	onError: () => ({status: 500, message: 'Internal Server Error'}),
+	onError: e => ({status: 500, message: e.message}),
 });
 
 describe('Router', () => {
@@ -495,7 +495,7 @@ describe('Router', () => {
 			assert.deepStrictEqual(data, {
 				success: false,
 				data: null,
-				message: 'Internal Server Error',
+				message: `Unexpected token 'h', "this is not"... is not valid JSON`,
 			});
 		});
 	});
@@ -526,15 +526,8 @@ describe('Router', () => {
 	});
 
 	describe('OpenAPI', () => {
-		const app = router
-			.openapi({
-				info: {
-					title: 'Test API',
-					version: '1.0.0',
-					description: 'This is a test API',
-				},
-			})
-			.get('/@me', {
+		it('simple', async () => {
+			const app = router.get('/@me', {
 				openapi: {
 					description: 'Get the current user',
 					type: 'json',
@@ -543,17 +536,46 @@ describe('Router', () => {
 						username: k.string().example('ali').description('The username of the user'),
 					}),
 				},
-				run: async ({ctx}) => {
-					const user = {
-						id: BigInt(1234567890),
-						username: 'ali',
-					};
-
-					return {
-						...user,
-						id: user.id.toString(),
-					};
-				},
+				run: () => ({
+					id: '1234567890',
+					username: 'ali',
+				}),
 			});
+
+			const handler = app.serve();
+			const response = await handler(new Request('http://localhost/@me', {method: 'GET'}));
+			const data = await response.json();
+
+			assert.strictEqual(response.status, 200);
+			assert.deepStrictEqual(data, {
+				success: true,
+				data: {id: '1234567890', username: 'ali'},
+			});
+		});
+
+		it('serializes the values correctly in a type safe way', async () => {
+			const app = router.get('/@me', {
+				openapi: {
+					description: 'Get the current user',
+					type: 'json',
+					schema: k.scalar({
+						schema: k.string(),
+						toServer: value => BigInt(value),
+						toClient: value => value.toString(),
+					}),
+				},
+				run: () => BigInt(1234567890),
+			});
+
+			const handler = app.serve();
+			const response = await handler(new Request('http://localhost/@me', {method: 'GET'}));
+			const data = await response.json();
+
+			assert.deepStrictEqual(data, {
+				success: true,
+				data: '1234567890',
+			});
+			assert.strictEqual(response.status, 200);
+		});
 	});
 });
