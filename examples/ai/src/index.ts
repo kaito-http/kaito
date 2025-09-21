@@ -41,7 +41,7 @@ const v1 = router
 			const stream = sse(async function* () {
 				console.error('getting story');
 				const storyGenerator = tellMeAStory(gemini, {
-					topic: query.topic || 'kaito, a typesafe Functional HTTP Framework for TypeScript',
+					topic: query.topic ?? 'kaito, a typesafe Functional HTTP Framework for TypeScript',
 				});
 
 				for await (const chunk of storyGenerator) {
