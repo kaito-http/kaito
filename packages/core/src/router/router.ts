@@ -4,7 +4,7 @@ import {KaitoError, WrappedError} from '../error.ts';
 import {KaitoHead} from '../head.ts';
 import {KaitoRequest} from '../request.ts';
 import type {AnyQuery, AnyRoute, Route} from '../route.ts';
-import {k, type AnySchemaFor, type JSONValue} from '../schema/schema.ts';
+import {k, KRef, type AnySchemaFor, type BaseSchema, type JSONValue} from '../schema/schema.ts';
 import {
 	isNodeLikeDev,
 	type ErroredAPIResponse,
@@ -406,6 +406,42 @@ export class Router<
 	}) => {
 		const OPENAPI_VERSION: OpenAPI.OpenAPIObject['openapi'] = '3.1.0';
 
+		const componentsSchemas: Record<string, OpenAPI.SchemaObject> = {};
+
+		const addSchemaForRef = (ref: KRef<any, any>) => {
+			const name = ref.name;
+
+			const properties = Object.fromEntries(Object.entries(ref.shape).map(([key, value]) => [key, value.toOpenAPI()]));
+			const schemaObject: OpenAPI.SchemaObject = {
+				type: 'object',
+				properties,
+				required: Object.keys(ref.shape),
+				...(ref.description() ? {description: ref.description()!} : {}),
+			};
+
+			const existing = componentsSchemas[name];
+			if (existing) {
+				// we could improve this check
+				if (JSON.stringify(existing) !== JSON.stringify(schemaObject)) {
+					throw new Error(
+						`Conflicting KRef definitions detected for "${name}". OpenAPI components require a single schema per name.`,
+					);
+				}
+				return;
+			}
+
+			componentsSchemas[name] = schemaObject;
+		};
+
+		function visit(schema: BaseSchema<any, any, any>, seen = new Set<any>()): void {
+			if (seen.has(schema)) return;
+			seen.add(schema);
+
+			if (schema instanceof KRef) addSchemaForRef(schema);
+
+			schema.visit(child => visit(child, seen));
+		}
+
 		const paths: OpenAPI.PathsObject = {};
 
 		for (const route of this.#state.routes) {
@@ -433,6 +469,9 @@ export class Router<
 				default:
 					throw new Error(`Unknown output type in route ${route.method} ${route.path}: ${type}`);
 			}
+
+			if (route.openapi.schema) visit(route.openapi.schema);
+			if (route.body) visit(route.body);
 
 			const item: OpenAPI.OperationObject = {
 				description: route.openapi?.description ?? 'Successful response',
@@ -468,6 +507,7 @@ export class Router<
 			openapi: OPENAPI_VERSION,
 			info,
 			paths,
+			...(Object.keys(componentsSchemas).length > 0 ? {components: {schemas: componentsSchemas}} : {}),
 			servers: Object.entries(servers ?? {}).map(entry => {
 				const [url, description] = entry as [string, string];
 

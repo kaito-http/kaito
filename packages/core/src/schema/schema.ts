@@ -161,6 +161,11 @@ export abstract class BaseSchema<Input extends JSONValue, Output, Def extends Ba
 
 		return this.clone({description} as Partial<Def>);
 	}
+
+	/**
+	 * Traverse immediate children schemas.
+	 */
+	abstract visit(visitor: (schema: BaseSchema<any, any, any>) => void): void;
 }
 
 type Check<T extends string, P extends {} = {}> = {type: T; message?: string | undefined} & Omit<P, 'message'>;
@@ -436,6 +441,10 @@ export class KString extends BaseSchema<string, string, StringDef> {
 
 		return result.result;
 	}
+
+	public override visit(): void {
+		// leaf, noop
+	}
 }
 
 /////////////////////////////////////////////////////
@@ -581,6 +590,10 @@ export class KNumber extends BaseSchema<number, number, NumberDef> {
 
 		return result.result;
 	}
+
+	public override visit(): void {
+		// leaf, noop
+	}
 }
 
 /////////////////////////////////////////////////////
@@ -621,6 +634,10 @@ export class KBoolean extends BaseSchema<boolean, boolean, BooleanDef> {
 		}
 
 		return result.result;
+	}
+
+	public override visit(): void {
+		// leaf, noop
 	}
 }
 
@@ -723,6 +740,12 @@ export class KArray<Input extends JSONValue, Output> extends BaseSchema<Input[],
 
 		return result.result;
 	}
+
+	public override visit(visitor: (schema: BaseSchema<any, any, any>) => void): void {
+		const child = this.def.items;
+		visitor(child);
+		child.visit(visitor);
+	}
 }
 
 /////////////////////////////////////////////////////
@@ -761,6 +784,10 @@ export class KNull extends BaseSchema<null, null, NullDef> {
 			throw new SchemaError(result.issues);
 		}
 		return result.result;
+	}
+
+	public override visit(): void {
+		// leaf, noop
 	}
 }
 
@@ -860,6 +887,17 @@ export class KObject<
 	get shape() {
 		return this.def.shape;
 	}
+
+	public override visit(visitor: (schema: BaseSchema<any, any, any>) => void): void {
+		for (const child of Object.values(this.def.shape) as BaseSchema<
+			Input[keyof Input],
+			Output[keyof Output],
+			BaseSchemaDef<Input[keyof Input]>
+		>[]) {
+			visitor(child);
+			child.visit(visitor);
+		}
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -953,6 +991,17 @@ export class KRef<
 		}
 
 		return result as Input;
+	}
+
+	public override visit(visitor: (schema: BaseSchema<any, any, any>) => void): void {
+		for (const child of Object.values(this.def.shape) as BaseSchema<
+			Input[keyof Input],
+			Output[keyof Output],
+			BaseSchemaDef<Input[keyof Input]>
+		>[]) {
+			visitor(child);
+			child.visit(visitor);
+		}
 	}
 
 	override example(): never {
@@ -1099,6 +1148,12 @@ export class KScalar<ClientRepresentation extends JSONPrimitive, ServerRepresent
 		}
 		return result.result;
 	}
+
+	public override visit(visitor: (schema: BaseSchema<any, any, any>) => void): void {
+		const child = this.def.schema;
+		visitor(child);
+		child.visit(visitor);
+	}
 }
 
 /////////////////////////////////////////////////////
@@ -1165,6 +1220,13 @@ export class KUnion<Input extends JSONValue, Output> extends BaseSchema<Input, O
 		}
 		return result.result;
 	}
+
+	public override visit(visitor: (schema: BaseSchema<any, any, any>) => void): void {
+		for (const child of this.def.items) {
+			visitor(child);
+			child.visit(visitor);
+		}
+	}
 }
 
 export interface LiteralDef<Value extends string | number | boolean> extends BaseSchemaDef<Value> {
@@ -1204,6 +1266,10 @@ export class KLiteral<Value extends string | number | boolean> extends BaseSchem
 
 			return this.def.value;
 		});
+	}
+
+	public override visit(): void {
+		// leaf, noop
 	}
 }
 
