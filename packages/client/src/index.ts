@@ -266,7 +266,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any
 					// an error with the status text and status code
 
 					const json = await response.json().then(
-						data => data,
+						data => data as {message: string},
 						() => null,
 					);
 
