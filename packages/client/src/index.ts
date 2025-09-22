@@ -199,12 +199,10 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any
 	};
 
 	function* iterateHeaders(init: HeadersInit): Generator<[key: string, value: string], void, void> {
-		for (const [key, value] of Array.isArray(init)
-			? init
-			: init instanceof Headers
-				? init.entries()
-				: Object.entries(init)) {
-			yield [key, value];
+		const iter = init instanceof Headers ? init.entries() : Array.isArray(init) ? init : Object.entries(init);
+
+		for (const entry of iter) {
+			yield entry;
 		}
 	}
 
@@ -232,7 +230,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any
 			});
 
 			if (typeof window === 'undefined' && !headers.has('User-Agent')) {
-				headers.set('User-Agent', `kaito-http/client ${pkg.version}`);
+				headers.append('User-Agent', `kaito-http/client ${pkg.version}`);
 			}
 
 			const init: RequestInit = {
@@ -242,7 +240,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any
 
 			if (options.headers !== undefined) {
 				for (const [key, value] of iterateHeaders(options.headers)) {
-					headers.set(key, value);
+					headers.append(key, value);
 				}
 			}
 
@@ -251,7 +249,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any
 			}
 
 			if (body !== undefined) {
-				headers.set('Content-Type', 'application/json');
+				headers.append('Content-Type', 'application/json');
 				init.body = JSON.stringify(body);
 			}
 
