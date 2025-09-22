@@ -69,7 +69,7 @@ export function getRemoteAddress(request: RequestOrKaitoRequest) {
 	return getRequestMetadata(request).remoteAddress;
 }
 
-export class KaitoServer {
+export class Server {
 	private static getRequestBodyStream(res: uWS.HttpResponse) {
 		return new ReadableStream<Uint8Array>({
 			start(controller) {
@@ -90,6 +90,21 @@ export class KaitoServer {
 		});
 	}
 
+	/**
+	 * Start a new server on a specified port [& host]
+	 * @param options The options for the server
+	 * @returns A server instance
+	 *
+	 * @example
+	 * ```ts
+	 * import {Server} from '@kaito-http/uws';
+	 *
+	 * using server = await Server.serve({
+	 * 	port: 3000,
+	 * 	fetch: () => Response.json("Hello world"),
+	 * });
+	 * ```
+	 */
 	public static async serve(options: ServeUserOptions) {
 		const fullOptions = {
 			host: '0.0.0.0',
@@ -282,3 +297,8 @@ export class KaitoServer {
 		return `http://${this.address}`;
 	}
 }
+
+/**
+ * @deprecated Use {@link Server} instead
+ */
+export const KaitoServer = Server;
