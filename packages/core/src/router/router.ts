@@ -407,11 +407,12 @@ export class Router<
 			const name = ref.name;
 
 			const properties = Object.fromEntries(Object.entries(ref.shape).map(([key, value]) => [key, value.toOpenAPI()]));
+			const desc = ref.description();
 			const schemaObject: OpenAPI.SchemaObject = {
 				type: 'object',
 				properties,
 				required: Object.keys(ref.shape),
-				...(ref.description() ? {description: ref.description()!} : {}),
+				...(desc ? {description: desc} : {}),
 			};
 
 			const existing = componentsSchemas[name];
