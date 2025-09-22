@@ -1,4 +1,4 @@
-import type {APIResponse} from './util.ts';
+import type {JSONValue} from '../dist/index.js';
 
 /**
  * This class is merely a wrapper around a `Headers` object and a status code.
@@ -62,7 +62,7 @@ export class KaitoHead {
 	 * @param body The Kaito JSON format to be sent as the response body
 	 * @returns A Response instance, ready to be sent
 	 */
-	public toResponse<T>(body: APIResponse<T>): Response {
+	public toResponse<T extends JSONValue>(data: T): Response {
 		const init: ResponseInit = {
 			status: this.#status,
 		};
@@ -71,7 +71,7 @@ export class KaitoHead {
 			init.headers = this.#headers;
 		}
 
-		return Response.json(body, init);
+		return Response.json(data, init);
 	}
 
 	/**

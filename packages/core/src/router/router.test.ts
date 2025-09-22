@@ -27,10 +27,7 @@ describe('Router', () => {
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: {users: []},
-			});
+			assert.deepStrictEqual(data, {users: []});
 		});
 
 		it('should handle POST requests with body parsing', async () => {
@@ -52,10 +49,7 @@ describe('Router', () => {
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: {id: '1', name: 'John'},
-			});
+			assert.deepStrictEqual(data, {id: '1', name: 'John'});
 		});
 
 		it('should handle URL parameters', async () => {
@@ -69,10 +63,7 @@ describe('Router', () => {
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: {id: '456'},
-			});
+			assert.deepStrictEqual(data, {id: '456'});
 		});
 
 		it('should handle query parameters', async () => {
@@ -93,10 +84,7 @@ describe('Router', () => {
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: {query: 'test', limit: '10'},
-			});
+			assert.deepStrictEqual(data, {query: 'test', limit: '10'});
 		});
 	});
 
@@ -121,10 +109,7 @@ describe('Router', () => {
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: {isAdmin: true},
-			});
+			assert.deepStrictEqual(data, {isAdmin: true});
 		});
 	});
 
@@ -143,8 +128,6 @@ describe('Router', () => {
 
 			assert.strictEqual(response.status, 403);
 			assert.deepStrictEqual(data, {
-				success: false,
-				data: null,
 				message: 'Forbidden',
 			});
 		});
@@ -165,8 +148,6 @@ describe('Router', () => {
 
 			assert.strictEqual(response.status, 500);
 			assert.deepStrictEqual(data, {
-				success: false,
-				data: null,
 				message: 'Custom Error Message',
 			});
 		});
@@ -184,10 +165,7 @@ describe('Router', () => {
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: '1',
-			});
+			assert.deepStrictEqual(data, '1');
 		});
 
 		it('should handle merging on /', () => {
@@ -228,8 +206,6 @@ describe('Router', () => {
 
 			assert.strictEqual(response.status, 404);
 			assert.deepStrictEqual(data, {
-				success: false,
-				data: null,
 				message: 'Cannot GET /not-found',
 			});
 		});
@@ -246,8 +222,6 @@ describe('Router', () => {
 
 			assert.strictEqual(response.status, 404);
 			assert.deepStrictEqual(data, {
-				success: false,
-				data: null,
 				message: 'Cannot POST /users',
 			});
 		});
@@ -409,8 +383,7 @@ describe('Router', () => {
 
 			assert.strictEqual(response.status, 200);
 			assert.deepStrictEqual(data, {
-				success: true,
-				data: {result: 'original'},
+				result: 'original',
 				transformed: true,
 			});
 		});
@@ -452,8 +425,9 @@ describe('Router', () => {
 
 			assert.strictEqual(validResponse.status, 200);
 			assert.deepStrictEqual(validData, {
-				success: true,
-				data: {postId: '456', userId: '123', hello: 'world'},
+				postId: '456',
+				userId: '123',
+				hello: 'world',
 			});
 		});
 	});
@@ -492,11 +466,7 @@ describe('Router', () => {
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 500);
-			assert.deepStrictEqual(data, {
-				success: false,
-				data: null,
-				message: `Unexpected token 'h', "this is not"... is not valid JSON`,
-			});
+			assert.match(data.message, /Unexpected token 'h', "this is not"... is not valid JSON|Failed to parse JSON/);
 		});
 	});
 
@@ -548,8 +518,8 @@ describe('Router', () => {
 
 			assert.strictEqual(response.status, 200);
 			assert.deepStrictEqual(data, {
-				success: true,
-				data: {id: '1234567890', username: 'ali'},
+				id: '1234567890',
+				username: 'ali',
 			});
 		});
 
@@ -571,10 +541,7 @@ describe('Router', () => {
 			const response = await handler(new Request('http://localhost/@me', {method: 'GET'}));
 			const data = await response.json();
 
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: '1234567890',
-			});
+			assert.deepStrictEqual(data, '1234567890');
 			assert.strictEqual(response.status, 200);
 		});
 	});

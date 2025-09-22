@@ -9,9 +9,6 @@ import type {Router} from './router/router.ts';
 export const isNodeLikeDev =
 	typeof process !== 'undefined' && typeof process.env !== 'undefined' && process.env.NODE_ENV === 'development';
 
-export type ErroredAPIResponse = {success: false; data: null; message: string};
-export type SuccessfulAPIResponse<T> = {success: true; data: T};
-export type APIResponse<T> = ErroredAPIResponse | SuccessfulAPIResponse<T>;
 export type MaybePromise<T> = T | Promise<T>;
 export type KaitoMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 

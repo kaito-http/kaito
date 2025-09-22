@@ -1,11 +1,4 @@
-import type {
-	AnyRoute,
-	APIResponse,
-	ErroredAPIResponse,
-	ExtractRouteParams,
-	KaitoMethod,
-	Router,
-} from '@kaito-http/core';
+import type {AnyRoute, ExtractRouteParams, KaitoMethod, Router} from '@kaito-http/core';
 import type {KaitoSSEResponse, SSEEvent} from '@kaito-http/core/stream';
 import {pathcat} from 'pathcat';
 import pkg from '../package.json' with {type: 'json'};
@@ -44,7 +37,7 @@ export class KaitoClientHTTPError extends Error {
 	constructor(
 		public readonly request: Request,
 		public readonly response: Response,
-		public readonly body: ErroredAPIResponse,
+		public readonly body: {message: string},
 	) {
 		super(body.message);
 	}
@@ -275,7 +268,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any
 					// an error with the status text and status code
 
 					const json = await response.json().then(
-						data => data as ErroredAPIResponse,
+						data => data,
 						() => null,
 					);
 
@@ -286,8 +279,6 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any
 
 				throw new KaitoClientHTTPError(request, response, {
 					message: `Request to ${url} failed with status ${response.status} and no obvious body`,
-					success: false,
-					data: null,
 				});
 			}
 
@@ -303,14 +294,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any
 				return new KaitoSSEStream(response.body) as never;
 			}
 
-			const result = (await response.json()) as APIResponse<never>;
-
-			if (!result.success) {
-				// In theory success is always true because we've already checked the response status
-				throw new KaitoClientHTTPError(request, response, result);
-			}
-
-			return result.data;
+			return await response.json();
 		};
 	};
 

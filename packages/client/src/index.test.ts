@@ -135,9 +135,7 @@ describe('KaitoHTTPClient', () => {
 					assert(error instanceof KaitoClientHTTPError);
 					assert.equal(error.response.status, 404);
 					assert.deepEqual(error.body, {
-						success: false,
 						message: 'Not Found',
-						data: null,
 					});
 					return true;
 				},

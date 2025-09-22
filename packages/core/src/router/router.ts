@@ -5,13 +5,7 @@ import {KaitoHead} from '../head.ts';
 import {KaitoRequest} from '../request.ts';
 import type {AnyQuery, AnyRoute, Route} from '../route.ts';
 import {k, KRef, type AnySchemaFor, type BaseSchema, type JSONValue} from '../schema/schema.ts';
-import {
-	isNodeLikeDev,
-	type ErroredAPIResponse,
-	type ExtractRouteParams,
-	type KaitoMethod,
-	type MaybePromise,
-} from '../util.ts';
+import {isNodeLikeDev, type ExtractRouteParams, type KaitoMethod, type MaybePromise} from '../util.ts';
 
 type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 	R extends Route<
@@ -262,13 +256,7 @@ export class Router<
 			const {route, params: rawParams} = findRoute(method, url.pathname);
 
 			if (!route) {
-				const body: ErroredAPIResponse = {
-					success: false,
-					data: null,
-					message: `Cannot ${method} ${url.pathname}`,
-				};
-
-				return Response.json(body, {status: 404});
+				return Response.json({message: `Cannot ${method} ${url.pathname}`}, {status: 404});
 			}
 
 			const request = new KaitoRequest(url, req);
@@ -283,7 +271,7 @@ export class Router<
 					rawParams,
 				);
 
-				const result: unknown = await route.run({
+				const result: JSONValue = await route.run({
 					ctx,
 					body,
 					query,
@@ -316,31 +304,21 @@ export class Router<
 
 					const parsed = route.openapi.schema.serialize(result);
 
-					return head.toResponse({
-						success: true,
-						data: parsed,
-					});
+					return head.toResponse(parsed);
 				}
 
-				return head.toResponse({
-					success: true,
-					data: result,
-				});
+				return head.toResponse(result);
 			} catch (e) {
 				const error = WrappedError.maybe(e);
 
 				if (error instanceof KaitoError) {
 					return head.status(error.status).toResponse({
-						success: false,
-						data: null,
 						message: error.message,
 					});
 				}
 
 				if (!this.#state.config.onError) {
 					return head.status(500).toResponse({
-						success: false,
-						data: null,
 						message: 'Internal Server Error',
 					});
 				}
@@ -349,8 +327,6 @@ export class Router<
 					const {status, message} = await this.#state.config.onError(error, request);
 
 					return head.status(status).toResponse({
-						success: false,
-						data: null,
 						message,
 					});
 				} catch (e) {
@@ -358,8 +334,6 @@ export class Router<
 					console.error(e);
 
 					return head.status(500).toResponse({
-						success: false,
-						data: null,
 						message: 'Internal Server Error',
 					});
 				}
@@ -501,12 +475,7 @@ export class Router<
 						description: route.openapi?.description ?? 'Successful response',
 						content: {
 							[contentType]: {
-								schema: k
-									.object({
-										success: k.literal(true),
-										data: route.openapi.schema,
-									})
-									.toOpenAPI(),
+								schema: route.openapi.schema.toOpenAPI(),
 							},
 						},
 					},
