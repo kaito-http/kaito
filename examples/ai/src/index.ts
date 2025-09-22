@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 import {k} from '@kaito-http/core';
 import {sse} from '@kaito-http/core/stream';
-import {KaitoServer} from '@kaito-http/uws';
+import {Server} from '@kaito-http/uws';
 import {createGoogleAI, tellMeAStory} from './ai.ts';
 import {router} from './context.ts';
 
@@ -55,7 +55,7 @@ const v1 = router
 
 const root = router.merge('/v1', v1);
 
-const server = await KaitoServer.serve({
+const server = await Server.serve({
 	port: 3000,
 	fetch: root.serve(),
 });

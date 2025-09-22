@@ -62,7 +62,7 @@ Since you'll be using `@kaito-http/uws` with Node.js, the client IP address is a
 
 ```ts
 import {AsyncLocalStorage} from 'node:async_hooks';
-import {KaitoServer} from '@kaito-http/uws';
+import {Server} from '@kaito-http/uws';
 
 const ipStore = new AsyncLocalStorage<string>();
 
@@ -76,7 +76,7 @@ const handle = createKaitoHandler({
 	// ...
 });
 
-const server = await KaitoServer.serve({
+const server = await Server.serve({
 	port: 3000,
 	fetch: async (request, context) => {
 		return ipStore.run(context.remoteAddress, () => handle(request));

@@ -513,6 +513,7 @@ describe('Router', () => {
 			});
 
 			const handler = app.serve();
+
 			const response = await handler(new Request('http://localhost/@me', {method: 'GET'}));
 			const data = await response.json();
 

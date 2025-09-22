@@ -42,13 +42,13 @@ To be absolutely clear: `@kaito-http/uws` works ONLY with Node.js. While we use 
 
 ```ts
 import {router} from './router.ts';
-import {KaitoServer} from '@kaito-http/uws';
+import {Server} from '@kaito-http/uws';
 
 const app = router.get('/', () => 'hi' as const);
 
 const handle = app.serve();
 
-const server = await KaitoServer.serve({
+const server = await Server.serve({
 	fetch: handle,
 	port: 3000,
 });

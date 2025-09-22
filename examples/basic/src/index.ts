@@ -1,6 +1,6 @@
 import {k, KaitoError} from '@kaito-http/core';
 import {sse, sseFromAnyReadable} from '@kaito-http/core/stream';
-import {KaitoServer} from '@kaito-http/uws';
+import {Server} from '@kaito-http/uws';
 import stripe from 'stripe';
 import {randomEvent} from './data.ts';
 import {router} from './router.ts';
@@ -16,11 +16,8 @@ const users = router
 		}),
 
 		query: {
-			limit: k
-				.string()
-				.transform(value => parseInt(value, 10))
-				.default('10'),
-			skip: k.string().transform(value => parseInt(value, 10)),
+			limit: k.string(),
+			skip: k.string(),
 		},
 
 		async run({ctx, body, params, query}) {
@@ -236,7 +233,7 @@ const root = router
 	// Merge this router with another router (v1)
 	.merge('/v1', v1);
 
-const server = await KaitoServer.serve({
+const server = await Server.serve({
 	port: 3000,
 	fetch: root.serve(),
 });

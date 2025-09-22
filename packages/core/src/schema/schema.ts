@@ -113,8 +113,8 @@ export abstract class BaseSchema<Input extends JSONValue, Output, Def extends Ba
 
 	abstract toOpenAPI(): SchemaObject | ReferenceObject;
 
-	protected getSchemaObject(): SchemaObject {
-		const schema: SchemaObject = {};
+	protected getSchemaObject() {
+		const schema: {description?: string; example?: Input} = {};
 		if (this.def.description !== undefined) {
 			schema.description = this.def.description;
 		}
@@ -1273,6 +1273,100 @@ export class KLiteral<Value extends string | number | boolean> extends BaseSchem
 	}
 }
 
+/////////////////////////////////////////////////////
+////////////////////// KRECORD //////////////////////
+/////////////////////////////////////////////////////
+
+export interface RecordDef<KeyInput extends string, KeyOutput extends string, ValueInput extends JSONValue, ValueOutput>
+	extends BaseSchemaDef<Record<KeyInput, ValueInput>> {
+	keys: BaseSchema<KeyInput, KeyOutput, BaseSchemaDef<KeyInput>>;
+	values: BaseSchema<ValueInput, ValueOutput, BaseSchemaDef<ValueInput>>;
+}
+
+export class KRecord<
+	KeyInput extends string,
+	KeyOutput extends string,
+	ValueInput extends JSONValue,
+	ValueOutput,
+> extends BaseSchema<
+	Record<KeyInput, ValueInput>,
+	Record<KeyOutput, ValueOutput>,
+	RecordDef<KeyInput, KeyOutput, ValueInput, ValueOutput>
+> {
+	public static create = <KeyInput extends string, KeyOutput extends string, ValueInput extends JSONValue, ValueOutput>(
+		keys: BaseSchema<KeyInput, KeyOutput, BaseSchemaDef<KeyInput>>,
+		values: BaseSchema<ValueInput, ValueOutput, BaseSchemaDef<ValueInput>>,
+	) => new KRecord({keys, values});
+
+	public serialize(value: Record<KeyOutput, ValueOutput>): Record<KeyInput, ValueInput> {
+		const result: Record<KeyInput, ValueInput> = {} as Record<KeyInput, ValueInput>;
+
+		for (const key in value) {
+			if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+
+			const keySerialize = this.def.keys.serialize(key);
+			const valueSerialize = this.def.values.serialize(value[key]);
+
+			result[keySerialize] = valueSerialize;
+		}
+
+		return result;
+	}
+
+	public override toOpenAPI(): SchemaObject {
+		const baseSchema = this.getSchemaObject();
+		return {
+			...baseSchema,
+			type: 'object',
+			propertyNames: this.def.keys.toOpenAPI(),
+			additionalProperties: this.def.values.toOpenAPI(),
+		};
+	}
+
+	public parseSafe(json: unknown): ParseResult<Record<KeyOutput, ValueOutput>> {
+		return ParseContext.result(ctx => {
+			if (typeof json !== 'object' || json === null || Array.isArray(json)) {
+				return ctx.addIssue('Expected object', []);
+			}
+
+			const result: Record<KeyOutput, ValueOutput> = {} as Record<KeyOutput, ValueOutput>;
+
+			for (const key in json) {
+				if (!Object.prototype.hasOwnProperty.call(json, key)) continue;
+
+				const keyParse = this.def.keys.parseSafe(key);
+				if (!keyParse.success) {
+					return ctx.addIssues(keyParse.issues, [key]);
+				}
+
+				const value = json[keyParse.result as keyof typeof json] as ValueInput;
+
+				const valueParse = this.def.values.parseSafe(value);
+				if (!valueParse.success) {
+					return ctx.addIssues(valueParse.issues, [key]);
+				}
+
+				result[keyParse.result] = valueParse.result;
+			}
+
+			return result;
+		});
+	}
+
+	public parse(json: unknown): Record<KeyOutput, ValueOutput> {
+		const result = this.parseSafe(json);
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+		return result.result;
+	}
+
+	public override visit(visitor: (schema: BaseSchema<any, any, any>) => void): void {
+		visitor(this.def.keys);
+		visitor(this.def.values);
+	}
+}
+
 export const k = {
 	string: KString.create,
 	number: KNumber.create,
@@ -1280,6 +1374,7 @@ export const k = {
 	array: KArray.create,
 	null: KNull.create,
 	ref: KRef.create,
+	record: KRecord.create,
 	object: KObject.create,
 	scalar: KScalar.create,
 	literal: KLiteral.create,

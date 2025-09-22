@@ -1,6 +1,6 @@
 import {create, k} from '@kaito-http/core';
 import {sse} from '@kaito-http/core/stream';
-import {KaitoServer} from '@kaito-http/uws';
+import {Server} from '@kaito-http/uws';
 import {setTimeout as sleep} from 'node:timers/promises';
 
 const router = create();
@@ -29,7 +29,7 @@ const app = router
 	})
 	.merge('/:user_id', sub);
 
-const server = await KaitoServer.serve({
+const server = await Server.serve({
 	fetch: app.serve(),
 	port: 3000,
 	host: '127.0.0.1',
