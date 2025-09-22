@@ -1367,6 +1367,51 @@ export class KRecord<
 	}
 }
 
+/////////////////////////////////////////////////////
+////////////////////// KLAZY ////////////////////////
+/////////////////////////////////////////////////////
+
+export interface LazyDef<Input extends JSONValue, Output> extends BaseSchemaDef<Input> {
+	getter: () => BaseSchema<Input, Output, BaseSchemaDef<Input>>;
+}
+
+export class KLazy<Input extends JSONValue, Output> extends BaseSchema<Input, Output, LazyDef<Input, Output>> {
+	private schema?: BaseSchema<Input, Output, BaseSchemaDef<Input>>;
+
+	public static create = <Input extends JSONValue, Output>(
+		getter: () => BaseSchema<Input, Output, BaseSchemaDef<Input>>,
+	) => new KLazy({getter});
+
+	private getSchema(): BaseSchema<Input, Output, BaseSchemaDef<Input>> {
+		if (!this.schema) {
+			this.schema = this.def.getter();
+		}
+		return this.schema;
+	}
+
+	public serialize(value: Output): Input {
+		return this.getSchema().serialize(value);
+	}
+
+	public override toOpenAPI(): SchemaObject | ReferenceObject {
+		return this.getSchema().toOpenAPI();
+	}
+
+	public parseSafe(json: unknown): ParseResult<Output> {
+		return this.getSchema().parseSafe(json);
+	}
+
+	public parse(json: unknown): Output {
+		return this.getSchema().parse(json);
+	}
+
+	public override visit(visitor: (schema: BaseSchema<any, any, any>) => void): void {
+		const schema = this.getSchema();
+		visitor(schema);
+		schema.visit(visitor);
+	}
+}
+
 export const k = {
 	string: KString.create,
 	number: KNumber.create,
@@ -1379,6 +1424,17 @@ export const k = {
 	scalar: KScalar.create,
 	literal: KLiteral.create,
 	union: KUnion.create,
+	lazy: KLazy.create,
+
+	/**
+	 * Schema for any valid JSON value
+	 */
+	json: () => {
+		const jsonSchema: BaseSchema<JSONValue, JSONValue, BaseSchemaDef<JSONValue>> = k.lazy(() =>
+			k.union([k.string(), k.number(), k.boolean(), k.null(), k.array(jsonSchema), k.record(k.string(), jsonSchema)]),
+		);
+		return jsonSchema;
+	},
 
 	/**
 	 * @internal

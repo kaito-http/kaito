@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import {describe, it} from 'node:test';
-import {k, KArray, KBoolean, KNull, KNumber, KRecord, KRef, KString, KUnion} from './schema.ts';
+import {k, KArray, KBoolean, KLazy, KNull, KNumber, KRef, KString, KUnion} from './schema.ts';
 
 describe('Schema', () => {
 	describe('KString', () => {
@@ -833,9 +833,7 @@ describe('Schema', () => {
 
 	describe('OpenAPI example and description support', () => {
 		it('should include example and description in string schema', () => {
-			const schema = k.string()
-				.description('User email address')
-				.example('user@example.com');
+			const schema = k.string().description('User email address').example('user@example.com');
 
 			const openapi = schema.toOpenAPI();
 			assert.deepStrictEqual(openapi, {
@@ -846,9 +844,7 @@ describe('Schema', () => {
 		});
 
 		it('should include example and description in number schema', () => {
-			const schema = k.number()
-				.description('User age')
-				.example(25);
+			const schema = k.number().description('User age').example(25);
 
 			const openapi = schema.toOpenAPI();
 			assert.deepStrictEqual(openapi, {
@@ -859,9 +855,7 @@ describe('Schema', () => {
 		});
 
 		it('should include example and description in boolean schema', () => {
-			const schema = k.boolean()
-				.description('Is user active')
-				.example(true);
+			const schema = k.boolean().description('Is user active').example(true);
 
 			const openapi = schema.toOpenAPI();
 			assert.deepStrictEqual(openapi, {
@@ -872,44 +866,41 @@ describe('Schema', () => {
 		});
 
 		it('should include example and description in array schema', () => {
-			const schema = k.array(k.string())
-				.description('List of tags')
-				.example(['tag1', 'tag2']);
+			const schema = k.array(k.string()).description('List of tags').example(['tag1', 'tag2']);
 
 			const openapi = schema.toOpenAPI();
 			assert.deepStrictEqual(openapi, {
 				type: 'array',
-				items: { type: 'string' },
+				items: {type: 'string'},
 				description: 'List of tags',
 				example: ['tag1', 'tag2'],
 			});
 		});
 
 		it('should include example and description in object schema', () => {
-			const schema = k.object({
-				name: k.string(),
-				age: k.number(),
-			})
+			const schema = k
+				.object({
+					name: k.string(),
+					age: k.number(),
+				})
 				.description('User object')
-				.example({ name: 'John', age: 30 });
+				.example({name: 'John', age: 30});
 
 			const openapi = schema.toOpenAPI();
 			assert.deepStrictEqual(openapi, {
 				type: 'object',
 				properties: {
-					name: { type: 'string' },
-					age: { type: 'number' },
+					name: {type: 'string'},
+					age: {type: 'number'},
 				},
 				required: ['name', 'age'],
 				description: 'User object',
-				example: { name: 'John', age: 30 },
+				example: {name: 'John', age: 30},
 			});
 		});
 
 		it('should include example and description in null schema', () => {
-			const schema = k.null()
-				.description('Always null value')
-				.example(null);
+			const schema = k.null().description('Always null value').example(null);
 
 			const openapi = schema.toOpenAPI();
 			assert.deepStrictEqual(openapi, {
@@ -920,9 +911,7 @@ describe('Schema', () => {
 		});
 
 		it('should include example and description in union schema', () => {
-			const schema = k.union([k.string(), k.number()])
-				.description('String or number')
-				.example('test');
+			const schema = k.union([k.string(), k.number()]).description('String or number').example('test');
 
 			const openapi = schema.toOpenAPI() as any;
 			assert.strictEqual(openapi.description, 'String or number');
@@ -931,9 +920,7 @@ describe('Schema', () => {
 		});
 
 		it('should include example and description in literal schema', () => {
-			const schema = k.literal('active')
-				.description('Status must be active')
-				.example('active');
+			const schema = k.literal('active').description('Status must be active').example('active');
 
 			const openapi = schema.toOpenAPI();
 			assert.deepStrictEqual(openapi, {
@@ -946,10 +933,12 @@ describe('Schema', () => {
 
 		it('should handle nested schemas with examples', () => {
 			const schema = k.object({
-				user: k.object({
-					email: k.string().example('test@example.com'),
-					age: k.number().example(25),
-				}).example({ email: 'john@example.com', age: 30 }),
+				user: k
+					.object({
+						email: k.string().example('test@example.com'),
+						age: k.number().example(25),
+					})
+					.example({email: 'john@example.com', age: 30}),
 			});
 
 			const openapi = schema.toOpenAPI() as any;
@@ -977,6 +966,235 @@ describe('Schema', () => {
 				description: 'String representation',
 				example: '12345',
 			});
+		});
+	});
+
+	describe('KLazy', () => {
+		it('should delay schema creation until first use', () => {
+			let created = false;
+			const schema = k.lazy(() => {
+				created = true;
+				return k.string();
+			});
+
+			// Schema should not be created yet
+			assert.strictEqual(created, false);
+
+			// Now use the schema
+			const result = schema.parse('test');
+			assert.strictEqual(result, 'test');
+			assert.strictEqual(created, true);
+		});
+
+		it('should cache the schema after first use', () => {
+			let createCount = 0;
+			const schema = k.lazy(() => {
+				createCount++;
+				return k.number();
+			});
+
+			schema.parse(123);
+			schema.parse(456);
+			schema.parse(789);
+
+			// Should only be created once
+			assert.strictEqual(createCount, 1);
+		});
+
+		it('should support recursive schemas', () => {
+			type TreeNode = {
+				value: string;
+				children: TreeNode[];
+			};
+
+			const treeSchema: BaseSchema<any, TreeNode, any> = k.lazy(() =>
+				k.object({
+					value: k.string(),
+					children: k.array(treeSchema),
+				}),
+			);
+
+			const tree = {
+				value: 'root',
+				children: [
+					{
+						value: 'child1',
+						children: [],
+					},
+					{
+						value: 'child2',
+						children: [
+							{
+								value: 'grandchild',
+								children: [],
+							},
+						],
+					},
+				],
+			};
+
+			const parsed = treeSchema.parse(tree);
+			assert.deepStrictEqual(parsed, tree);
+		});
+
+		it('should handle validation errors correctly', () => {
+			const schema = k.lazy(() => k.string().email());
+
+			assert.throws(() => schema.parse('not-an-email'), /Invalid email format/);
+		});
+
+		it('should support parseSafe', () => {
+			const schema = k.lazy(() => k.number().min(0).max(100));
+
+			const validResult = schema.parseSafe(50);
+			assert.strictEqual(validResult.success, true);
+			if (validResult.success) {
+				assert.strictEqual(validResult.result, 50);
+			}
+
+			const invalidResult = schema.parseSafe(150);
+			assert.strictEqual(invalidResult.success, false);
+		});
+
+		it('should support serialization', () => {
+			const schema = k.lazy(() =>
+				k.scalar({
+					schema: k.string(),
+					toServer: s => new Date(s),
+					toClient: d => d.toISOString(),
+				}),
+			);
+
+			const date = new Date('2023-01-01');
+			const serialized = schema.serialize(date);
+			assert.strictEqual(serialized, '2023-01-01T00:00:00.000Z');
+		});
+
+		it('should generate correct OpenAPI', () => {
+			const schema = k.lazy(() => k.string().min(5));
+			const openapi = schema.toOpenAPI();
+
+			assert.deepStrictEqual(openapi, {
+				type: 'string',
+				minLength: 5,
+			});
+		});
+
+		it('should work with visit method', () => {
+			const schema = k.lazy(() =>
+				k.object({
+					name: k.string(),
+					age: k.number(),
+				}),
+			);
+
+			const visited: string[] = [];
+			schema.visit(child => {
+				if (child instanceof KString) visited.push('string');
+				if (child instanceof KNumber) visited.push('number');
+			});
+
+			assert(visited.includes('string'));
+			assert(visited.includes('number'));
+		});
+
+		it('should be an instance of KLazy', () => {
+			const schema = k.lazy(() => k.string());
+			assert(schema instanceof KLazy);
+		});
+	});
+
+	describe('k.json()', () => {
+		const schema = k.json();
+
+		it('should accept primitive JSON values', () => {
+			assert.strictEqual(schema.parse('string'), 'string');
+			assert.strictEqual(schema.parse(123), 123);
+			assert.strictEqual(schema.parse(true), true);
+			assert.strictEqual(schema.parse(false), false);
+			assert.strictEqual(schema.parse(null), null);
+		});
+
+		it('should accept arrays', () => {
+			assert.deepStrictEqual(schema.parse([]), []);
+			assert.deepStrictEqual(schema.parse([1, 2, 3]), [1, 2, 3]);
+			assert.deepStrictEqual(schema.parse(['a', 'b', 'c']), ['a', 'b', 'c']);
+			assert.deepStrictEqual(schema.parse([true, false, null]), [true, false, null]);
+		});
+
+		it('should accept objects', () => {
+			assert.deepStrictEqual(schema.parse({}), {});
+			assert.deepStrictEqual(schema.parse({a: 1}), {a: 1});
+			assert.deepStrictEqual(schema.parse({name: 'test', age: 30}), {name: 'test', age: 30});
+		});
+
+		it('should accept nested structures', () => {
+			const complex = {
+				name: 'John',
+				age: 30,
+				active: true,
+				scores: [95, 87, 92],
+				metadata: {
+					created: '2023-01-01',
+					tags: ['user', 'admin'],
+					settings: {
+						theme: 'dark',
+						notifications: true,
+					},
+				},
+				nullable: null,
+			};
+			assert.deepStrictEqual(schema.parse(complex), complex);
+		});
+
+		it('should accept deeply nested arrays and objects', () => {
+			const deeplyNested = [
+				{
+					a: [1, {b: [2, {c: [3, {d: 'deep'}]}]}],
+				},
+			];
+			assert.deepStrictEqual(schema.parse(deeplyNested), deeplyNested);
+		});
+
+		it('should reject undefined', () => {
+			assert.throws(() => schema.parse(undefined));
+		});
+
+		it('should reject functions', () => {
+			assert.throws(() => schema.parse(() => {}));
+		});
+
+		it('should reject symbols', () => {
+			assert.throws(() => schema.parse(Symbol('test')));
+		});
+
+		it('should accept dates as objects (they serialize to JSON)', () => {
+			// Date objects are valid objects in JavaScript and can be serialized to JSON
+			// They're treated as regular objects with properties
+			const date = new Date('2023-01-01');
+			const parsed = schema.parse(date);
+			assert(typeof parsed === 'object');
+		});
+
+		it('should handle mixed type arrays', () => {
+			const mixed = ['string', 123, true, null, {nested: 'object'}, ['nested', 'array']];
+			assert.deepStrictEqual(schema.parse(mixed), mixed);
+		});
+
+		it('should work with parseSafe', () => {
+			const result = schema.parseSafe({valid: 'json'});
+			assert.strictEqual(result.success, true);
+			if (result.success) {
+				assert.deepStrictEqual(result.result, {valid: 'json'});
+			}
+
+			const invalid = schema.parseSafe(undefined);
+			assert.strictEqual(invalid.success, false);
+		});
+
+		it('should serialize JSON values correctly', () => {
+			const value = {a: 1, b: ['x', 'y'], c: null};
+			assert.deepStrictEqual(schema.serialize(value), value);
 		});
 	});
 
@@ -1024,7 +1242,7 @@ describe('Schema', () => {
 				assert.deepStrictEqual(schema.parse({abc: 1, def: 2}), {abc: 1, def: 2});
 			});
 
-			it('should reject keys that don\'t match the pattern', () => {
+			it("should reject keys that don't match the pattern", () => {
 				assert.throws(() => schema.parse({ABC: 1}), /String must match/);
 				assert.throws(() => schema.parse({'123': 1}), /String must match/);
 				assert.throws(() => schema.parse({'ab-cd': 1}), /String must match/);
@@ -1032,10 +1250,13 @@ describe('Schema', () => {
 		});
 
 		describe('complex value types', () => {
-			const schema = k.record(k.string(), k.object({
-				id: k.number(),
-				name: k.string(),
-			}));
+			const schema = k.record(
+				k.string(),
+				k.object({
+					id: k.number(),
+					name: k.string(),
+				}),
+			);
 
 			it('should validate complex object values', () => {
 				const input = {
@@ -1046,14 +1267,22 @@ describe('Schema', () => {
 			});
 
 			it('should reject invalid object values', () => {
-				assert.throws(() => schema.parse({
-					user1: {id: 1, name: 'Alice'},
-					user2: {id: '2', name: 'Bob'},
-				}), /Expected number/);
+				assert.throws(
+					() =>
+						schema.parse({
+							user1: {id: 1, name: 'Alice'},
+							user2: {id: '2', name: 'Bob'},
+						}),
+					/Expected number/,
+				);
 
-				assert.throws(() => schema.parse({
-					user1: {id: 1},
-				}), /Missing required property: name/);
+				assert.throws(
+					() =>
+						schema.parse({
+							user1: {id: 1},
+						}),
+					/Missing required property: name/,
+				);
 			});
 		});
 
@@ -1070,13 +1299,21 @@ describe('Schema', () => {
 			});
 
 			it('should reject invalid nested values', () => {
-				assert.throws(() => schema.parse({
-					group1: {flag1: 'not boolean'},
-				}), /Expected boolean/);
+				assert.throws(
+					() =>
+						schema.parse({
+							group1: {flag1: 'not boolean'},
+						}),
+					/Expected boolean/,
+				);
 
-				assert.throws(() => schema.parse({
-					group1: 'not an object',
-				}), /Expected object/);
+				assert.throws(
+					() =>
+						schema.parse({
+							group1: 'not an object',
+						}),
+					/Expected object/,
+				);
 			});
 		});
 
@@ -1094,9 +1331,9 @@ describe('Schema', () => {
 					k.string(),
 					k.scalar({
 						schema: k.string(),
-						toServer: (s) => new Date(s),
-						toClient: (d) => d.toISOString(),
-					})
+						toServer: s => new Date(s),
+						toClient: d => d.toISOString(),
+					}),
 				);
 
 				const dates = {
@@ -1163,8 +1400,12 @@ describe('Schema', () => {
 
 			it('should include key constraints in OpenAPI', () => {
 				const schema = k.record(
-					k.string().regex(/^[a-z]+$/).min(3).max(10),
-					k.number()
+					k
+						.string()
+						.regex(/^[a-z]+$/)
+						.min(3)
+						.max(10),
+					k.number(),
 				);
 				const openapi = schema.toOpenAPI();
 
@@ -1183,10 +1424,7 @@ describe('Schema', () => {
 			});
 
 			it('should include value constraints in OpenAPI', () => {
-				const schema = k.record(
-					k.string(),
-					k.number().min(0).max(100)
-				);
+				const schema = k.record(k.string(), k.number().min(0).max(100));
 				const openapi = schema.toOpenAPI();
 
 				assert.deepStrictEqual(openapi, {
@@ -1208,7 +1446,7 @@ describe('Schema', () => {
 					k.object({
 						id: k.number(),
 						name: k.string(),
-					})
+					}),
 				);
 				const openapi = schema.toOpenAPI();
 
@@ -1229,7 +1467,8 @@ describe('Schema', () => {
 			});
 
 			it('should include description and example', () => {
-				const schema = k.record(k.string(), k.number())
+				const schema = k
+					.record(k.string(), k.number())
 					.description('A mapping of names to ages')
 					.example({Alice: 30, Bob: 25});
 
@@ -1283,7 +1522,7 @@ describe('Schema', () => {
 				const schema = k.record(k.string(), k.number());
 				const visited: string[] = [];
 
-				schema.visit((child) => {
+				schema.visit(child => {
 					if (child instanceof KString) visited.push('string');
 					if (child instanceof KNumber) visited.push('number');
 				});
@@ -1314,7 +1553,7 @@ describe('Schema', () => {
 				const input = {
 					'key-with-dash': 1,
 					'key.with.dots': 2,
-					'key_with_underscore': 3,
+					key_with_underscore: 3,
 					'key with spaces': 4,
 				};
 				assert.deepStrictEqual(schema.parse(input), input);
