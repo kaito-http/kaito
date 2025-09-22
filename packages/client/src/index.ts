@@ -292,6 +292,10 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any
 				return new KaitoSSEStream(response.body) as never;
 			}
 
+			if (response.headers.get('Content-Length') === '0') {
+				return undefined as never;
+			}
+
 			return await response.json();
 		};
 	};
