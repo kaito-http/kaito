@@ -979,4 +979,359 @@ describe('Schema', () => {
 			});
 		});
 	});
+
+	describe('KRecord', () => {
+		describe('basic validation', () => {
+			const schema = k.record(k.string(), k.number());
+
+			it('should accept valid record objects', () => {
+				assert.deepStrictEqual(schema.parse({}), {});
+				assert.deepStrictEqual(schema.parse({a: 1}), {a: 1});
+				assert.deepStrictEqual(schema.parse({a: 1, b: 2, c: 3}), {a: 1, b: 2, c: 3});
+			});
+
+			it('should reject non-objects', () => {
+				assert.throws(() => schema.parse(null), /Expected object/);
+				assert.throws(() => schema.parse(undefined), /Expected object/);
+				assert.throws(() => schema.parse('string'), /Expected object/);
+				assert.throws(() => schema.parse(123), /Expected object/);
+				assert.throws(() => schema.parse(true), /Expected object/);
+				assert.throws(() => schema.parse([]), /Expected object/);
+			});
+
+			it('should validate all values', () => {
+				assert.throws(() => schema.parse({a: 'not a number'}), /Expected number/);
+				assert.throws(() => schema.parse({a: 1, b: 'invalid'}), /Expected number/);
+				assert.throws(() => schema.parse({a: 1, b: null}), /Expected number/);
+			});
+
+			it('should handle empty objects', () => {
+				const result = schema.parse({});
+				assert.deepStrictEqual(result, {});
+			});
+
+			it('should preserve all properties', () => {
+				const input = {prop1: 1, prop2: 2, prop3: 3};
+				const result = schema.parse(input);
+				assert.deepStrictEqual(result, input);
+			});
+		});
+
+		describe('key validation', () => {
+			const schema = k.record(k.string().regex(/^[a-z]+$/), k.number());
+
+			it('should validate keys match the pattern', () => {
+				assert.deepStrictEqual(schema.parse({abc: 1, def: 2}), {abc: 1, def: 2});
+			});
+
+			it('should reject keys that don\'t match the pattern', () => {
+				assert.throws(() => schema.parse({ABC: 1}), /String must match/);
+				assert.throws(() => schema.parse({'123': 1}), /String must match/);
+				assert.throws(() => schema.parse({'ab-cd': 1}), /String must match/);
+			});
+		});
+
+		describe('complex value types', () => {
+			const schema = k.record(k.string(), k.object({
+				id: k.number(),
+				name: k.string(),
+			}));
+
+			it('should validate complex object values', () => {
+				const input = {
+					user1: {id: 1, name: 'Alice'},
+					user2: {id: 2, name: 'Bob'},
+				};
+				assert.deepStrictEqual(schema.parse(input), input);
+			});
+
+			it('should reject invalid object values', () => {
+				assert.throws(() => schema.parse({
+					user1: {id: 1, name: 'Alice'},
+					user2: {id: '2', name: 'Bob'},
+				}), /Expected number/);
+
+				assert.throws(() => schema.parse({
+					user1: {id: 1},
+				}), /Missing required property: name/);
+			});
+		});
+
+		describe('nested records', () => {
+			const schema = k.record(k.string(), k.record(k.string(), k.boolean()));
+
+			it('should validate nested records', () => {
+				const input = {
+					group1: {flag1: true, flag2: false},
+					group2: {flag3: true},
+					group3: {},
+				};
+				assert.deepStrictEqual(schema.parse(input), input);
+			});
+
+			it('should reject invalid nested values', () => {
+				assert.throws(() => schema.parse({
+					group1: {flag1: 'not boolean'},
+				}), /Expected boolean/);
+
+				assert.throws(() => schema.parse({
+					group1: 'not an object',
+				}), /Expected object/);
+			});
+		});
+
+		describe('serialization', () => {
+			const schema = k.record(k.string(), k.number());
+
+			it('should serialize record values correctly', () => {
+				const value = {a: 1, b: 2, c: 3};
+				const serialized = schema.serialize(value);
+				assert.deepStrictEqual(serialized, value);
+			});
+
+			it('should serialize complex values', () => {
+				const complexSchema = k.record(
+					k.string(),
+					k.scalar({
+						schema: k.string(),
+						toServer: (s) => new Date(s),
+						toClient: (d) => d.toISOString(),
+					})
+				);
+
+				const dates = {
+					date1: new Date('2023-01-01'),
+					date2: new Date('2023-12-31'),
+				};
+
+				const serialized = complexSchema.serialize(dates);
+				assert.deepStrictEqual(serialized, {
+					date1: '2023-01-01T00:00:00.000Z',
+					date2: '2023-12-31T00:00:00.000Z',
+				});
+			});
+		});
+
+		describe('parseSafe', () => {
+			const schema = k.record(k.string(), k.number());
+
+			it('should return success result for valid input', () => {
+				const result = schema.parseSafe({a: 1, b: 2});
+				assert.strictEqual(result.success, true);
+				if (result.success) {
+					assert.deepStrictEqual(result.result, {a: 1, b: 2});
+				}
+			});
+
+			it('should return failure result for invalid input', () => {
+				const result = schema.parseSafe({a: 'invalid'});
+				assert.strictEqual(result.success, false);
+				if (!result.success) {
+					assert(result.issues.size > 0);
+				}
+			});
+
+			it('should return error on first invalid value', () => {
+				const result = schema.parseSafe({
+					a: 'invalid1',
+					b: 'invalid2',
+					c: null,
+				});
+				assert.strictEqual(result.success, false);
+				if (!result.success) {
+					// parseSafe returns early on first error, consistent with other schemas
+					assert(result.issues.size >= 1);
+				}
+			});
+		});
+
+		describe('OpenAPI generation', () => {
+			it('should generate correct OpenAPI for simple record', () => {
+				const schema = k.record(k.string(), k.number());
+				const openapi = schema.toOpenAPI();
+
+				assert.deepStrictEqual(openapi, {
+					type: 'object',
+					propertyNames: {
+						type: 'string',
+					},
+					additionalProperties: {
+						type: 'number',
+					},
+				});
+			});
+
+			it('should include key constraints in OpenAPI', () => {
+				const schema = k.record(
+					k.string().regex(/^[a-z]+$/).min(3).max(10),
+					k.number()
+				);
+				const openapi = schema.toOpenAPI();
+
+				assert.deepStrictEqual(openapi, {
+					type: 'object',
+					propertyNames: {
+						type: 'string',
+						pattern: '^[a-z]+$',
+						minLength: 3,
+						maxLength: 10,
+					},
+					additionalProperties: {
+						type: 'number',
+					},
+				});
+			});
+
+			it('should include value constraints in OpenAPI', () => {
+				const schema = k.record(
+					k.string(),
+					k.number().min(0).max(100)
+				);
+				const openapi = schema.toOpenAPI();
+
+				assert.deepStrictEqual(openapi, {
+					type: 'object',
+					propertyNames: {
+						type: 'string',
+					},
+					additionalProperties: {
+						type: 'number',
+						minimum: 0,
+						maximum: 100,
+					},
+				});
+			});
+
+			it('should generate OpenAPI for complex value types', () => {
+				const schema = k.record(
+					k.string(),
+					k.object({
+						id: k.number(),
+						name: k.string(),
+					})
+				);
+				const openapi = schema.toOpenAPI();
+
+				assert.deepStrictEqual(openapi, {
+					type: 'object',
+					propertyNames: {
+						type: 'string',
+					},
+					additionalProperties: {
+						type: 'object',
+						properties: {
+							id: {type: 'number'},
+							name: {type: 'string'},
+						},
+						required: ['id', 'name'],
+					},
+				});
+			});
+
+			it('should include description and example', () => {
+				const schema = k.record(k.string(), k.number())
+					.description('A mapping of names to ages')
+					.example({Alice: 30, Bob: 25});
+
+				const openapi = schema.toOpenAPI();
+				assert.deepStrictEqual(openapi, {
+					type: 'object',
+					propertyNames: {
+						type: 'string',
+					},
+					additionalProperties: {
+						type: 'number',
+					},
+					description: 'A mapping of names to ages',
+					example: {Alice: 30, Bob: 25},
+				});
+			});
+		});
+
+		describe('with literal keys', () => {
+			const schema = k.record(k.literal('constant'), k.number());
+
+			it('should only accept the literal key', () => {
+				assert.deepStrictEqual(schema.parse({constant: 42}), {constant: 42});
+			});
+
+			it('should reject other keys', () => {
+				assert.throws(() => schema.parse({other: 42}), /Expected constant/);
+			});
+		});
+
+		describe('with union value types', () => {
+			const schema = k.record(k.string(), k.union([k.string(), k.number()]));
+
+			it('should accept both string and number values', () => {
+				const input = {
+					a: 'string',
+					b: 123,
+					c: 'another string',
+				};
+				assert.deepStrictEqual(schema.parse(input), input);
+			});
+
+			it('should reject invalid union values', () => {
+				assert.throws(() => schema.parse({a: true}), /Expected number/);
+				assert.throws(() => schema.parse({a: null}), /Expected number/);
+			});
+		});
+
+		describe('visit method', () => {
+			it('should traverse key and value schemas', () => {
+				const schema = k.record(k.string(), k.number());
+				const visited: string[] = [];
+
+				schema.visit((child) => {
+					if (child instanceof KString) visited.push('string');
+					if (child instanceof KNumber) visited.push('number');
+				});
+
+				assert.deepStrictEqual(visited, ['string', 'number']);
+			});
+		});
+
+		describe('edge cases', () => {
+			it('should handle objects with prototype chain properties', () => {
+				const schema = k.record(k.string(), k.number());
+				const obj = Object.create({inherited: 999});
+				obj.own = 123;
+
+				const result = schema.parse(obj);
+				assert.deepStrictEqual(result, {own: 123});
+				assert(!('inherited' in result));
+			});
+
+			it('should handle numeric string keys', () => {
+				const schema = k.record(k.string(), k.number());
+				const input = {'123': 456, '789': 101};
+				assert.deepStrictEqual(schema.parse(input), input);
+			});
+
+			it('should validate special character keys', () => {
+				const schema = k.record(k.string(), k.number());
+				const input = {
+					'key-with-dash': 1,
+					'key.with.dots': 2,
+					'key_with_underscore': 3,
+					'key with spaces': 4,
+				};
+				assert.deepStrictEqual(schema.parse(input), input);
+			});
+		});
+
+		describe('comparison with k.object', () => {
+			it('should behave differently from object with fixed keys', () => {
+				const recordSchema = k.record(k.string(), k.number());
+				const objectSchema = k.object({a: k.number(), b: k.number()});
+
+				// Record accepts any string keys
+				assert.deepStrictEqual(recordSchema.parse({x: 1, y: 2}), {x: 1, y: 2});
+
+				// Object requires specific keys
+				assert.throws(() => objectSchema.parse({x: 1, y: 2}), /Missing required property/);
+			});
+		});
+	});
 });
