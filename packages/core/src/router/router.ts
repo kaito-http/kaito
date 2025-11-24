@@ -271,7 +271,7 @@ export class Router<
 					rawParams,
 				);
 
-				const result: JSONValue = await route.run({
+				const result: unknown = await route.run({
 					ctx,
 					body,
 					query,
@@ -307,6 +307,11 @@ export class Router<
 					return head.toResponse(parsed);
 				}
 
+				if (result === undefined) {
+					return head.toResponse(null);
+				}
+
+				// @ts-expect-error - TODO(@alii): Should we assert more that this is valid JSON?
 				return head.toResponse(result);
 			} catch (e) {
 				const error = WrappedError.maybe(e);
