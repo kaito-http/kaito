@@ -1,4 +1,4 @@
-import type {JSONValue} from '../dist/index.js';
+import type {JSONValue} from './schema/schema.ts';
 
 /**
  * This class is merely a wrapper around a `Headers` object and a status code.
