@@ -1274,6 +1274,120 @@ export class KLiteral<Value extends string | number | boolean> extends BaseSchem
 }
 
 /////////////////////////////////////////////////////
+/////////////////////// KENUM ///////////////////////
+/////////////////////////////////////////////////////
+
+export interface EnumDef<T extends readonly [string, ...string[]]> extends BaseSchemaDef<T[number]> {
+	values: T;
+}
+
+export class KEnum<T extends readonly [string, ...string[]]> extends BaseSchema<T[number], T[number], EnumDef<T>> {
+	public static create = <T extends readonly [string, ...string[]]>(values: T) => new KEnum({values});
+
+	public serialize(value: T[number]): T[number] {
+		return value;
+	}
+
+	public override toOpenAPI(): SchemaObject {
+		const baseSchema = this.getSchemaObject();
+		return {
+			...baseSchema,
+			type: 'string',
+			enum: [...this.def.values],
+		};
+	}
+
+	public parseSafe(json: unknown): ParseResult<T[number]> {
+		return ParseContext.result(ctx => {
+			if (typeof json !== 'string') {
+				return ctx.addIssue('Expected string', []);
+			}
+
+			if (!this.def.values.includes(json as T[number])) {
+				return ctx.addIssue(`Expected one of: ${this.def.values.join(', ')}`, []);
+			}
+
+			return json as T[number];
+		});
+	}
+
+	public parse(json: unknown): T[number] {
+		const result = this.parseSafe(json);
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+		return result.result;
+	}
+
+	public override visit(): void {
+		// leaf, noop
+	}
+}
+
+/////////////////////////////////////////////////////
+/////////////////// KNATIVEENUM /////////////////////
+/////////////////////////////////////////////////////
+
+export interface NativeEnumDef<T extends Record<string, string | number>> extends BaseSchemaDef<T[keyof T]> {
+	enum: T;
+}
+
+export class KNativeEnum<T extends Record<string, string | number>> extends BaseSchema<
+	T[keyof T],
+	T[keyof T],
+	NativeEnumDef<T>
+> {
+	public static create = <T extends Record<string, string | number>>(enumObject: T) =>
+		new KNativeEnum({enum: enumObject});
+
+	public serialize(value: T[keyof T]): T[keyof T] {
+		return value;
+	}
+
+	public override toOpenAPI(): SchemaObject {
+		const baseSchema = this.getSchemaObject();
+		// filter out reverse mappings in numeric enums (keys that are numeric strings)
+		const actualValues = Object.keys(this.def.enum)
+			.filter(key => Number.isNaN(Number(key)))
+			.map(key => this.def.enum[key]);
+		const uniqueValues = [...new Set(actualValues)];
+		const type = typeof uniqueValues[0] === 'number' ? 'number' : 'string';
+		return {
+			...baseSchema,
+			type,
+			enum: uniqueValues,
+		};
+	}
+
+	public parseSafe(json: unknown): ParseResult<T[keyof T]> {
+		return ParseContext.result(ctx => {
+			// filter out reverse mappings in numeric enums (keys that are numeric strings)
+			const actualValues = Object.keys(this.def.enum)
+				.filter(key => Number.isNaN(Number(key)))
+				.map(key => this.def.enum[key]);
+
+			if (!actualValues.includes(json as T[keyof T])) {
+				return ctx.addIssue(`Expected one of: ${actualValues.join(', ')}`, []);
+			}
+
+			return json as T[keyof T];
+		});
+	}
+
+	public parse(json: unknown): T[keyof T] {
+		const result = this.parseSafe(json);
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+		return result.result;
+	}
+
+	public override visit(): void {
+		// leaf, noop
+	}
+}
+
+/////////////////////////////////////////////////////
 ////////////////////// KRECORD //////////////////////
 /////////////////////////////////////////////////////
 
@@ -1423,6 +1537,8 @@ export const k = {
 	object: KObject.create,
 	scalar: KScalar.create,
 	literal: KLiteral.create,
+	enum: KEnum.create,
+	nativeEnum: KNativeEnum.create,
 	union: KUnion.create,
 	lazy: KLazy.create,
 

@@ -969,6 +969,311 @@ describe('Schema', () => {
 		});
 	});
 
+	describe('KEnum', () => {
+		describe('basic validation', () => {
+			const schema = k.enum(['red', 'green', 'blue']);
+
+			it('should accept valid enum values', () => {
+				assert.strictEqual(schema.parse('red'), 'red');
+				assert.strictEqual(schema.parse('green'), 'green');
+				assert.strictEqual(schema.parse('blue'), 'blue');
+			});
+
+			it('should reject invalid enum values', () => {
+				assert.throws(() => schema.parse('yellow'));
+				assert.throws(() => schema.parse('RED'));
+				assert.throws(() => schema.parse(''));
+			});
+
+			it('should reject non-string values', () => {
+				assert.throws(() => schema.parse(123));
+				assert.throws(() => schema.parse(true));
+				assert.throws(() => schema.parse(null));
+				assert.throws(() => schema.parse(undefined));
+				assert.throws(() => schema.parse({}));
+				assert.throws(() => schema.parse([]));
+			});
+		});
+
+		describe('parseSafe', () => {
+			const schema = k.enum(['active', 'inactive', 'pending']);
+
+			it('should return success result for valid values', () => {
+				const result = schema.parseSafe('active');
+				assert.strictEqual(result.success, true);
+				if (result.success) {
+					assert.strictEqual(result.result, 'active');
+				}
+			});
+
+			it('should return failure result for invalid values', () => {
+				const result = schema.parseSafe('invalid');
+				assert.strictEqual(result.success, false);
+				if (!result.success) {
+					assert.ok(result.issues.size > 0);
+					const firstIssue = Array.from(result.issues)[0];
+					assert.ok(firstIssue?.message.includes('Expected one of'));
+				}
+			});
+
+			it('should return failure result for non-string values', () => {
+				const result = schema.parseSafe(123);
+				assert.strictEqual(result.success, false);
+				if (!result.success) {
+					const firstIssue = Array.from(result.issues)[0];
+					assert.ok(firstIssue && firstIssue.message === 'Expected string');
+				}
+			});
+		});
+
+		describe('serialization', () => {
+			const schema = k.enum(['small', 'medium', 'large']);
+
+			it('should serialize values correctly', () => {
+				assert.strictEqual(schema.serialize('small'), 'small');
+				assert.strictEqual(schema.serialize('medium'), 'medium');
+				assert.strictEqual(schema.serialize('large'), 'large');
+			});
+		});
+
+		describe('OpenAPI generation', () => {
+			it('should generate correct OpenAPI schema', () => {
+				const schema = k.enum(['draft', 'published', 'archived']);
+				const openapi = schema.toOpenAPI();
+
+				assert.strictEqual(openapi.type, 'string');
+				assert.deepStrictEqual(openapi.enum, ['draft', 'published', 'archived']);
+			});
+
+			it('should include description and example', () => {
+				const schema = k.enum(['low', 'medium', 'high']).description('Priority level').example('medium');
+				const openapi = schema.toOpenAPI();
+
+				assert.strictEqual(openapi.type, 'string');
+				assert.deepStrictEqual(openapi.enum, ['low', 'medium', 'high']);
+				assert.strictEqual(openapi.description, 'Priority level');
+				assert.strictEqual(openapi.example, 'medium');
+			});
+		});
+
+		describe('single value enum', () => {
+			const schema = k.enum(['only']);
+
+			it('should accept the single valid value', () => {
+				assert.strictEqual(schema.parse('only'), 'only');
+			});
+
+			it('should reject other values', () => {
+				assert.throws(() => schema.parse('other'));
+			});
+		});
+
+		describe('visit method', () => {
+			it('should be a leaf node', () => {
+				const schema = k.enum(['a', 'b', 'c']);
+				assert.doesNotThrow(() => schema.visit());
+			});
+		});
+	});
+
+	describe('KNativeEnum', () => {
+		describe('string enum', () => {
+			enum Color {
+				Red = 'RED',
+				Green = 'GREEN',
+				Blue = 'BLUE',
+			}
+
+			const schema = k.nativeEnum(Color);
+
+			it('should accept valid enum values', () => {
+				assert.strictEqual(schema.parse('RED'), 'RED');
+				assert.strictEqual(schema.parse('GREEN'), 'GREEN');
+				assert.strictEqual(schema.parse('BLUE'), 'BLUE');
+			});
+
+			it('should reject invalid values', () => {
+				assert.throws(() => schema.parse('red'));
+				assert.throws(() => schema.parse('YELLOW'));
+				assert.throws(() => schema.parse(''));
+			});
+
+			it('should reject non-string values when enum is string-based', () => {
+				assert.throws(() => schema.parse(123));
+				assert.throws(() => schema.parse(null));
+				assert.throws(() => schema.parse(undefined));
+			});
+		});
+
+		describe('numeric enum', () => {
+			enum Status {
+				Pending = 0,
+				Active = 1,
+				Inactive = 2,
+			}
+
+			const schema = k.nativeEnum(Status);
+
+			it('should accept valid numeric enum values', () => {
+				assert.strictEqual(schema.parse(0), 0);
+				assert.strictEqual(schema.parse(1), 1);
+				assert.strictEqual(schema.parse(2), 2);
+			});
+
+			it('should reject invalid numeric values', () => {
+				assert.throws(() => schema.parse(3));
+				assert.throws(() => schema.parse(-1));
+			});
+
+			it('should reject string keys', () => {
+				assert.throws(() => schema.parse('Pending'));
+				assert.throws(() => schema.parse('Active'));
+			});
+		});
+
+		describe('mixed numeric enum', () => {
+			enum HttpStatus {
+				OK = 200,
+				NotFound = 404,
+				ServerError = 500,
+			}
+
+			const schema = k.nativeEnum(HttpStatus);
+
+			it('should accept valid status codes', () => {
+				assert.strictEqual(schema.parse(200), 200);
+				assert.strictEqual(schema.parse(404), 404);
+				assert.strictEqual(schema.parse(500), 500);
+			});
+
+			it('should reject invalid status codes', () => {
+				assert.throws(() => schema.parse(201));
+				assert.throws(() => schema.parse(0));
+			});
+		});
+
+		describe('parseSafe', () => {
+			enum Role {
+				Admin = 'ADMIN',
+				User = 'USER',
+				Guest = 'GUEST',
+			}
+
+			const schema = k.nativeEnum(Role);
+
+			it('should return success result for valid values', () => {
+				const result = schema.parseSafe('ADMIN');
+				assert.strictEqual(result.success, true);
+				if (result.success) {
+					assert.strictEqual(result.result, 'ADMIN');
+				}
+			});
+
+			it('should return failure result for invalid values', () => {
+				const result = schema.parseSafe('MODERATOR');
+				assert.strictEqual(result.success, false);
+				if (!result.success) {
+					assert.ok(result.issues.size > 0);
+					const firstIssue = Array.from(result.issues)[0];
+					assert.ok(firstIssue && firstIssue.message.includes('Expected one of'));
+				}
+			});
+		});
+
+		describe('serialization', () => {
+			enum Size {
+				Small = 'S',
+				Medium = 'M',
+				Large = 'L',
+			}
+
+			const schema = k.nativeEnum(Size);
+
+			it('should serialize values correctly', () => {
+				assert.strictEqual(schema.serialize(Size.Small), 'S');
+				assert.strictEqual(schema.serialize(Size.Medium), 'M');
+				assert.strictEqual(schema.serialize(Size.Large), 'L');
+			});
+		});
+
+		describe('OpenAPI generation', () => {
+			it('should generate correct OpenAPI schema for string enum', () => {
+				enum Environment {
+					Dev = 'development',
+					Prod = 'production',
+					Test = 'test',
+				}
+
+				const schema = k.nativeEnum(Environment);
+				const openapi = schema.toOpenAPI();
+
+				assert.strictEqual(openapi.type, 'string');
+				assert.deepStrictEqual(openapi.enum, ['development', 'production', 'test']);
+			});
+
+			it('should generate correct OpenAPI schema for numeric enum', () => {
+				enum Priority {
+					Low = 1,
+					Medium = 2,
+					High = 3,
+				}
+
+				const schema = k.nativeEnum(Priority);
+				const openapi = schema.toOpenAPI();
+
+				assert.strictEqual(openapi.type, 'number');
+				assert.deepStrictEqual(openapi.enum, [1, 2, 3]);
+			});
+
+			it('should include description and example', () => {
+				enum Theme {
+					Light = 'light',
+					Dark = 'dark',
+				}
+
+				const schema = k.nativeEnum(Theme).description('UI theme').example(Theme.Dark);
+				const openapi = schema.toOpenAPI();
+
+				assert.strictEqual(openapi.type, 'string');
+				assert.deepStrictEqual(openapi.enum, ['light', 'dark']);
+				assert.strictEqual(openapi.description, 'UI theme');
+				assert.strictEqual(openapi.example, 'dark');
+			});
+		});
+
+		describe('visit method', () => {
+			it('should be a leaf node', () => {
+				enum Test {
+					A = 'a',
+					B = 'b',
+				}
+
+				const schema = k.nativeEnum(Test);
+				assert.doesNotThrow(() => schema.visit());
+			});
+		});
+
+		describe('const enum compatibility', () => {
+			const ConstEnum = {
+				First: 'first',
+				Second: 'second',
+				Third: 'third',
+			} as const;
+
+			const schema = k.nativeEnum(ConstEnum);
+
+			it('should work with const objects', () => {
+				assert.strictEqual(schema.parse('first'), 'first');
+				assert.strictEqual(schema.parse('second'), 'second');
+				assert.strictEqual(schema.parse('third'), 'third');
+			});
+
+			it('should reject invalid values', () => {
+				assert.throws(() => schema.parse('fourth'));
+			});
+		});
+	});
+
 	describe('KLazy', () => {
 		it('should delay schema creation until first use', () => {
 			let created = false;
