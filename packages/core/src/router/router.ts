@@ -295,13 +295,7 @@ export class Router<
 					return result;
 				}
 
-				if (route.openapi?.schema) {
-					if (route.openapi.type !== 'json') {
-						throw new Error(
-							`Cannot use openapi schema for ${route.method} ${route.path} because it is not a json output type`,
-						);
-					}
-
+				if (route.openapi?.type === 'json' && route.openapi.schema) {
 					const parsed = route.openapi.schema.serialize(result);
 
 					return head.toResponse(parsed);
@@ -471,7 +465,7 @@ export class Router<
 					throw new Error(`Unknown output type in route ${route.method} ${route.path}: ${type}`);
 			}
 
-			if (route.openapi.schema) visit(route.openapi.schema);
+			if (route.openapi.type === 'json' && route.openapi.schema) visit(route.openapi.schema);
 			if (route.body) visit(route.body);
 
 			const item: OpenAPI.OperationObject = {
@@ -481,7 +475,7 @@ export class Router<
 						description: route.openapi?.description ?? 'Successful response',
 						content: {
 							[contentType]: {
-								schema: route.openapi.schema.toOpenAPI(),
+								schema: route.openapi.type === 'json' ? route.openapi.schema.toOpenAPI() : {type: 'string'},
 							},
 						},
 					},

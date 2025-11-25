@@ -1,6 +1,5 @@
 import type {Router} from './router/router.ts';
 import type {AnySchemaFor, BaseSchema, BaseSchemaDef, JSONValue} from './schema/schema.ts';
-import type {KaitoSSEResponse} from './stream/stream.ts';
 import type {ExtractRouteParams, KaitoMethod} from './util.ts';
 
 export type RouteRunData<Params extends string, Context, QueryOutput, BodyOutput> = {
@@ -17,9 +16,8 @@ export type Through<From, To, RequiredParams extends string> = (
 	params: Record<RequiredParams, string>,
 ) => Promise<To>;
 
-export type SSEOutputSpec<Result extends JSONValue> = {
+export type SSEOutputSpec = {
 	type: 'sse';
-	schema: AnySchemaFor<Result>;
 	description?: string | undefined;
 };
 
@@ -30,9 +28,8 @@ export type JSONOutputSpec<ResultInput, ResultOutput extends JSONValue> = {
 };
 
 export type OutputSpec<ResultInput, ResultOutput> =
-	ResultInput extends KaitoSSEResponse<infer R>
-		? SSEOutputSpec<Extract<R, JSONValue>>
-		: JSONOutputSpec<ResultOutput, Extract<ResultInput, JSONValue>>;
+	| SSEOutputSpec
+	| JSONOutputSpec<ResultOutput, Extract<ResultInput, JSONValue>>;
 
 export type Route<
 	// Router context

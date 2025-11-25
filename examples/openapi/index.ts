@@ -10,17 +10,13 @@ const router = create({
 const root = router
 	.post('/hello/:user_id', {
 		openapi: {
-			description: 'Hello world',
-			body: {
-				type: 'json',
-				description: 'A user object',
-				schema: k.object({
-					body: k.string(),
-					query: k.object({
-						name: k.string(),
-					}),
+			type: 'json',
+			schema: k.object({
+				body: k.string(),
+				query: k.object({
+					name: k.string(),
 				}),
-			},
+			}),
 		},
 		body: k.string(),
 		query: {
@@ -33,14 +29,7 @@ const root = router
 	})
 	.get('/stream', {
 		openapi: {
-			body: {
-				type: 'sse',
-				schema: k.object({
-					data: k.string(),
-					event: k.literal('cool'),
-					retry: k.number(),
-				}),
-			},
+			type: 'sse',
 		},
 		run: async () => {
 			const text = "This is an example of text being streamed every 100ms by using Kaito's sse() function";
@@ -76,9 +65,6 @@ const server = await KaitoServer.serve({
 	fetch: root.serve(),
 	port: 3000,
 	host: '127.0.0.1',
-	static: {
-		'/static/file.txt': new Response('Hello, world!'),
-	},
 });
 
 console.log('Server listening at', server.url);
