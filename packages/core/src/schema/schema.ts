@@ -1274,57 +1274,6 @@ export class KLiteral<Value extends string | number | boolean> extends BaseSchem
 }
 
 /////////////////////////////////////////////////////
-/////////////////////// KENUM ///////////////////////
-/////////////////////////////////////////////////////
-
-export interface EnumDef<T extends readonly [string, ...string[]]> extends BaseSchemaDef<T[number]> {
-	values: T;
-}
-
-export class KEnum<T extends readonly [string, ...string[]]> extends BaseSchema<T[number], T[number], EnumDef<T>> {
-	public static create = <T extends readonly [string, ...string[]]>(values: T) => new KEnum({values});
-
-	public serialize(value: T[number]): T[number] {
-		return value;
-	}
-
-	public override toOpenAPI(): SchemaObject {
-		const baseSchema = this.getSchemaObject();
-		return {
-			...baseSchema,
-			type: 'string',
-			enum: [...this.def.values],
-		};
-	}
-
-	public parseSafe(json: unknown): ParseResult<T[number]> {
-		return ParseContext.result(ctx => {
-			if (typeof json !== 'string') {
-				return ctx.addIssue('Expected string', []);
-			}
-
-			if (!this.def.values.includes(json as T[number])) {
-				return ctx.addIssue(`Expected one of: ${this.def.values.join(', ')}`, []);
-			}
-
-			return json as T[number];
-		});
-	}
-
-	public parse(json: unknown): T[number] {
-		const result = this.parseSafe(json);
-		if (!result.success) {
-			throw new SchemaError(result.issues);
-		}
-		return result.result;
-	}
-
-	public override visit(): void {
-		// leaf, noop
-	}
-}
-
-/////////////////////////////////////////////////////
 /////////////////// KNATIVEENUM /////////////////////
 /////////////////////////////////////////////////////
 
@@ -1537,7 +1486,11 @@ export const k = {
 	object: KObject.create,
 	scalar: KScalar.create,
 	literal: KLiteral.create,
-	enum: KEnum.create,
+	enum: <T extends readonly [string, ...string[]]>(values: T) => {
+		return k.union(
+			values.map(v => k.literal(v)) as [KLiteral<T[number]>, KLiteral<T[number]>, ...KLiteral<T[number]>[]],
+		);
+	},
 	nativeEnum: KNativeEnum.create,
 	union: KUnion.create,
 	lazy: KLazy.create,
