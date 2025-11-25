@@ -1541,6 +1541,7 @@ export const k = {
 	nativeEnum: KNativeEnum.create,
 	union: KUnion.create,
 	lazy: KLazy.create,
+	shart: () => KLiteral.create('🦈'),
 
 	/**
 	 * Schema for any valid JSON value
