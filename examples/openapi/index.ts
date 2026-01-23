@@ -7,7 +7,33 @@ const router = create({
 	onError: error => ({status: 500, message: error.message}),
 });
 
+export const NodeId = k
+	.scalar<string, bigint>({
+		schema: k.string(),
+		toClient: v => `node_${v}`,
+		toServer: v => {
+			const [_, id] = v.split('_');
+
+			return BigInt(id!);
+		},
+	})
+	.description('The unique identifier for an uptime node')
+	.example('node_1234567890abcdef');
+
 const root = router
+	.post('/', {
+		openapi: {
+			type: 'json',
+			schema: k.object({someId: NodeId}),
+		},
+		body: k.object({
+			nodeId: NodeId,
+		}),
+		async run({body}) {
+			console.log(body);
+			return {someId: BigInt(2345)};
+		},
+	})
 	.post('/hello/:user_id', {
 		openapi: {
 			type: 'json',
@@ -70,3 +96,18 @@ const server = await KaitoServer.serve({
 console.log('Server listening at', server.url);
 
 export type App = typeof root;
+
+// Client usage example - demonstrates that body.nodeId is typed as string (the input type)
+import {createKaitoHTTPClient} from '@kaito-http/client';
+
+const client = createKaitoHTTPClient<App>({base: 'http://localhost:3000'});
+
+const response = await client.post('/', {
+	body: {
+		nodeId: 'node_123', // string, not bigint (scalar input type)
+	},
+});
+
+// response.someId is string (scalar input type), not bigint (server type)
+const someId: string = response.someId;
+console.log(someId);

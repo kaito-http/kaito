@@ -1,5 +1,5 @@
 import type {Router} from './router/router.ts';
-import type {AnySchemaFor, BaseSchema, BaseSchemaDef, JSONValue} from './schema/schema.ts';
+import type {AnySchemaFor, BaseSchema, JSONValue} from './schema/schema.ts';
 import type {ExtractRouteParams, KaitoMethod} from './util.ts';
 
 export type RouteRunData<Params extends string, Context, QueryOutput, BodyOutput> = {
@@ -21,15 +21,13 @@ export type SSEOutputSpec = {
 	description?: string | undefined;
 };
 
-export type JSONOutputSpec<ResultInput, ResultOutput extends JSONValue> = {
+export type JSONOutputSpec<SchemaInput extends JSONValue = JSONValue, SchemaOutput = any> = {
 	type: 'json';
-	schema: BaseSchema<ResultOutput, ResultInput, BaseSchemaDef<ResultOutput>>;
+	schema: BaseSchema<SchemaInput, SchemaOutput, any>;
 	description?: string | undefined;
 };
 
-export type OutputSpec<ResultInput, ResultOutput> =
-	| SSEOutputSpec
-	| JSONOutputSpec<ResultOutput, Extract<ResultInput, JSONValue>>;
+export type OutputSpec = SSEOutputSpec | JSONOutputSpec;
 
 export type Route<
 	// Router context
@@ -37,24 +35,26 @@ export type Route<
 	ContextTo,
 	RouterInput extends readonly unknown[],
 	// Result information
-	ResultInput,
 	ResultOutput,
 	//Route information
 	Path extends string,
 	AdditionalParams extends string,
 	Method extends KaitoMethod,
-	// Schemas
+	// Schemas - BodyInput is wire format, BodyOutput is parsed server format
 	Query extends Record<string, JSONValue>,
-	Body extends JSONValue,
+	BodyInput extends JSONValue,
+	BodyOutput,
+	// OpenAPI spec - preserves the actual schema types
+	OpenAPI extends OutputSpec | undefined = OutputSpec | undefined,
 > = {
-	body?: AnySchemaFor<Body>;
+	body?: BaseSchema<BodyInput, BodyOutput, any>;
 	query?: {[Key in keyof Query]: AnySchemaFor<Query[Key]>};
 	path: Path;
 	method: Method;
-	openapi?: OutputSpec<ResultInput, ResultOutput>;
+	openapi?: OpenAPI;
 	router: Router<ContextFrom, ContextTo, AdditionalParams, AnyRoute, RouterInput>;
 	run(
-		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>,
+		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, BodyOutput>,
 	): Promise<ResultOutput> | ResultOutput;
 };
 
@@ -69,8 +69,6 @@ export type AnyRoute = Route<
 	any,
 	// RouterInput
 	any,
-	// ResultInput
-	any,
 	// ResultOutput
 	any,
 	// Path
@@ -81,6 +79,10 @@ export type AnyRoute = Route<
 	any,
 	// Query
 	any,
-	// Body
+	// BodyInput
+	any,
+	// BodyOutput
+	any,
+	// OpenAPI
 	any
 >;

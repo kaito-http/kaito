@@ -1,4 +1,4 @@
-import type {AnyRoute, ExtractRouteParams, KaitoMethod, Router} from '@kaito-http/core';
+import type {AnyRoute, BaseSchema, ExtractRouteParams, KaitoMethod, Router} from '@kaito-http/core';
 import type {KaitoSSEResponse, SSEEvent} from '@kaito-http/core/stream';
 import {pathcat} from 'pathcat';
 import pkg from '../package.json' with {type: 'json'};
@@ -206,19 +206,24 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any
 		}
 	}
 
+	// Response type: use openapi schema's _input (wire type) if available, otherwise JSONIFY the run return type
+	type ResponseTypeFor<M extends KaitoMethod, Path extends Extract<ROUTES, {method: M}>['path']> =
+		ReturnTypeFor<M, Path> extends KaitoSSEResponse<infer U extends SSEEvent<unknown, string>>
+			? KaitoSSEStream<U>
+			: NonNullable<Extract<ROUTES, {method: M; path: Path}>['openapi']> extends {
+						type: 'json';
+						schema: BaseSchema<infer I, any, any>;
+				  }
+				? I
+				: JSONIFY<ReturnTypeFor<M, Path>>;
+
 	const create = <M extends KaitoMethod>(method: M) => {
 		return async <Path extends Extract<ROUTES, {method: M}>['path']>(
 			path: Path,
 			...[options = {}]: [keyof PickRequiredKeys<RequestOptionsFor<M, Path>>] extends [never]
 				? [options?: AlwaysEnabledOptions]
 				: [options: RemoveOnlyUndefinedKeys<UndefinedKeysToOptional<RequestOptionsFor<M, Path>>> & AlwaysEnabledOptions]
-		): Promise<
-			Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>> extends KaitoSSEResponse<
-				infer U extends SSEEvent<unknown, string>
-			>
-				? KaitoSSEStream<U>
-				: JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>
-		> => {
+		): Promise<ResponseTypeFor<M, Path>> => {
 			const params = (options as {params?: {}}).params ?? {};
 			const query = (options as {query?: {}}).query ?? {};
 			const body = (options as {body?: unknown}).body ?? undefined;
