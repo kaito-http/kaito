@@ -3,7 +3,7 @@ import type {KaitoConfig} from '../config.ts';
 import {KaitoError, WrappedError} from '../error.ts';
 import {KaitoHead} from '../head.ts';
 import {KaitoRequest} from '../request.ts';
-import type {AnyQuery, AnyRoute, Route} from '../route.ts';
+import type {AnyQuery, AnyRoute, OutputSpec, Route} from '../route.ts';
 import {k, KRef, type AnySchemaFor, type BaseSchema, type JSONValue} from '../schema/schema.ts';
 import {isNodeLikeDev, type ExtractRouteParams, type KaitoMethod, type MaybePromise} from '../util.ts';
 
@@ -12,25 +12,27 @@ type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 		infer ContextFrom,
 		infer ContextTo,
 		infer RouterInput,
-		infer ResultInput,
 		infer ResultOutput,
 		infer Path,
 		infer AdditionalParams,
 		infer Method,
 		infer Query,
-		infer BodyOutput
+		infer BodyInput,
+		infer BodyOutput,
+		infer OpenAPI
 	>
 		? Route<
 				ContextFrom,
 				ContextTo,
 				RouterInput,
-				ResultInput,
 				ResultOutput,
 				`${Prefix}${Path extends '/' ? '' : Path}`,
 				AdditionalParams,
 				Method,
 				Query,
-				BodyOutput
+				BodyInput,
+				BodyOutput,
+				OpenAPI
 			>
 		: never;
 
@@ -80,10 +82,11 @@ export class Router<
 	private readonly add = <
 		Method extends KaitoMethod,
 		Path extends string,
-		ResultInput,
 		ResultOutput,
 		Query extends AnyQuery,
-		Body extends JSONValue,
+		BodyInput extends JSONValue,
+		BodyOutput,
+		OpenAPI extends OutputSpec | undefined = undefined,
 	>(
 		method: Method,
 		path: Path,
@@ -94,13 +97,14 @@ export class Router<
 								ContextFrom,
 								ContextTo,
 								Input,
-								ResultInput,
 								ResultOutput,
 								Path,
 								RequiredParams,
 								Method,
 								Query,
-								Body
+								BodyInput,
+								BodyOutput,
+								OpenAPI
 							>,
 							'body' | 'path' | 'method' | 'router'
 						>
@@ -109,13 +113,14 @@ export class Router<
 								ContextFrom,
 								ContextTo,
 								Input,
-								ResultInput,
 								ResultOutput,
 								Path,
 								RequiredParams,
 								Method,
 								Query,
-								Body
+								BodyInput,
+								BodyOutput,
+								OpenAPI
 							>,
 							'path' | 'method' | 'router'
 						>)
@@ -123,32 +128,34 @@ export class Router<
 					ContextFrom,
 					ContextTo,
 					Input,
-					ResultInput,
 					ResultOutput,
 					Path,
 					RequiredParams,
 					Method,
 					Query,
-					Body
+					BodyInput,
+					BodyOutput,
+					OpenAPI
 			  >['run'],
 	): Router<
 		ContextFrom,
 		ContextTo,
 		RequiredParams,
-		Routes | Route<ContextFrom, ContextTo, Input, ResultInput, ResultOutput, Path, RequiredParams, Method, Query, Body>,
+		Routes | Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, Method, Query, BodyInput, BodyOutput, OpenAPI>,
 		Input
 	> => {
 		const merged: Route<
 			ContextFrom,
 			ContextTo,
 			Input,
-			ResultInput,
 			ResultOutput,
 			Path,
 			RequiredParams,
 			Method,
 			Query,
-			Body
+			BodyInput,
+			BodyOutput,
+			OpenAPI
 		> = {
 			...(typeof route === 'object' ? route : {run: route}),
 			method,
@@ -515,24 +522,25 @@ export class Router<
 	private readonly method = <M extends KaitoMethod>(method: M) => {
 		return <
 			Path extends string,
-			ResultInput = never,
-			ResultOutput = ResultInput,
+			ResultOutput = never,
 			Query extends AnyQuery = {},
-			Body extends JSONValue = never,
+			BodyInput extends JSONValue = never,
+			BodyOutput = BodyInput,
+			OpenAPI extends OutputSpec | undefined = undefined,
 		>(
 			path: Path,
 			route:
 				| (M extends 'GET'
 						? Omit<
-								Route<ContextFrom, ContextTo, Input, ResultInput, ResultOutput, Path, RequiredParams, M, Query, Body>,
+								Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, M, Query, BodyInput, BodyOutput, OpenAPI>,
 								'body' | 'path' | 'method' | 'router'
 							>
 						: Omit<
-								Route<ContextFrom, ContextTo, Input, ResultInput, ResultOutput, Path, RequiredParams, M, Query, Body>,
+								Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, M, Query, BodyInput, BodyOutput, OpenAPI>,
 								'path' | 'method' | 'router'
 							>)
-				| Route<ContextFrom, ContextTo, Input, ResultInput, ResultOutput, Path, RequiredParams, M, Query, Body>['run'],
-		) => this.add<M, Path, ResultInput, ResultOutput, Query, Body>(method, path, route);
+				| Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, M, Query, BodyInput, BodyOutput, OpenAPI>['run'],
+		) => this.add<M, Path, ResultOutput, Query, BodyInput, BodyOutput, OpenAPI>(method, path, route);
 	};
 
 	public readonly get = this.method('GET');
