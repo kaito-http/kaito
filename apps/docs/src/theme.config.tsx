@@ -45,7 +45,7 @@ const config: DocsThemeConfig = {
 			meta.image ??
 			pathcat('https://ogmeta.kaito.cloud', '/', {
 				title,
-				subtitle: meta.description ?? undefined ?? 'Kaito: An HTTP framework for TypeScript',
+				subtitle: meta.description ?? 'Kaito: An HTTP framework for TypeScript',
 				dark: 'true',
 			});
 
