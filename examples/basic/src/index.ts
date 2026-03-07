@@ -129,7 +129,7 @@ const v1 = router
 
 	// Example parsing request body
 	.post('/echo', {
-		body: k.record(k.string(), k.unknown()),
+		body: k.record(k.string(), k.json()),
 		query: {
 			name: k.string(),
 		},
@@ -221,13 +221,10 @@ const root = router
 	// Accessing query
 	.get('/query', {
 		query: {
-			age: k
-				.string()
-				.transform(value => parseInt(value, 10))
-				.default('10'),
+			age: k.string(),
 		},
 
-		run: async ({query}) => query.age,
+		run: async ({query}) => parseInt(query.age, 10),
 	})
 
 	// Merge this router with another router (v1)

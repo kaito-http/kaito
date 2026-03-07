@@ -1,4 +1,4 @@
-import {k} from '@kaito-http/core';
+import {k} from '../../src/index.ts';
 import {router} from './router.ts';
 
 const schema = k.object({hello: k.string()});
