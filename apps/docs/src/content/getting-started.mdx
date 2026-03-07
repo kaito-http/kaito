@@ -6,11 +6,11 @@ import {Callout} from 'nextra/components';
 bun i @kaito-http/core # Or use yarn, pnpm or npm
 ```
 
-Kaito comes with its own built-in schema system for validation, so you do not need to install or use Zod or any other validation library. All validation is handled natively.
+Kaito comes with its own built-in schema system for validation, so you do not need to install or use Zod or any other validation library. Kaito handles all validation natively.
 
 ## Concepts
 
-Kaito is very simple to use, it revolves around a few basic concepts:
+Kaito revolves around a few basic concepts:
 
 ### Routes
 
@@ -39,7 +39,7 @@ The router class holds all of our routes and their type information. Every app m
 
 ### Context
 
-Context is generated on every single request. It is up to you as the developer to decide what to place inside your context, but it will be available to access in every single route. For example, you could include a method to get the current user session, or a database connection, or anything else you want.
+Kaito generates context on every single request. It is up to you to decide what to place inside your context, and it will be available in every single route. For example, you could include a method to get the current user session, or a database connection, or anything else you want.
 
 ### .onError()
 

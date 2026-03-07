@@ -32,7 +32,7 @@ Most production applications run behind reverse proxies, so you'll typically wan
 
 With `Bun.serve()`, you can access the client IP address with the server's `.remoteIP` method. We recommend storing this in AsyncLocalStorage so you can access it in your route handlers.
 
-Bear in mind that you can move the ip property to your context object to make it cleaner to access. Below is just a lightweight example.
+Bear in mind that you can move the ip property to your context object to make it cleaner to access. Below is a lightweight example.
 
 ```ts
 import {AsyncLocalStorage} from 'node:async_hooks';
@@ -88,6 +88,6 @@ const server = await Server.serve({
 
 If you're not using Bun or Node.js, you should consult the docs of your server runtime to see how to get the client IP address. We'll happily accept a PR to this docs page to add snippets for other server runtimes.
 
-### Note on older versions
+### Older versions
 
-Older versions of Kaito were built on top of Node.js only, so you could access `req.socket.remoteAddress` directly. Since Kaito now uses the standard Web Fetch API, there's no `.socket` property on requests — server runtimes provide their own way to access the remote address.
+Previous versions of Kaito were Node.js only, so you could access `req.socket.remoteAddress` directly. The Web Fetch API does not have a `.socket` property on requests, so you will need to use whatever your server runtime provides instead.

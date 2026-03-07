@@ -7,7 +7,7 @@ import {Callout} from 'nextra/components';
 
 # Error Handling
 
-Kaito handles errors gracefully throughout your application. You can throw errors anywhere in any route, and they will be automatically caught and processed. This allows you to focus on the happy-paths of your application while ensuring proper error handling. The other advantage to this pattern is that you don't have to worry about error messages that could contain sensitive information, as everything passes through your onError handler.
+Kaito handles errors gracefully throughout your application. You can throw errors anywhere in any route, and they will be automatically caught and processed. This allows you to focus on the happy-paths of your application while ensuring proper error handling. The other advantage to this pattern is that error messages containing sensitive information are never leaked, as everything passes through your onError handler.
 
 Kaito has a built in error called `KaitoError`. You can throw this error in your routes, and it will be caught and sent back to the client.
 
@@ -35,11 +35,11 @@ export const users = router.get('/:id', async ({ctx, params}) => {
 });
 ```
 
-All other errors will be forwarded to your `.onError` handler, which dictates what status and message should be sent to the client. If no `.onError` handler is defined, Kaito will return a `500` status with the message `"Internal Server Error"`.
+All other errors get forwarded to your `.onError` handler, which decides what status and message to send back to the client. If you have not defined an `.onError` handler, Kaito returns a `500` with `"Internal Server Error"`.
 
 ## WrappedError
 
-If a non-`Error` value is thrown (for example, a string or an object), Kaito will wrap it in a `WrappedError` class before passing it to your `.onError` handler. This ensures your error handler always receives an `Error` instance. The original thrown value is available on the `.data` property of the `WrappedError`.
+If you throw a value that is not an `Error` (like a string or plain object), Kaito wraps it in a `WrappedError` before passing it to your `.onError` handler. You can access the original thrown value via `.data`.
 
 ```ts
 import {WrappedError} from '@kaito-http/core';

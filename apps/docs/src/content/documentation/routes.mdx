@@ -7,7 +7,7 @@ Routes are the basic building blocks of Kaito. They represent a single HTTP rout
 
 ## Creating a Route
 
-Creating a route requires us to have a router already established. If you don't, please checkout the <Link href="/getting-started#concepts">getting started</Link> guide.
+Creating a route requires a router. If you have not set one up yet, check out the <Link href="/getting-started#concepts">getting started</Link> guide.
 
 Here's an extremely basic example of a ping/pong route.
 
@@ -63,7 +63,7 @@ Ultimately the important thing to understand here is that if you return a `Respo
 
 Routes can take a query and body schema using Kaito's built-in schema system. Internally, Kaito will validate all request bodies and query params so you can be absolutely certain you are processing the right data.
 
-Route query schemas should always take a string, or array of strings as the input. This is because query params are always strings. If you need to parse them into other types, you can do so inside the route handler.
+Query schemas should always expect strings as input, because query params are always strings. If you need them as numbers, parse them in your route handler.
 
 ```ts
 import {k} from '@kaito-http/core';
@@ -84,4 +84,4 @@ const app = router.post('/echo', {
 });
 ```
 
-Kaito's schema system (`k`) supports all JSON data types: strings, numbers, booleans, null, arrays, objects, unions, literals, and more.
+The schema system supports all JSON types — strings, numbers, booleans, null, arrays, objects, unions, literals, you name it.

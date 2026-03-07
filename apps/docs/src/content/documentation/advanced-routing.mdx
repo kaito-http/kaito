@@ -22,18 +22,16 @@ All type information, route names, and correct prefixes are preserved during mer
 
 ## Router Parameters
 
-The `.params()` method provides type-safe declaration of parameters that a router expects to receive when merged. It takes no runtime arguments — parameter names are specified purely as a string literal union type parameter, e.g. `.params<'userId'>()`. This is exclusively used with router merging - `.params()` is only effective when the router is merged somewhere that provides those parameters. All params are always strings extracted from the URL path.
+The `.params()` method lets you declare what URL parameters a router expects when it gets merged. Pass the param names as a type argument, like `.params<'userId'>()` — no runtime validation needed, params are always strings extracted from the URL. This only matters when the router is merged somewhere that provides those parameters.
 
 ### Basic Parameters
 
 ```ts
 // Declare that this router needs a userId parameter
-const userRouter = router
-	.params<'userId'>()
-	.get('/', async ({params}) => {
-		// params.userId is guaranteed to exist and is a string
-		return {id: params.userId};
-	});
+const userRouter = router.params<'userId'>().get('/', async ({params}) => {
+	// params.userId is guaranteed to exist and is a string
+	return {id: params.userId};
+});
 
 // This works - we're mounting at a path that provides userId
 const app = router.merge('/users/:userId', userRouter);
@@ -48,26 +46,22 @@ Parameters become especially powerful with deeply nested routers:
 
 ```ts
 // This router needs both userId and postId
-const commentsRouter = router
-	.params<'userId' | 'postId'>()
-	.through(async (ctx, params) => {
-		const [user, post] = await Promise.all([db.users.findById(params.userId), db.posts.findById(params.postId)]);
+const commentsRouter = router.params<'userId' | 'postId'>().through(async (ctx, params) => {
+	const [user, post] = await Promise.all([db.users.findById(params.userId), db.posts.findById(params.postId)]);
 
-		if (!user || !post) {
-			throw new KaitoError(404, 'Not found');
-		}
+	if (!user || !post) {
+		throw new KaitoError(404, 'Not found');
+	}
 
-		return {
-			...ctx,
-			user,
-			post,
-		};
-	});
+	return {
+		...ctx,
+		user,
+		post,
+	};
+});
 
 // This router provides postId and forwards userId
-const postsRouter = router
-	.params<'userId'>()
-	.merge('/posts/:postId/comments', commentsRouter);
+const postsRouter = router.params<'userId'>().merge('/posts/:postId/comments', commentsRouter);
 
 // Finally, we provide userId at the top level
 const app = router.merge('/users/:userId', postsRouter);

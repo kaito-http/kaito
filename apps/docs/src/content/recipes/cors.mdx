@@ -71,12 +71,12 @@ export const router = create({
 });
 ```
 
-`experimental_createCORSTransform()` returns an object with `.before` and `.transform` methods that you can pass directly to your router. It also provides methods for dynamic origin management:
+`experimental_createCORSTransform()` gives you an object with `.before` and `.transform` that you can pass straight into your router config. It also lets you manage origins dynamically at runtime:
 
-- `cors.addOrigins(['https://new.example.com'])` - Add new allowed origins at runtime
-- `cors.removeOrigins(['https://old.example.com'])` - Remove allowed origins at runtime
-- `cors.setOrigins(['https://only-this.example.com'])` - Replace all allowed origins
-- `cors.getOrigins()` - Get the current list of allowed origins
+- `cors.addOrigins('https://new.example.com')` — add new allowed origins
+- `cors.removeOrigins('https://old.example.com')` — remove origins
+- `cors.setOrigins(['https://only-this.example.com'])` — replace all origins
+- `cors.getOrigins()` — see what's currently allowed
 
 The experimental CORS API includes a powerful origin matcher that supports both exact matches and wildcard subdomains. Important rules to note:
 
