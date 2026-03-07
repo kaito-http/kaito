@@ -21,7 +21,7 @@ jobs:
 
       # Enable corepack on runner's pre-installed Node so setup-node can detect yarn for caching
       - name: Enable corepack
-        run: npm install -g corepack@latest && corepack enable
+        run: npm install -g --force corepack@latest && corepack enable
 
       - name: Install Node ${{ matrix.node }}
         uses: actions/setup-node@v5
@@ -31,7 +31,7 @@ jobs:
 
       # Re-enable corepack for the newly installed Node version
       - name: Enable corepack
-        run: npm install -g corepack@latest && corepack enable
+        run: npm install -g --force corepack@latest && corepack enable
 
       - name: Install dependencies
         run: yarn
