@@ -54,6 +54,7 @@ export const router = create({
 You can then use this context, when setup correctly with a router, inside every single route. E.g.
 
 ```ts filename="routes/users.ts"
+import {k} from '@kaito-http/core';
 import {router} from '../context.ts';
 
 export const users = router.get('/users/search', {

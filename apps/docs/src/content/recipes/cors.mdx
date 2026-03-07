@@ -71,7 +71,7 @@ export const router = create({
 });
 ```
 
-In v4, `experimental_createCORSTransform()` returns an object with `.before` and `.transform` methods that you can pass directly to your router. It also provides methods for dynamic origin management:
+`experimental_createCORSTransform()` returns an object with `.before` and `.transform` methods that you can pass directly to your router. It also provides methods for dynamic origin management:
 
 - `cors.addOrigins(['https://new.example.com'])` - Add new allowed origins at runtime
 - `cors.removeOrigins(['https://old.example.com'])` - Remove allowed origins at runtime

@@ -6,7 +6,7 @@ Kaito supports streaming out of the box we let you return a `Response` with a `R
 
 SSE is a technology that allows you to stream data to the client in realtime. It's a very simple protocol. You can [learn about it on MDN](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events).
 
-Kaito has a built-in utility for doing SSE, called `sse`. This function returns a `Response` object that you can return from your route.
+Kaito has a built-in utility for doing SSE, called `sse`. It returns a `KaitoSSEResponse` which Kaito automatically converts into a streaming response with the correct SSE headers.
 
 ```ts
 import {sse} from '@kaito-http/core/stream';

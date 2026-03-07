@@ -68,7 +68,7 @@ Route query schemas should always take a string, or array of strings as the inpu
 ```ts
 import {k} from '@kaito-http/core';
 
-const router = router.post('/echo', {
+const app = router.post('/echo', {
 	query: {
 		skip: k.string(),
 		take: k.string(),
@@ -84,4 +84,4 @@ const router = router.post('/echo', {
 });
 ```
 
-Kaito schemas can be of any shape or size, including objects, booleans, numbers and literals. See the documentation for more details on the built-in schema system.
+Kaito's schema system (`k`) supports all JSON data types: strings, numbers, booleans, null, arrays, objects, unions, literals, and more.
