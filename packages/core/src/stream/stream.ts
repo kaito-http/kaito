@@ -1,21 +1,10 @@
 import type {JSONValue} from '../schema/schema.ts';
 
-export class KaitoSSEResponse<_T> extends Response {
-	public constructor(body: ReadableStream<string>, init?: ResponseInit) {
-		const headers = new Headers(init?.headers);
+export class KaitoSSEResponse<T> {
+	public readonly events: ReadableStream<T>;
 
-		headers.set('Content-Type', 'text/event-stream');
-		headers.set('Cache-Control', 'no-cache');
-		headers.set('Connection', 'keep-alive');
-
-		super(body, {
-			...init,
-			headers,
-		});
-	}
-
-	public get [Symbol.toStringTag](): string {
-		return 'KaitoSSEResponse';
+	public constructor(events: ReadableStream<T>) {
+		this.events = events;
 	}
 }
 
@@ -60,15 +49,15 @@ export function sseEventToString(event: SSEEvent<JSONValue, string>): string {
 	return lines.join('\n');
 }
 
-export class SSEController<U extends JSONValue, E extends string, T extends SSEEvent<U, E>> implements Disposable {
-	private readonly controller: ReadableStreamDefaultController<string>;
+export class SSEController<U, E extends string, T extends SSEEvent<U, E>> implements Disposable {
+	private readonly controller: ReadableStreamDefaultController<T>;
 
-	public constructor(controller: ReadableStreamDefaultController<string>) {
+	public constructor(controller: ReadableStreamDefaultController<T>) {
 		this.controller = controller;
 	}
 
 	public enqueue(event: T): void {
-		this.controller.enqueue(sseEventToString(event) + '\n\n');
+		this.controller.enqueue(event);
 	}
 
 	public close(): void {
@@ -80,18 +69,18 @@ export class SSEController<U extends JSONValue, E extends string, T extends SSEE
 	}
 }
 
-export interface SSESource<U extends JSONValue, E extends string, T extends SSEEvent<U, E>> {
+export interface SSESource<U, E extends string, T extends SSEEvent<U, E>> {
 	cancel?: UnderlyingSourceCancelCallback;
 	start?(controller: SSEController<U, E, T>): Promise<void>;
 	pull?(controller: SSEController<U, E, T>): Promise<void>;
 }
 
-function sseFromSource<U extends JSONValue, E extends string, T extends SSEEvent<U, E>>(source: SSESource<U, E, T>) {
+function sseFromSource<U, E extends string, T extends SSEEvent<U, E>>(source: SSESource<U, E, T>) {
 	const start = source.start;
 	const pull = source.pull;
 	const cancel = source.cancel;
 
-	const readable = new ReadableStream<string>({
+	const readable = new ReadableStream<T>({
 		...(cancel ? {cancel} : {}),
 
 		...(start
@@ -111,10 +100,10 @@ function sseFromSource<U extends JSONValue, E extends string, T extends SSEEvent
 			: {}),
 	});
 
-	return new KaitoSSEResponse<SSEEvent<U, E>>(readable);
+	return new KaitoSSEResponse<T>(readable);
 }
 
-export function sse<U extends JSONValue, E extends string, T extends SSEEvent<U, E>>(
+export function sse<U, E extends string, T extends SSEEvent<U, E>>(
 	source: SSESource<U, E, T> | AsyncGenerator<T, unknown, unknown> | (() => AsyncGenerator<T, unknown, unknown>),
 ): KaitoSSEResponse<T> {
 	const evaluated = typeof source === 'function' ? source() : source;
@@ -142,7 +131,7 @@ export function sse<U extends JSONValue, E extends string, T extends SSEEvent<U,
 	}
 }
 
-export function sseFromAnyReadable<R, U extends JSONValue, E extends string>(
+export function sseFromAnyReadable<R, U, E extends string>(
 	stream: ReadableStream<R>,
 	transform: (chunk: R) => SSEEvent<U, E>,
 ): KaitoSSEResponse<SSEEvent<U, E>> {

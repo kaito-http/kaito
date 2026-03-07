@@ -1179,6 +1179,9 @@ export class KUnion<Input extends JSONValue, Output> extends BaseSchema<Input, O
 		items: Items,
 	) => new KUnion<Items[number]['_input'], Items[number]['_output']>({items});
 
+	public static enum = <const T extends readonly [string, ...string[]]>(values: T) =>
+		k.union(values.map(v => k.literal(v)) as [KLiteral<T[number]>, KLiteral<T[number]>, ...KLiteral<T[number]>[]]);
+
 	public serialize(value: Output): Input {
 		for (const option of this.def.items) {
 			try {
@@ -1486,15 +1489,10 @@ export const k = {
 	object: KObject.create,
 	scalar: KScalar.create,
 	literal: KLiteral.create,
-	enum: <T extends readonly [string, ...string[]]>(values: T) => {
-		return k.union(
-			values.map(v => k.literal(v)) as [KLiteral<T[number]>, KLiteral<T[number]>, ...KLiteral<T[number]>[]],
-		);
-	},
+	enum: KUnion.enum,
 	nativeEnum: KNativeEnum.create,
 	union: KUnion.create,
 	lazy: KLazy.create,
-	shark: () => KLiteral.create('🦈'),
 
 	/**
 	 * Schema for any valid JSON value

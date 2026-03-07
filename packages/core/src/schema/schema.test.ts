@@ -1074,6 +1074,7 @@ describe('Schema', () => {
 				Red = 'RED',
 				Green = 'GREEN',
 				Blue = 'BLUE',
+				One = 1,
 			}
 
 			const schema = k.nativeEnum(Color);
@@ -1088,6 +1089,7 @@ describe('Schema', () => {
 				assert.throws(() => schema.parse('red'));
 				assert.throws(() => schema.parse('YELLOW'));
 				assert.throws(() => schema.parse(''));
+				assert.throws(() => schema.parse(0));
 			});
 
 			it('should reject non-string values when enum is string-based', () => {

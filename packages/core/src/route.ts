@@ -1,6 +1,6 @@
 import type {Router} from './router/router.ts';
-import type {AnySchemaFor, BaseSchema, BaseSchemaDef, JSONValue} from './schema/schema.ts';
-import type {KaitoSSEResponse} from './stream/stream.ts';
+import type {AnySchemaFor, BaseSchema, JSONValue} from './schema/schema.ts';
+import type {KaitoSSEResponse, SSEEvent} from './stream/stream.ts';
 import type {ExtractRouteParams, KaitoMethod} from './util.ts';
 
 export type RouteRunData<Params extends string, Context, QueryOutput, BodyOutput> = {
@@ -17,22 +17,50 @@ export type Through<From, To, RequiredParams extends string> = (
 	params: Record<RequiredParams, string>,
 ) => Promise<To>;
 
-export type SSEOutputSpec<Result extends JSONValue> = {
+export type SSEOutputSpecWithSchema = {
 	type: 'sse';
-	schema: AnySchemaFor<Result>;
+	schema: BaseSchema<any, any, any>;
 	description?: string | undefined;
 };
 
-export type JSONOutputSpec<ResultInput, ResultOutput extends JSONValue> = {
+export type SSEOutputSpecWithoutSchema = {
+	type: 'sse';
+	schema?: undefined;
+	description?: string | undefined;
+};
+
+export type SSEOutputSpec = SSEOutputSpecWithSchema | SSEOutputSpecWithoutSchema;
+
+export type JSONOutputSpec = {
 	type: 'json';
-	schema: BaseSchema<ResultOutput, ResultInput, BaseSchemaDef<ResultOutput>>;
+	schema: BaseSchema<any, any, any>;
 	description?: string | undefined;
 };
 
-export type OutputSpec<ResultInput, ResultOutput> =
-	ResultInput extends KaitoSSEResponse<infer R>
-		? SSEOutputSpec<Extract<R, JSONValue>>
-		: JSONOutputSpec<ResultOutput, Extract<ResultInput, JSONValue>>;
+export type ResponseOutputSpec = {
+	type: 'response';
+	description?: string | undefined;
+};
+
+export type OutputSpec = SSEOutputSpec | JSONOutputSpec | ResponseOutputSpec;
+
+export type OpenAPISpec<Body extends OutputSpec = OutputSpec> = {
+	summary?: string;
+	description?: string;
+	body: Body;
+};
+
+export type OpenAPISpecFor<ResultOutput> = 0 extends 1 & ResultOutput
+	? OpenAPISpec
+	: [ResultOutput] extends [never]
+		? OpenAPISpec
+		: [ResultOutput] extends [KaitoSSEResponse<any>]
+			? [ResultOutput extends KaitoSSEResponse<SSEEvent<infer U, any>> ? U : never] extends [JSONValue]
+				? OpenAPISpec<SSEOutputSpec>
+				: OpenAPISpec<SSEOutputSpecWithSchema>
+			: [ResultOutput] extends [Response]
+				? OpenAPISpec<ResponseOutputSpec>
+				: OpenAPISpec<JSONOutputSpec>;
 
 export type Route<
 	// Router context
@@ -40,7 +68,6 @@ export type Route<
 	ContextTo,
 	RouterInput extends readonly unknown[],
 	// Result information
-	ResultInput,
 	ResultOutput,
 	//Route information
 	Path extends string,
@@ -54,7 +81,7 @@ export type Route<
 	query?: {[Key in keyof Query]: AnySchemaFor<Query[Key]>};
 	path: Path;
 	method: Method;
-	openapi?: OutputSpec<ResultInput, ResultOutput>;
+	openapi?: OpenAPISpec;
 	router: Router<ContextFrom, ContextTo, AdditionalParams, AnyRoute, RouterInput>;
 	run(
 		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>,
@@ -72,10 +99,8 @@ export type AnyRoute = Route<
 	any,
 	// RouterInput
 	any,
-	// ResultInput
-	any,
 	// ResultOutput
-	any,
+	unknown,
 	// Path
 	any,
 	// AdditionalParams

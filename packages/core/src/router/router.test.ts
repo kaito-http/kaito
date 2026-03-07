@@ -500,11 +500,13 @@ describe('Router', () => {
 			const app = router.get('/@me', {
 				openapi: {
 					description: 'Get the current user',
-					type: 'json',
-					schema: k.object({
-						id: k.string().example('1234567890').description('The id of the user'),
-						username: k.string().example('ali').description('The username of the user'),
-					}),
+					body: {
+						type: 'json',
+						schema: k.object({
+							id: k.string().example('1234567890').description('The id of the user'),
+							username: k.string().example('ali').description('The username of the user'),
+						}),
+					},
 				},
 				run: () => ({
 					id: '1234567890',
@@ -528,12 +530,14 @@ describe('Router', () => {
 			const app = router.get('/@me', {
 				openapi: {
 					description: 'Get the current user',
-					type: 'json',
-					schema: k.scalar({
-						schema: k.string(),
-						toServer: value => BigInt(value),
-						toClient: value => value.toString(),
-					}),
+					body: {
+						type: 'json',
+						schema: k.scalar({
+							schema: k.string(),
+							toServer: value => BigInt(value),
+							toClient: value => value.toString(),
+						}),
+					},
 				},
 				run: () => BigInt(1234567890),
 			});

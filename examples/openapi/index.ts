@@ -13,7 +13,6 @@ const root = router
 			description: 'Hello world',
 			body: {
 				type: 'json',
-				description: 'A user object',
 				schema: k.object({
 					body: k.string(),
 					query: k.object({
@@ -33,6 +32,7 @@ const root = router
 	})
 	.get('/stream', {
 		openapi: {
+			description: 'test',
 			body: {
 				type: 'sse',
 				schema: k.object({
@@ -76,9 +76,9 @@ const server = await KaitoServer.serve({
 	fetch: root.serve(),
 	port: 3000,
 	host: '127.0.0.1',
-	static: {
-		'/static/file.txt': new Response('Hello, world!'),
-	},
+	// static: {
+	// 	'/static/file.txt': new Response('Hello, world!'),
+	// },
 });
 
 console.log('Server listening at', server.url);
