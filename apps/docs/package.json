@@ -5,10 +5,9 @@
 	"author": "Alistair Smith <hi@alistair.sh>",
 	"license": "MIT",
 	"dependencies": {
-		"es-urlcat": "^1.0.0",
 		"next": "^15.3.3",
-		"nextra": "3.3.1",
-		"nextra-theme-docs": "3.3.1",
+		"nextra": "^4",
+		"nextra-theme-docs": "^4",
 		"pathcat": "^1.4.0",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0"
@@ -16,12 +15,14 @@
 	"scripts": {
 		"dev": "next",
 		"start": "next start",
-		"build": "next build"
+		"build": "next build",
+		"postbuild": "pagefind --site .next/server/app --output-path public/_pagefind"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.5",
 		"@types/react": "^19.0.5",
 		"@types/react-dom": "^19.0.3",
+		"pagefind": "^1",
 		"typescript": "5.9.2"
 	},
 	"description": "Functional HTTP Framework for TypeScript",

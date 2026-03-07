@@ -11,6 +11,10 @@ Kaito handles errors gracefully throughout your application. You can throw error
 
 Kaito has a built in error called `KaitoError`. You can throw this error in your routes, and it will be caught and sent back to the client.
 
+```ts
+import {KaitoError} from '@kaito-http/core';
+```
+
 <Callout>
 	Throwing a `KaitoError` will **not** call your `.onError` handler defined in your server. KaitoErrors are handled
 	internally and are always sent back to the client.
@@ -31,4 +35,23 @@ export const users = router.get('/:id', async ({ctx, params}) => {
 });
 ```
 
-All other errors will be forwarded to your `.onError` handler, which dictates what status and message should be sent to the client.
+All other errors will be forwarded to your `.onError` handler, which dictates what status and message should be sent to the client. If no `.onError` handler is defined, Kaito will return a `500` status with the message `"Internal Server Error"`.
+
+## WrappedError
+
+If a non-`Error` value is thrown (for example, a string or an object), Kaito will wrap it in a `WrappedError` class before passing it to your `.onError` handler. This ensures your error handler always receives an `Error` instance. The original thrown value is available on the `.data` property of the `WrappedError`.
+
+```ts
+import {WrappedError} from '@kaito-http/core';
+
+const app = create({
+	// ...
+	onError: (error, req) => {
+		if (error instanceof WrappedError) {
+			console.log('Original thrown value:', error.data);
+		}
+
+		return {status: 500, message: 'Internal Server Error'};
+	},
+});
+```

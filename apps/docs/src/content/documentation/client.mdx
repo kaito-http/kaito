@@ -22,10 +22,7 @@ Create a client instance by providing your API's type and base URL:
 ```ts filename="api/index.ts"
 const app = router.merge('/v1', v1);
 
-const handler = createKaitoHTTPHandler({
-	router: app,
-	// ...
-});
+const handle = app.serve();
 
 export type App = typeof app;
 ```

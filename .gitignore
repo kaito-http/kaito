@@ -10,6 +10,9 @@ dist
 !.yarn/plugins
 !.yarn/sdks
 
+# Pagefind search index
+_pagefind/
+
 # Environment variables
 .env
 .env.local

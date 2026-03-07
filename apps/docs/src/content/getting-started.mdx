@@ -49,7 +49,7 @@ The `onError` option is used to handle errors that are thrown inside of a route.
 
 We first need to setup our router. You can put this in a `router.ts` file, for example.
 
-```typescript
+```ts
 import {create} from '@kaito-http/core';
 
 const serverStarted = Date.now();
@@ -85,7 +85,7 @@ Secondly, we'll need to create our main app router, our first route, and a handl
 	will show you how to use Kaito with other runtimes like Node.js, Deno, etc.
 </Callout>
 
-```typescript
+```ts
 import {router} from './router.ts';
 
 const app = router.get('/', ({ctx}) => {

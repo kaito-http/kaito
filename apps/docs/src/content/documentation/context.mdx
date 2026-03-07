@@ -27,7 +27,7 @@ export const router = create({
 	getContext: async (req, head) => {
 		return {
 			req,
-			res,
+			head,
 			time: new Date(),
 
 			searchForUser: async (query: string) => {
@@ -36,13 +36,13 @@ export const router = create({
 
 			// This is just an example
 			getSession: async () => {
-				const cookies = req.headers.cookie;
+				const cookies = req.headers.get('cookie');
 
 				// this is bad code, use a cookie parser library! npmjs.com/package/cookie is a good one
 				const token = cookies
 					?.split(';')
 					.find(cookie => cookie.startsWith('token='))
-					.split('=')[1];
+					?.split('=')[1];
 
 				return await db.sessions.findByToken(token);
 			},

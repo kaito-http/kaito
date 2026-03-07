@@ -30,7 +30,7 @@ For each incoming request, Kaito creates two important objects:
 And then the router handles requests very similarly to the following:
 
 ```ts
-const kaitoRequest = new KaitoRequest(reqFromServer); // reqFromServer is a `Request` instance
+const kaitoRequest = new KaitoRequest(url, reqFromServer); // url is a `URL` instance, reqFromServer is a `Request` instance
 const kaitoHead = new KaitoHead();
 
 const context = await getContext(kaitoRequest, kaitoHead);
@@ -63,20 +63,23 @@ Ultimately the important thing to understand here is that if you return a `Respo
 
 Routes can take a query and body schema using Kaito's built-in schema system. Internally, Kaito will validate all request bodies and query params so you can be absolutely certain you are processing the right data.
 
-Route query schemas should always take a string, or array of strings as the input. This is because query params are always strings. It is safe to transform them into other types, but you should always be able to handle a string.
+Route query schemas should always take a string, or array of strings as the input. This is because query params are always strings. If you need to parse them into other types, you can do so inside the route handler.
 
 ```ts
 import {k} from '@kaito-http/core';
 
 const router = router.post('/echo', {
 	query: {
-		skip: k.string().transform(value => parseInt(value)),
-		take: k.string().transform(value => parseInt(value)),
+		skip: k.string(),
+		take: k.string(),
 	},
 	body: k.number(),
 	async run({body, query}) {
+		const skip = parseInt(query.skip);
+		const take = parseInt(query.take);
+
 		// Echo it back
-		return {body, query};
+		return {body, skip, take};
 	},
 });
 ```

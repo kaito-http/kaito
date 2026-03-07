@@ -7,6 +7,8 @@ For example, if you are using a reverse proxy like Cloudflare, you'll need to us
 ## Cloudflare proxy example
 
 ```ts
+import {create, KaitoError} from '@kaito-http/core';
+
 export const router = create({
 	getContext: async req => ({req}),
 });
@@ -45,7 +47,7 @@ const app = router.get('/ip', async ({ctx}) => {
 	return ip;
 });
 
-const handle = router.serve();
+const handle = app.serve();
 
 const server = Bun.serve({
 	port: 3000,
@@ -61,26 +63,24 @@ const server = Bun.serve({
 Since you'll be using `@kaito-http/uws` with Node.js, the client IP address is available through the `context` parameter passed to your fetch handler. If you need to access it in nested functions or route handlers, you can use AsyncLocalStorage to make it available throughout the request lifecycle.
 
 ```ts
-import {AsyncLocalStorage} from 'node:async_hooks';
-import {Server} from '@kaito-http/uws';
+import {create} from '@kaito-http/core';
+import {Server, getRemoteAddress} from '@kaito-http/uws';
 
-const ipStore = new AsyncLocalStorage<string>();
+const router = create({
+	getContext: async req => ({req}),
+});
 
 const app = router.get('/ip', async ({ctx}) => {
-	const ip = getRemoteAddress(); // Will "just work" in Node.js, as long as you are using KaitoServer
+	// getRemoteAddress works during the request lifecycle when using @kaito-http/uws
+	const ip = getRemoteAddress(ctx.req);
 	return ip;
 });
 
-const handle = createKaitoHandler({
-	router: app,
-	// ...
-});
+const handle = app.serve();
 
 const server = await Server.serve({
 	port: 3000,
-	fetch: async (request, context) => {
-		return ipStore.run(context.remoteAddress, () => handle(request));
-	},
+	fetch: handle,
 });
 ```
 
