@@ -19,14 +19,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # https://github.com/actions/setup-node/issues/480
-      - name: Setup corepack
-        run: corepack enable
-
       - name: Install Node ${{ matrix.node }}
         uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
+
+      # Corepack was removed from Node 24+, so install it explicitly
+      - name: Setup corepack
+        run: npm install -g corepack@latest && corepack enable
 
       - name: Install dependencies
         run: yarn
