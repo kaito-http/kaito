@@ -15,8 +15,7 @@
 	"scripts": {
 		"dev": "next",
 		"start": "next start",
-		"build": "next build",
-		"postbuild": "pagefind --site .next/server/app --output-path public/_pagefind"
+		"build": "next build && pagefind --site .next/server/app --output-path public/_pagefind"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.5",
