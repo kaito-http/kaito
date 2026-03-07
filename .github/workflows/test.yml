@@ -17,16 +17,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      # Enable corepack on runner's pre-installed Node so setup-node can detect yarn for caching
+      - name: Enable corepack
+        run: npm install -g corepack@latest && corepack enable
 
       - name: Install Node ${{ matrix.node }}
         uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
-          cache: false
+          cache: yarn
 
-      # Corepack was removed from Node 24+, so install it explicitly
-      - name: Setup corepack
+      # Re-enable corepack for the newly installed Node version
+      - name: Enable corepack
         run: npm install -g corepack@latest && corepack enable
 
       - name: Install dependencies
