@@ -70,8 +70,8 @@ export function getRemoteAddress(request: RequestOrKaitoRequest) {
 }
 
 export class Server {
-	private static getRequestBodyStream(res: uWS.HttpResponse) {
-		return new ReadableStream<Uint8Array>({
+	private static getRequestBodyStream(res: uWS.HttpResponse): ReadableStream<Uint8Array<ArrayBuffer>> {
+		return new ReadableStream<Uint8Array<ArrayBuffer>>({
 			start(controller) {
 				res.onData((ab, isLast) => {
 					const chunk = new Uint8Array(ab.slice(0));
