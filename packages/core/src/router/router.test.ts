@@ -1,10 +1,10 @@
 import assert from 'node:assert';
-import { describe, it } from 'node:test';
-import { KaitoError } from '../error.ts';
-import type { KaitoRequest } from '../request.ts';
-import { k } from '../schema/schema.ts';
-import type { KaitoMethod } from '../util.ts';
-import { Router } from './router.ts';
+import {describe, it} from 'node:test';
+import {KaitoError} from '../error.ts';
+import type {KaitoRequest} from '../request.ts';
+import {k} from '../schema/schema.ts';
+import type {KaitoMethod} from '../util.ts';
+import {Router} from './router.ts';
 
 type Tc = {req: KaitoRequest};
 const router = Router.create<Tc>({
