@@ -8,19 +8,19 @@ import {k, KRef, type AnySchemaFor, type BaseSchema, type JSONValue} from '../sc
 import {KaitoSSEResponse, sseEventToString} from '../stream/stream.ts';
 import {isNodeLikeDev, type ExtractRouteParams, type KaitoMethod, type MaybePromise} from '../util.ts';
 
-type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
-	R extends Route<
-		infer ContextFrom,
-		infer ContextTo,
-		infer RouterInput,
-		infer ResultOutput,
-		infer Path,
-		infer AdditionalParams,
-		infer Method,
-		infer Query,
-		infer BodyInput,
-		infer BodyOutput
-	>
+type PrefixRoutesPath<Prefix extends `/${string}`, R extends AnyRoute> = R extends R
+	? R extends Route<
+			infer ContextFrom,
+			infer ContextTo,
+			infer RouterInput,
+			infer ResultOutput,
+			infer Path,
+			infer AdditionalParams,
+			infer Method,
+			infer Query,
+			infer BodyInput,
+			infer BodyOutput
+		>
 		? Route<
 				ContextFrom,
 				ContextTo,
@@ -33,10 +33,7 @@ type PrefixRoutesPathInner<R extends AnyRoute, Prefix extends `/${string}`> =
 				BodyInput,
 				BodyOutput
 			>
-		: never;
-
-type PrefixRoutesPath<Prefix extends `/${string}`, R extends AnyRoute> = R extends R
-	? PrefixRoutesPathInner<R, Prefix>
+		: never
 	: never;
 
 export type RouterState<
@@ -86,16 +83,60 @@ export class Router<
 		route:
 			| (Method extends 'GET'
 					? Omit<
-							Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, Method, Query, BodyInput, BodyOutput>,
+							Route<
+								ContextFrom,
+								ContextTo,
+								Input,
+								ResultOutput,
+								Path,
+								RequiredParams,
+								Method,
+								Query,
+								BodyInput,
+								BodyOutput
+							>,
 							'body' | 'path' | 'method' | 'router' | 'openapi'
 						> & {openapi?: OpenAPISpecFor<ResultOutput>}
 					: Omit<
-							Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, Method, Query, BodyInput, BodyOutput>,
+							Route<
+								ContextFrom,
+								ContextTo,
+								Input,
+								ResultOutput,
+								Path,
+								RequiredParams,
+								Method,
+								Query,
+								BodyInput,
+								BodyOutput
+							>,
 							'path' | 'method' | 'router' | 'openapi'
 						> & {openapi?: OpenAPISpecFor<ResultOutput>})
-			| Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, Method, Query, BodyInput, BodyOutput>['run'],
+			| Route<
+					ContextFrom,
+					ContextTo,
+					Input,
+					ResultOutput,
+					Path,
+					RequiredParams,
+					Method,
+					Query,
+					BodyInput,
+					BodyOutput
+			  >['run'],
 	) => {
-		const merged: Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, Method, Query, BodyInput, BodyOutput> = {
+		const merged: Route<
+			ContextFrom,
+			ContextTo,
+			Input,
+			ResultOutput,
+			Path,
+			RequiredParams,
+			Method,
+			Query,
+			BodyInput,
+			BodyOutput
+		> = {
 			...(typeof route === 'object' ? route : {run: route}),
 			method,
 			path,
@@ -106,7 +147,8 @@ export class Router<
 			ContextFrom,
 			ContextTo,
 			RequiredParams,
-			Routes | Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, Method, Query, BodyInput, BodyOutput>,
+			| Routes
+			| Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, Method, Query, BodyInput, BodyOutput>,
 			Input
 		>({
 			...this.#state,
@@ -450,9 +492,7 @@ export class Router<
 			if (route.body) visit(route.body);
 
 			const responseSchema =
-				'schema' in route.openapi && route.openapi.schema
-					? route.openapi.schema.toOpenAPI()
-					: {type: 'string'};
+				'schema' in route.openapi && route.openapi.schema ? route.openapi.schema.toOpenAPI() : {type: 'string'};
 
 			const item: OpenAPI.OperationObject = {
 				...(route.openapi.summary ? {summary: route.openapi.summary} : {}),
@@ -499,19 +539,58 @@ export class Router<
 	};
 
 	private readonly method = <M extends KaitoMethod>(method: M) => {
-		return <Path extends string, ResultOutput = never, Query extends AnyQuery = {}, BodyInput extends JSONValue = never, BodyOutput = never>(
+		return <
+			Path extends string,
+			ResultOutput = never,
+			Query extends AnyQuery = {},
+			BodyInput extends JSONValue = never,
+			BodyOutput = never,
+		>(
 			path: Path,
 			route:
 				| (M extends 'GET'
 						? Omit<
-								Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, M, Query, BodyInput, BodyOutput>,
+								Route<
+									ContextFrom,
+									ContextTo,
+									Input,
+									ResultOutput,
+									Path,
+									RequiredParams,
+									M,
+									Query,
+									BodyInput,
+									BodyOutput
+								>,
 								'body' | 'path' | 'method' | 'router' | 'openapi'
 							> & {openapi?: OpenAPISpecFor<ResultOutput>}
 						: Omit<
-								Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, M, Query, BodyInput, BodyOutput>,
+								Route<
+									ContextFrom,
+									ContextTo,
+									Input,
+									ResultOutput,
+									Path,
+									RequiredParams,
+									M,
+									Query,
+									BodyInput,
+									BodyOutput
+								>,
 								'path' | 'method' | 'router' | 'openapi'
 							> & {openapi?: OpenAPISpecFor<ResultOutput>})
-				| Route<ContextFrom, ContextTo, Input, ResultOutput, Path, RequiredParams, M, Query, BodyInput, BodyOutput>['run'],
+				| Route<
+						ContextFrom,
+						ContextTo,
+						Input,
+						ResultOutput,
+						Path,
+						RequiredParams,
+						M,
+						Query,
+						BodyInput,
+						BodyOutput
+				  >['run'],
 		) => this.add<M, Path, ResultOutput, Query, BodyInput, BodyOutput>(method, path, route);
 	};
 
