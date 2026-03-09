@@ -1,5 +1,5 @@
 import type {Router} from './router/router.ts';
-import type {AnySchemaFor, BaseSchemaDef, BaseSchema, JSONValue} from './schema/schema.ts';
+import type {AnySchemaFor, BaseSchema, BaseSchemaDef, JSONValue} from './schema/schema.ts';
 import type {KaitoSSEResponse, SSEEvent} from './stream/stream.ts';
 import type {ExtractRouteParams, KaitoMethod} from './util.ts';
 
@@ -17,50 +17,60 @@ export type Through<From, To, RequiredParams extends string> = (
 	params: Record<RequiredParams, string>,
 ) => Promise<To>;
 
-export type SSEOutputSpecWithSchema = {
+/**
+ * Wraps BaseSchema to prevent the schema from participating in inference for `Output`.
+ *
+ * BaseSchema's `_output` is covariant (readonly), which means when both `run()` and the schema
+ * compete to infer `ResultOutput`, TypeScript widens to the less specific type (e.g. `string`
+ * instead of `"us-east-1"`). `NoInfer` ensures `Output` is only inferred from
+ * `run()`, and the schema only checks against it via the contravariant `serialize` property.
+ *
+ * @see https://github.com/microsoft/TypeScript/issues/51756
+ */
+type OutputSchema<Output> = BaseSchema<any, any, any> & {serialize: (value: NoInfer<Output>) => JSONValue};
+
+export type SSEOutputSpecWithSchema<Output> = {
 	type: 'sse';
-	schema: BaseSchema<any, any, any>;
+	schema: OutputSchema<Output>;
+	summary?: string | undefined;
 	description?: string | undefined;
 };
 
 export type SSEOutputSpecWithoutSchema = {
 	type: 'sse';
 	schema?: undefined;
+	summary?: string | undefined;
 	description?: string | undefined;
 };
 
-export type SSEOutputSpec = SSEOutputSpecWithSchema | SSEOutputSpecWithoutSchema;
+export type SSEOutputSpec<Output> = SSEOutputSpecWithSchema<Output> | SSEOutputSpecWithoutSchema;
 
-export type JSONOutputSpec = {
+export type JSONOutputSpec<Output> = {
 	type: 'json';
-	schema: BaseSchema<any, any, any>;
+	schema: OutputSchema<Output>;
+	summary?: string | undefined;
 	description?: string | undefined;
 };
 
 export type ResponseOutputSpec = {
 	type: 'response';
+	summary?: string | undefined;
 	description?: string | undefined;
 };
 
-export type OutputSpec = SSEOutputSpec | JSONOutputSpec | ResponseOutputSpec;
+export type AnyOutputSpec = SSEOutputSpec<any> | JSONOutputSpec<any> | ResponseOutputSpec;
 
-export type OpenAPISpec<Body extends OutputSpec = OutputSpec> = {
-	summary?: string;
-	description?: string;
-	body: Body;
-};
-
-export type OpenAPISpecFor<ResultOutput> = 0 extends 1 & ResultOutput
-	? OpenAPISpec
-	: [ResultOutput] extends [never]
-		? OpenAPISpec
-		: [ResultOutput] extends [KaitoSSEResponse<any>]
-			? [ResultOutput extends KaitoSSEResponse<SSEEvent<infer U, any>> ? U : never] extends [JSONValue]
-				? OpenAPISpec<SSEOutputSpec>
-				: OpenAPISpec<SSEOutputSpecWithSchema>
-			: [ResultOutput] extends [Response]
-				? OpenAPISpec<ResponseOutputSpec>
-				: OpenAPISpec<JSONOutputSpec>;
+export type OpenAPISpecFor<ResultOutput> = [ResultOutput] extends [never]
+	? AnyOutputSpec
+	: [ResultOutput] extends [KaitoSSEResponse<infer Event>]
+		? Event extends SSEEvent<infer U, any>
+			? [U] extends [JSONValue]
+				? SSEOutputSpec<Event>
+				: SSEOutputSpecWithSchema<Event>
+			: SSEOutputSpec<any>
+		: [ResultOutput] extends [Response]
+			? ResponseOutputSpec
+			: JSONOutputSpec<ResultOutput>;
 
 export type Route<
 	// Router context
@@ -82,7 +92,7 @@ export type Route<
 	query?: {[Key in keyof Query]: AnySchemaFor<Query[Key]>};
 	path: Path;
 	method: Method;
-	openapi?: OpenAPISpec;
+	openapi?: AnyOutputSpec;
 	router: Router<ContextFrom, ContextTo, AdditionalParams, AnyRoute, RouterInput>;
 	run(
 		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, BodyOutput>,

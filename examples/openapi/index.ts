@@ -11,15 +11,13 @@ const root = router
 	.post('/hello/:user_id', {
 		openapi: {
 			description: 'Hello world',
-			body: {
-				type: 'json',
-				schema: k.object({
-					body: k.string(),
-					query: k.object({
-						name: k.string(),
-					}),
+			type: 'json',
+			schema: k.object({
+				body: k.string(),
+				query: k.object({
+					name: k.string(),
 				}),
-			},
+			}),
 		},
 		body: k.string(),
 		query: {
@@ -33,21 +31,19 @@ const root = router
 	.get('/stream', {
 		openapi: {
 			description: 'test',
-			body: {
-				type: 'sse',
-				schema: k.object({
-					data: k.string(),
-					event: k.literal('cool'),
-					retry: k.number(),
-				}),
-			},
+			type: 'sse',
+			schema: k.object({
+				data: k.string(),
+				event: k.literal('cool'),
+				retry: k.number(),
+			}),
 		},
 		run: async () => {
 			const text = "This is an example of text being streamed every 100ms by using Kaito's sse() function";
 
 			const result = sse(async function* () {
 				for (const word in text.split(' ')) {
-					yield {data: word, event: 'cool2', retry: 1000};
+					yield {data: word, event: 'cool', retry: 1000};
 				}
 			});
 

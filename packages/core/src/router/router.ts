@@ -231,8 +231,7 @@ export class Router<
 				});
 
 				if (result instanceof KaitoSSEResponse) {
-					const body = route.openapi?.body;
-					const schema = body && 'schema' in body ? body.schema : undefined;
+					const schema = route.openapi && 'schema' in route.openapi ? route.openapi.schema : undefined;
 
 					const stringStream = result.events.pipeThrough(
 						new TransformStream<any, string>({
@@ -273,8 +272,8 @@ export class Router<
 					return result;
 				}
 
-				if (route.openapi && 'schema' in route.openapi.body && route.openapi.body.schema) {
-					const parsed = route.openapi.body.schema.serialize(result);
+				if (route.openapi && 'schema' in route.openapi && route.openapi.schema) {
+					const parsed = route.openapi.schema.serialize(result);
 
 					return head.toResponse(parsed);
 				}
@@ -429,7 +428,7 @@ export class Router<
 			}
 
 			let contentType: string;
-			const type = route.openapi.body.type;
+			const type = route.openapi.type;
 			switch (type) {
 				case 'json':
 					contentType = 'application/json';
@@ -447,12 +446,12 @@ export class Router<
 					throw new Error(`Unknown output type in route ${route.method} ${route.path}: ${type}`);
 			}
 
-			if ('schema' in route.openapi.body && route.openapi.body.schema) visit(route.openapi.body.schema);
+			if ('schema' in route.openapi && route.openapi.schema) visit(route.openapi.schema);
 			if (route.body) visit(route.body);
 
 			const responseSchema =
-				'schema' in route.openapi.body && route.openapi.body.schema
-					? route.openapi.body.schema.toOpenAPI()
+				'schema' in route.openapi && route.openapi.schema
+					? route.openapi.schema.toOpenAPI()
 					: {type: 'string'};
 
 			const item: OpenAPI.OperationObject = {
@@ -460,7 +459,7 @@ export class Router<
 				description: route.openapi?.description ?? 'Successful response',
 				responses: {
 					200: {
-						description: route.openapi.body.description ?? 'Successful response',
+						description: route.openapi.description ?? 'Successful response',
 						content: {
 							[contentType]: {
 								schema: responseSchema,

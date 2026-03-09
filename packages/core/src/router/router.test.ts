@@ -3,6 +3,7 @@ import {describe, it} from 'node:test';
 import {KaitoError} from '../error.ts';
 import type {KaitoRequest} from '../request.ts';
 import {k} from '../schema/schema.ts';
+import {sse} from '../stream/stream.ts';
 import type {KaitoMethod} from '../util.ts';
 import {Router} from './router.ts';
 
@@ -500,13 +501,11 @@ describe('Router', () => {
 			const app = router.get('/@me', {
 				openapi: {
 					description: 'Get the current user',
-					body: {
-						type: 'json',
-						schema: k.object({
-							id: k.string().example('1234567890').description('The id of the user'),
-							username: k.string().example('ali').description('The username of the user'),
-						}),
-					},
+					type: 'json',
+					schema: k.object({
+						id: k.string().example('1234567890').description('The id of the user'),
+						username: k.string().example('ali').description('The username of the user'),
+					}),
 				},
 				run: () => ({
 					id: '1234567890',
@@ -530,14 +529,12 @@ describe('Router', () => {
 			const app = router.get('/@me', {
 				openapi: {
 					description: 'Get the current user',
-					body: {
-						type: 'json',
-						schema: k.scalar({
-							schema: k.string(),
-							toServer: value => BigInt(value),
-							toClient: value => value.toString(),
-						}),
-					},
+					type: 'json',
+					schema: k.scalar({
+						schema: k.string(),
+						toServer: value => BigInt(value),
+						toClient: value => value.toString(),
+					}),
 				},
 				run: () => BigInt(1234567890),
 			});
@@ -566,6 +563,155 @@ describe('Router', () => {
 				const nodeId: bigint = body.nodeId;
 				console.log(nodeId);
 			},
+		});
+	});
+
+	describe('OpenAPISpecFor type-level regression tests', () => {
+		it('JSON: errors on mismatched enum values in output schema', () => {
+			const NodeSchema = k.ref('TypeTestNode', {
+				id: k.string(),
+				region: k.enum(['us-east-1', 'us-east-2']),
+			});
+
+			router.get('/node', {
+				openapi: {
+					type: 'json',
+					// @ts-expect-error - run() returns region: string which is not assignable to "us-east-1" | "us-east-2"
+					schema: k.object({node: NodeSchema}),
+				},
+				run: () => ({
+					node: {
+						id: '123',
+						region: 'us-east-3',
+					},
+				}),
+			});
+		});
+
+		it('JSON: errors on wrong primitive type in output schema', () => {
+			router.get('/num', {
+				openapi: {
+					type: 'json',
+					// @ts-expect-error - run() returns string but schema expects number
+					schema: k.object({count: k.number()}),
+				},
+				run: () => ({count: 'not a number'}),
+			});
+		});
+
+		it('JSON: errors when run() returns subset of schema fields', () => {
+			router.get('/user', {
+				openapi: {
+					type: 'json',
+					// @ts-expect-error - run() returns {id} but schema serialize expects {id, name}
+					schema: k.object({id: k.string(), name: k.string()}),
+				},
+				run: () => ({id: '123'}),
+			});
+		});
+
+		it('JSON: accepts correct output matching schema', () => {
+			router.get('/ok', {
+				openapi: {
+					type: 'json',
+					schema: k.object({id: k.string(), active: k.boolean()}),
+				},
+				run: () => ({id: '123', active: true}),
+			});
+		});
+
+		it('JSON: constrains scalar output types through schema', () => {
+			const EntityID = k.scalar({
+				schema: k.string(),
+				toServer: v => BigInt(v),
+				toClient: v => v.toString(),
+			});
+
+			router.get('/scalar', {
+				openapi: {
+					type: 'json',
+					// @ts-expect-error - run() returns string but scalar server type is bigint
+					schema: k.object({id: EntityID}),
+				},
+				run: () => ({id: '123'}),
+			});
+		});
+
+		it('JSON: accepts correct scalar output type', () => {
+			const EntityID = k.scalar({
+				schema: k.string(),
+				toServer: v => BigInt(v),
+				toClient: v => v.toString(),
+			});
+
+			router.get('/scalar-ok', {
+				openapi: {
+					type: 'json',
+					schema: k.object({id: EntityID}),
+				},
+				run: () => ({id: BigInt(123)}),
+			});
+		});
+
+		it('SSE: errors on mismatched event name in output schema', () => {
+			router.get('/sse-bad-event', {
+				openapi: {
+					type: 'sse',
+					// @ts-expect-error - run() yields event "wrong" but schema expects "update"
+					schema: k.object({
+						data: k.string(),
+						event: k.literal('update'),
+					}),
+				},
+				run: () =>
+					sse(async function* () {
+						yield {data: 'hi', event: 'wrong' as const};
+					}),
+			});
+		});
+
+		it('SSE: errors on wrong data type in output schema', () => {
+			router.get('/sse-bad-data', {
+				openapi: {
+					type: 'sse',
+					// @ts-expect-error - run() yields string data but schema expects number
+					schema: k.object({
+						data: k.number(),
+						event: k.literal('tick'),
+					}),
+				},
+				run: () =>
+					sse(async function* () {
+						yield {data: 'not a number', event: 'tick' as const};
+					}),
+			});
+		});
+
+		it('SSE: accepts correct event shape', () => {
+			router.get('/sse-ok', {
+				openapi: {
+					type: 'sse',
+					schema: k.object({
+						data: k.string(),
+						event: k.literal('msg'),
+						retry: k.number(),
+					}),
+				},
+				run: () =>
+					sse(async function* () {
+						yield {data: 'hello', event: 'msg' as const, retry: 1000};
+					}),
+			});
+		});
+
+		it('Response: accepts Response return type', () => {
+			router.get('/raw', {
+				openapi: {
+					type: 'response',
+					description: 'raw response',
+				},
+				run: () => new Response('ok'),
+			});
 		});
 	});
 });
