@@ -1,5 +1,5 @@
 import type {Router} from './router/router.ts';
-import type {AnySchemaFor, BaseSchema, JSONValue} from './schema/schema.ts';
+import type {AnySchemaFor, BaseSchemaDef, BaseSchema, JSONValue} from './schema/schema.ts';
 import type {KaitoSSEResponse, SSEEvent} from './stream/stream.ts';
 import type {ExtractRouteParams, KaitoMethod} from './util.ts';
 
@@ -75,16 +75,17 @@ export type Route<
 	Method extends KaitoMethod,
 	// Schemas
 	Query extends Record<string, JSONValue>,
-	Body,
+	BodyInput extends JSONValue,
+	BodyOutput,
 > = {
-	body?: BaseSchema<any, Body, any>;
+	body?: BaseSchema<BodyInput, BodyOutput, BaseSchemaDef<BodyInput>>;
 	query?: {[Key in keyof Query]: AnySchemaFor<Query[Key]>};
 	path: Path;
 	method: Method;
 	openapi?: OpenAPISpec;
 	router: Router<ContextFrom, ContextTo, AdditionalParams, AnyRoute, RouterInput>;
 	run(
-		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, Body>,
+		data: RouteRunData<ExtractRouteParams<Path> | AdditionalParams, ContextTo, Query, BodyOutput>,
 	): Promise<ResultOutput> | ResultOutput;
 };
 
@@ -109,6 +110,8 @@ export type AnyRoute = Route<
 	any,
 	// Query
 	any,
-	// Body
+	// BodyInput
+	any,
+	// BodyOutput
 	any
 >;
