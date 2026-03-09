@@ -1,10 +1,10 @@
 import assert from 'node:assert';
-import {describe, it} from 'node:test';
-import {KaitoError} from '../error.ts';
-import type {KaitoRequest} from '../request.ts';
-import {k} from '../schema/schema.ts';
-import type {KaitoMethod} from '../util.ts';
-import {Router} from './router.ts';
+import { describe, it } from 'node:test';
+import { KaitoError } from '../error.ts';
+import type { KaitoRequest } from '../request.ts';
+import { k } from '../schema/schema.ts';
+import type { KaitoMethod } from '../util.ts';
+import { Router } from './router.ts';
 
 type Tc = {req: KaitoRequest};
 const router = Router.create<Tc>({
@@ -548,6 +548,24 @@ describe('Router', () => {
 
 			assert.deepStrictEqual(data, '1234567890');
 			assert.strictEqual(response.status, 200);
+		});
+	});
+
+	it('infers the correct output type for scalar body fields', () => {
+		const EntityID = k.scalar({
+			schema: k.string(),
+			toServer: v => BigInt(v),
+			toClient: v => v.toString(),
+		});
+
+		router.post('/test/:id', {
+			body: k.object({
+				nodeId: EntityID,
+			}),
+			run({body}) {
+				const nodeId: bigint = body.nodeId;
+				console.log(nodeId);
+			},
 		});
 	});
 });

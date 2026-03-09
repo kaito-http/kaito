@@ -75,9 +75,9 @@ export type Route<
 	Method extends KaitoMethod,
 	// Schemas
 	Query extends Record<string, JSONValue>,
-	Body extends JSONValue,
+	Body,
 > = {
-	body?: AnySchemaFor<Body>;
+	body?: BaseSchema<any, Body, any>;
 	query?: {[Key in keyof Query]: AnySchemaFor<Query[Key]>};
 	path: Path;
 	method: Method;

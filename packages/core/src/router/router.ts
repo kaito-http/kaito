@@ -4,7 +4,7 @@ import {KaitoError, WrappedError} from '../error.ts';
 import {KaitoHead} from '../head.ts';
 import {KaitoRequest} from '../request.ts';
 import type {AnyQuery, AnyRoute, OpenAPISpecFor, Route} from '../route.ts';
-import {k, KRef, type AnySchemaFor, type BaseSchema, type JSONValue} from '../schema/schema.ts';
+import {k, KRef, type AnySchemaFor, type BaseSchema} from '../schema/schema.ts';
 import {KaitoSSEResponse, sseEventToString} from '../stream/stream.ts';
 import {isNodeLikeDev, type ExtractRouteParams, type KaitoMethod, type MaybePromise} from '../util.ts';
 
@@ -76,7 +76,7 @@ export class Router<
 		Path extends string,
 		ResultOutput,
 		Query extends AnyQuery,
-		Body extends JSONValue,
+		Body,
 	>(
 		method: Method,
 		path: Path,
@@ -497,7 +497,7 @@ export class Router<
 	};
 
 	private readonly method = <M extends KaitoMethod>(method: M) => {
-		return <Path extends string, ResultOutput = never, Query extends AnyQuery = {}, Body extends JSONValue = never>(
+		return <Path extends string, ResultOutput = never, Query extends AnyQuery = {}, Body = never>(
 			path: Path,
 			route:
 				| (M extends 'GET'
