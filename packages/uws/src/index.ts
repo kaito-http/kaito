@@ -137,9 +137,7 @@ export class Server {
 		app.any('/*', async (res, req) => {
 			const controller = new AbortController();
 
-			let aborted = false;
 			res.onAborted(() => {
-				aborted = true;
 				controller.abort();
 			});
 
@@ -165,7 +163,7 @@ export class Server {
 			const response = await options.fetch(request);
 
 			// request was aborted before the handler was finished
-			if (aborted) {
+			if (controller.signal.aborted) {
 				return;
 			}
 
@@ -195,7 +193,7 @@ export class Server {
 			}
 
 			const writeNext = async (data: Uint8Array): Promise<void> => {
-				if (aborted) {
+				if (controller.signal.aborted) {
 					return;
 				}
 
@@ -211,7 +209,7 @@ export class Server {
 						res.onWritable(availableSpace => {
 							let ok: boolean | undefined;
 
-							if (aborted) {
+							if (controller.signal.aborted) {
 								reject();
 								return false;
 							}
@@ -239,7 +237,7 @@ export class Server {
 			try {
 				const reader = response.body.getReader();
 
-				while (!aborted) {
+				while (!controller.signal.aborted) {
 					const {done, value} = await reader.read();
 
 					if (done) {
@@ -250,11 +248,11 @@ export class Server {
 						await writeNext(value);
 					}
 				}
-				if (aborted) {
+				if (controller.signal.aborted) {
 					await reader.cancel('Request aborted');
 				}
 			} finally {
-				if (!aborted) {
+				if (!controller.signal.aborted) {
 					res.cork(() => res.end());
 				}
 			}
@@ -270,7 +268,7 @@ export class Server {
 			});
 		});
 
-		return new KaitoServer(app, fullOptions);
+		return new Server(app, fullOptions);
 	}
 
 	private readonly app: ReturnType<typeof uWS.App>;
