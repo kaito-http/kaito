@@ -1,9 +1,30 @@
-import {create, k} from '@kaito-http/core';
+import {create, k, KaitoHead, KaitoRequest, type Params} from '@kaito-http/core';
 import {sse} from '@kaito-http/core/stream';
 import {Server} from '@kaito-http/uws';
 import {setTimeout as sleep} from 'node:timers/promises';
 
-const router = create();
+interface MyPluginOptions {
+	log: string;
+}
+
+function myPlugin(options: MyPluginOptions) {
+	console.log('My Plugin is setting up');
+
+	return <C>(context: C, params: Params, request: KaitoRequest, head: KaitoHead) => {
+		console.log('My Plugin ran on a request with params:', params, 'and request url:', request.url, 'and head:', head);
+
+		return {
+			...(context ?? {}),
+			myPluginSetThis: options,
+		};
+	};
+}
+
+const router = create()
+	.pipe(myPlugin({log: 'hi'}))
+	.get('/', async ({ctx}) => {
+		ctx.myPluginSetThis.log; // 'hi'
+	});
 
 const sub = router.params<'user_id'>().get('/', ({params}) => {
 	return params.user_id;

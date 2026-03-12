@@ -206,17 +206,17 @@ const v1 = router
 	// Merge this router with another router (users).
 	.merge('/users', users);
 
-const exampleOfThrough = router
-	.get('/no-through', ({ctx}) => ctx.uptime)
-	.through(old => ({...old, lol: new Date()}))
-	.get('/has-through', ({ctx}) => ctx.lol.getTime());
+const exampleOfPipe = router
+	.get('/no-pipe', ({ctx}) => ctx.uptime)
+	.pipe(old => ({...old, lol: new Date()}))
+	.get('/has-pipe', ({ctx}) => ctx.lol.getTime());
 
 const root = router
 	// Basic inline access context
 	.get('/', ({ctx}) => ctx.ip)
 	.get('/uptime', ({ctx}) => ctx.uptime)
 	.post('/uptime', ({ctx}) => ctx.uptime)
-	.merge('/through', exampleOfThrough)
+	.merge('/pipe', exampleOfPipe)
 
 	// Accessing query
 	.get('/query', {

@@ -50,7 +50,7 @@ const root = router
 			return result;
 		},
 	})
-	.through(async ctx => {
+	.pipe(async ctx => {
 		if (ctx.req.headers.get('x-api-key') !== '123') {
 			throw new Error('No API key provided');
 		}

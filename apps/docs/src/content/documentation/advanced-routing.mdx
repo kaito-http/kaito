@@ -46,7 +46,7 @@ Parameters become especially powerful with deeply nested routers:
 
 ```ts
 // This router needs both userId and postId
-const commentsRouter = router.params<'userId' | 'postId'>().through(async (ctx, params) => {
+const commentsRouter = router.params<'userId' | 'postId'>().pipe(async (ctx, params) => {
 	const [user, post] = await Promise.all([db.users.findById(params.userId), db.posts.findById(params.postId)]);
 
 	if (!user || !post) {
@@ -72,13 +72,13 @@ const app = router.merge('/users/:userId', postsRouter);
 	existing routes.
 </Callout>
 
-## Middleware with `.through()`
+## Middleware with `.pipe()`
 
-Instead of traditional middleware, Kaito offers `.through()` for a more predictable and type-safe approach to request processing.
+Instead of traditional middleware, Kaito offers `.pipe()` for a more predictable and type-safe approach to request processing.
 
 ### Basic Usage
 
-`.through()` accepts a function that receives:
+`.pipe()` accepts a function that receives:
 
 1. The current context
 2. The router's parameters (if defined using `.params()`)
@@ -87,7 +87,7 @@ It should return the next context, which will be used for all subsequent routes:
 
 ```ts
 const postsRouter = router
-	.through(async ctx => {
+	.pipe(async ctx => {
 		const session = await ctx.getSession();
 
 		if (!session) {
@@ -107,16 +107,16 @@ const postsRouter = router
 
 ### Chaining
 
-You can chain multiple `.through()` calls, where each receives the context from the previous:
+You can chain multiple `.pipe()` calls, where each receives the context from the previous:
 
 ```ts
 const adminRouter = router
-	.through(async ctx => {
+	.pipe(async ctx => {
 		const session = await ctx.getSession();
 		if (!session) throw new KaitoError(401, 'Not logged in');
 		return {...ctx, user: session.user};
 	})
-	.through(async ctx => {
+	.pipe(async ctx => {
 		const isAdmin = await checkIfUserIsAdmin(ctx.user);
 		if (!isAdmin) throw new KaitoError(403, 'Forbidden');
 		return {...ctx, user: {...ctx.user, isAdmin: true}};
@@ -125,10 +125,10 @@ const adminRouter = router
 
 ### Router Composition
 
-`.through()` enables powerful router composition patterns:
+`.pipe()` enables powerful router composition patterns:
 
 ```ts filename="routers/authed.ts"
-export const authedRouter = router.through(async ctx => {
+export const authedRouter = router.pipe(async ctx => {
 	const session = await ctx.getSession();
 	if (!session) throw new KaitoError(401, 'Not logged in');
 	return {...ctx, user: session.user};

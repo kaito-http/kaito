@@ -60,7 +60,7 @@ const server = Bun.serve({
 
 ## Node.js
 
-Since you'll be using `@kaito-http/uws` with Node.js, the client IP address is available through the `context` parameter passed to your fetch handler. If you need to access it in nested functions or route handlers, you can use AsyncLocalStorage to make it available throughout the request lifecycle.
+Since you'll be using `@kaito-http/uws` with Node.js, the client IP address is available pipe the `context` parameter passed to your fetch handler. If you need to access it in nested functions or route handlers, you can use AsyncLocalStorage to make it available pipeout the request lifecycle.
 
 ```ts
 import {create} from '@kaito-http/core';

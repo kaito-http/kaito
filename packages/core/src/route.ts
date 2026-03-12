@@ -12,11 +12,6 @@ export type RouteRunData<Params extends string, Context, QueryOutput, BodyOutput
 
 export type AnyQuery = {[key in string]: any};
 
-export type Through<From, To, RequiredParams extends string> = (
-	context: From,
-	params: Record<RequiredParams, string>,
-) => Promise<To>;
-
 /**
  * Wraps BaseSchema to prevent the schema from participating in inference for `Output`.
  *

@@ -44,7 +44,7 @@ export type RouterState<
 	Input extends readonly unknown[],
 > = {
 	routes: Set<Routes>;
-	through: (
+	pipe: (
 		context: ContextFrom,
 		params: Record<RequiredParams, string>,
 		request: KaitoRequest,
@@ -52,6 +52,8 @@ export type RouterState<
 	) => Promise<ContextTo> | ContextTo;
 	config: KaitoConfig<ContextFrom, Input>;
 };
+
+export type Params<P extends string = string> = Record<P, string>;
 
 export class Router<
 	ContextFrom,
@@ -64,8 +66,7 @@ export class Router<
 
 	public static create = <Context = null, Input extends readonly unknown[] = []>(
 		config: KaitoConfig<Context, Input> = {},
-	): Router<Context, Context, never, never, Input> =>
-		new Router({through: context => context, routes: new Set(), config});
+	): Router<Context, Context, never, never, Input> => new Router({pipe: context => context, routes: new Set(), config});
 
 	protected constructor(state: RouterState<ContextFrom, ContextTo, RequiredParams, Routes, Input>) {
 		this.#state = state;
@@ -265,7 +266,7 @@ export class Router<
 				const body = route.body ? await route.body.parse(await req.json()) : undefined;
 				const query = route.fastQuerySchema ? route.fastQuerySchema.parse(url.searchParams) : {};
 
-				const ctx: unknown = await route.router.#state.through(
+				const ctx: unknown = await route.router.#state.pipe(
 					(await this.#state.config.getContext?.(request, head, ...args)) ?? null,
 					rawParams,
 					request,
@@ -609,17 +610,22 @@ export class Router<
 	public readonly head = this.method('HEAD');
 	public readonly options = this.method('OPTIONS');
 
-	public through = <NextContext>(
-		through: (context: ContextTo, params: Record<RequiredParams, string>) => MaybePromise<NextContext>,
+	public pipe = <NextContext>(
+		pipe: (
+			context: ContextTo,
+			params: Record<RequiredParams, string>,
+			request: KaitoRequest,
+			head: KaitoHead,
+		) => MaybePromise<NextContext>,
 	): Router<ContextFrom, NextContext, RequiredParams, Routes, Input> => {
 		return new Router<ContextFrom, NextContext, RequiredParams, Routes, Input>({
 			...this.#state,
-			through: (context, params, request, head) => {
-				const next = this.#state.through(context, params, request, head);
+			pipe: (context, params, request, head) => {
+				const next = this.#state.pipe(context, params, request, head);
 				if (next instanceof Promise) {
-					return next.then(next => through(next, params));
+					return next.then(next => pipe(next, params, request, head));
 				}
-				return through(next, params);
+				return pipe(next, params, request, head);
 			},
 		});
 	};

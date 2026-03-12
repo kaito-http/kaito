@@ -89,10 +89,10 @@ describe('Router', () => {
 		});
 	});
 
-	describe('.through() and context', () => {
-		it('should transform context with .through()', async () => {
+	describe('.pipe() and context', () => {
+		it('should transform context with .pipe()', async () => {
 			const r = router
-				.through(ctx => ({
+				.pipe(ctx => ({
 					...ctx,
 					isAdmin: ctx.req.headers.get('Authorization') === 'Bearer admin-token',
 				}))
@@ -620,7 +620,7 @@ describe('Router', () => {
 			});
 		});
 
-		it('JSON: constrains scalar output types through schema', () => {
+		it('JSON: constrains scalar output types pipe schema', () => {
 			const EntityID = k.scalar({
 				schema: k.string(),
 				toServer: v => BigInt(v),
