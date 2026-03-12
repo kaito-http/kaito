@@ -1,0 +1,288 @@
+---
+title: Pipes
+description: Transform context with .pipe() — Kaito's type-safe, composable alternative to middleware
+---
+
+import {Callout} from 'nextra/components';
+
+# Pipes
+
+Kaito doesn't have traditional middleware. Instead, it has `.pipe()` — a method on the router that transforms context before routes run. Each pipe receives the current context and returns the next one, forming a chain that's fully type-safe from start to finish.
+
+## How It Works
+
+When a request comes in, Kaito runs your pipes in order, threading the context through each one. The final context is what your route handler receives.
+
+```
+getContext() → pipe 1 → pipe 2 → pipe 3 → route handler
+```
+
+Every `.pipe()` call returns a **new router** (routers are immutable), so you can branch off at any point without affecting other routers.
+
+## Basic Usage
+
+`.pipe()` accepts a function that receives four arguments:
+
+1. **`context`** — the current context (from `getContext()` or the previous pipe)
+2. **`params`** — the router's URL parameters (if declared with `.params()`)
+3. **`request`** — the `KaitoRequest` object
+4. **`head`** — the `KaitoHead` object (setters for response status & headers)
+
+It returns the next context:
+
+```ts
+const authed = router.pipe(async (ctx, params, request, head) => {
+	const session = await ctx.getSession();
+
+	if (!session) {
+		throw new KaitoError(401, 'Not logged in');
+	}
+
+	return {
+		...ctx,
+		user: session.user,
+	};
+});
+```
+
+Routes defined after this pipe will have `ctx.user` available and fully typed:
+
+```ts
+const posts = authed.post('/posts', async ({ctx}) => {
+	// ctx.user is typed as the session user — no casting needed
+	return await ctx.db.posts.create(ctx.user.id);
+});
+```
+
+## Chaining Pipes
+
+Pipes compose by chaining. Each pipe receives the output of the previous one:
+
+```ts
+const adminRouter = router
+	// First pipe: require authentication
+	.pipe(async ctx => {
+		const session = await ctx.getSession();
+		if (!session) throw new KaitoError(401, 'Not logged in');
+		return {...ctx, user: session.user};
+	})
+	// Second pipe: require admin role
+	.pipe(async ctx => {
+		// ctx.user is already typed from the previous pipe
+		if (!ctx.user.isAdmin) throw new KaitoError(403, 'Forbidden');
+		return {...ctx, isAdmin: true as const};
+	});
+```
+
+This is how you build up layered access control, data enrichment, or any multi-step request preprocessing — all with full type inference at every step.
+
+## Pipes & Route Ordering
+
+Because routers are immutable, pipes only affect routes defined **after** the `.pipe()` call. Routes defined before are unaffected:
+
+```ts
+const app = router
+	.get('/public', ({ctx}) => 'anyone can access this')
+	.pipe(async ctx => {
+		const session = await ctx.getSession();
+		if (!session) throw new KaitoError(401, 'Not logged in');
+		return {...ctx, user: session.user};
+	})
+	.get('/private', ({ctx}) => `hello ${ctx.user.name}`);
+```
+
+`GET /public` runs without authentication. `GET /private` requires it. This is not a side effect — it's a natural consequence of immutability.
+
+## Reusable Routers
+
+Since `.pipe()` returns a new router, you can export it and reuse it as a base for other routers. This is one of the most powerful patterns in Kaito:
+
+```ts filename="routers/authed.ts"
+import {router} from '../context.ts';
+
+export const authedRouter = router.pipe(async ctx => {
+	const session = await ctx.getSession();
+	if (!session) throw new KaitoError(401, 'Not logged in');
+	return {...ctx, user: session.user};
+});
+```
+
+```ts filename="routes/posts.ts"
+import {authedRouter} from '../routers/authed.ts';
+
+export const postsRouter = authedRouter
+	.get('/posts', async ({ctx}) => {
+		return await ctx.db.posts.findByUser(ctx.user.id);
+	})
+	.post('/posts', async ({ctx, body}) => {
+		return await ctx.db.posts.create(ctx.user.id, body);
+	});
+```
+
+```ts filename="routes/admin.ts"
+import {authedRouter} from '../routers/authed.ts';
+
+export const adminRouter = authedRouter
+	.pipe(async ctx => {
+		if (!ctx.user.isAdmin) throw new KaitoError(403, 'Forbidden');
+		return ctx;
+	})
+	.delete('/users/:id', async ({ctx, params}) => {
+		return await ctx.db.users.delete(params.id);
+	});
+```
+
+Both `postsRouter` and `adminRouter` share the same authentication pipe, but `adminRouter` adds an extra authorization step. No duplication, full type safety.
+
+## Plugins
+
+Pipes are just functions, which means you can wrap them in higher-order functions to create reusable plugins:
+
+```ts
+import {type Params, type KaitoRequest, type KaitoHead} from '@kaito-http/core';
+
+interface RateLimitOptions {
+	maxRequests: number;
+	windowMs: number;
+}
+
+function rateLimit(options: RateLimitOptions) {
+	const store = new Map<string, number[]>();
+
+	return <C>(context: C, params: Params, request: KaitoRequest, head: KaitoHead) => {
+		const ip = request.headers.get('x-forwarded-for') ?? 'unknown';
+		const now = Date.now();
+		const hits = (store.get(ip) ?? []).filter(t => t > now - options.windowMs);
+
+		if (hits.length >= options.maxRequests) {
+			throw new KaitoError(429, 'Too many requests');
+		}
+
+		hits.push(now);
+		store.set(ip, hits);
+
+		return context;
+	};
+}
+```
+
+Use it like any other pipe:
+
+```ts
+const api = router.pipe(rateLimit({maxRequests: 100, windowMs: 60_000})).get('/data', ({ctx}) => fetchData());
+```
+
+The key detail: the plugin function runs once at setup time (when the router is constructed) and returns the pipe function that runs per-request. This lets you initialize state, validate options, or do any one-time work outside the hot path.
+
+<Callout>
+	Notice the generic `<C>` on the returned function. This makes the plugin work with **any** context type — it doesn't need to know what context it'll receive. It just passes it through (or extends it).
+</Callout>
+
+## Pipes with Parameters
+
+Pipes receive the router's declared parameters, which makes them especially powerful for scoped routers:
+
+```ts
+const projectRouter = router.params<'projectId'>().pipe(async (ctx, params) => {
+	const project = await ctx.db.projects.findById(params.projectId);
+
+	if (!project) {
+		throw new KaitoError(404, 'Project not found');
+	}
+
+	return {...ctx, project};
+});
+
+const app = router.merge('/projects/:projectId', projectRouter);
+```
+
+Routes on `projectRouter` now have `ctx.project` fully typed and guaranteed to exist. The param validation and data loading happen once in the pipe, not repeated in every route.
+
+### Deeply Nested Scoping
+
+This pattern scales to deeply nested resources. Each level declares what it needs and loads it:
+
+```ts
+const monitorRouter = router.params<'projectId' | 'monitorId'>().pipe(async (ctx, params) => {
+	const [project, monitor] = await Promise.all([
+		ctx.db.projects.findById(params.projectId),
+		ctx.db.monitors.findById(params.monitorId),
+	]);
+
+	if (!project || !monitor) {
+		throw new KaitoError(404, 'Not found');
+	}
+
+	return {...ctx, project, monitor};
+});
+
+const projectRouter = router
+	.params<'projectId'>()
+	.pipe(async (ctx, params) => {
+		const project = await ctx.db.projects.findById(params.projectId);
+		if (!project) throw new KaitoError(404, 'Not found');
+		return {...ctx, project};
+	})
+	.merge('/monitors/:monitorId', monitorRouter);
+
+const app = router.merge('/projects/:projectId', projectRouter);
+// GET /projects/123/monitors/456 → both project and monitor are loaded and typed
+```
+
+## Pipes with Generics (Advanced)
+
+For libraries or shared infrastructure, you can write pipe functions that are generic over the incoming context. This lets you constrain what the context must contain without fixing it to a specific shape:
+
+```ts
+async function authenticatedThrough<Ctx extends {getSession: () => Promise<Session | null>}>(ctx: Ctx) {
+	const session = await ctx.getSession();
+	if (!session) throw new KaitoError(401, 'Not logged in');
+	return {...ctx, session};
+}
+
+async function monitorScopedThrough<
+	Ctx extends Awaited<ReturnType<typeof authenticatedThrough>>,
+	Params extends {projectId: string; monitorId: string},
+>(ctx: Ctx, params: Params) {
+	const project = await ctx.datasources.projects.getProject(BigInt(params.projectId));
+
+	const monitor = await ctx.datasources.monitors.getMonitor(BigInt(params.monitorId));
+
+	if (!project || !monitor) {
+		throw new KaitoError(404, 'Not found');
+	}
+
+	return {...ctx, project, monitor};
+}
+```
+
+The `Ctx extends ...` constraint means this function works with any context that has the right shape — it doesn't care what else is on it. And `Params extends ...` means it works with any params record that includes the required keys. This is the same pattern you'd use to build reusable pipe functions across a monorepo or shared library.
+
+Use them together:
+
+```ts
+const monitorRouter = router
+	.params<'projectId' | 'monitorId'>()
+	.pipe(authenticatedThrough)
+	.pipe(monitorScopedThrough)
+	.get('/status', ({ctx}) => {
+		// ctx.session, ctx.project, and ctx.monitor are all typed
+		return {status: ctx.monitor.status};
+	});
+```
+
+<Callout>
+	This is the most advanced pipe pattern and only matters when you're building shared, reusable pipe functions. For most
+	applications, plain pipes and plugins are more than enough.
+</Callout>
+
+## Summary
+
+| Pattern           | When to use                                                      |
+| ----------------- | ---------------------------------------------------------------- |
+| Basic pipe        | Authentication, simple context enrichment                        |
+| Chained pipes     | Layered access control, multi-step preprocessing                 |
+| Reusable routers  | Shared auth/authorization base across route files                |
+| Plugins           | Reusable, configurable middleware (rate limiting, logging, etc.) |
+| Pipes with params | Loading scoped resources (projects, users, etc.)                 |
+| Generic pipes     | Shared libraries, monorepo infrastructure                        |

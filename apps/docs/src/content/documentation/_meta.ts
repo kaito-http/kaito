@@ -5,6 +5,7 @@ const meta: Meta = {
 	routes: 'Routes',
 	'router-basics': 'Router Basics',
 	'advanced-routing': 'Advanced Routing',
+	pipes: 'Pipes',
 	client: 'Client',
 	streaming: 'Streaming',
 	'error-handling': 'Error Handling',
