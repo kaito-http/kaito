@@ -136,17 +136,14 @@ export class Server {
 
 		app.any('/*', async (res, req) => {
 			const controller = new AbortController();
-
-			res.onAborted(() => {
-				controller.abort();
-			});
+			res.onAborted(controller.abort.bind(controller));
 
 			const headers = new Headers();
 			req.forEach((k, v) => headers.set(k, v));
 
-			const method = req.getMethod();
 			//  req.getUrl does not include the query string in the url
 			const query = req.getQuery();
+			const method = req.getMethod();
 
 			const url = origin.concat(req.getUrl(), query ? '?' + query : '');
 
