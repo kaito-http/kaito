@@ -82,12 +82,14 @@ Instead of traditional middleware, Kaito offers `.pipe()` for a more predictable
 
 1. The current context
 2. The router's parameters (if defined using `.params()`)
+3. The `KaitoRequest` request object
+4. The `KaitoHead` head object (setters for status & headers)
 
 It should return the next context, which will be used for all subsequent routes:
 
 ```ts
 const postsRouter = router
-	.pipe(async ctx => {
+	.pipe(async (ctx, params, request, head) => {
 		const session = await ctx.getSession();
 
 		if (!session) {
