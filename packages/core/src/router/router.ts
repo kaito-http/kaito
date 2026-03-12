@@ -44,7 +44,12 @@ export type RouterState<
 	Input extends readonly unknown[],
 > = {
 	routes: Set<Routes>;
-	through: (context: ContextFrom, params: Record<RequiredParams, string>) => Promise<ContextTo> | ContextTo;
+	through: (
+		context: ContextFrom,
+		params: Record<RequiredParams, string>,
+		request: KaitoRequest,
+		head: KaitoHead,
+	) => Promise<ContextTo> | ContextTo;
 	config: KaitoConfig<ContextFrom, Input>;
 };
 
@@ -263,6 +268,8 @@ export class Router<
 				const ctx: unknown = await route.router.#state.through(
 					(await this.#state.config.getContext?.(request, head, ...args)) ?? null,
 					rawParams,
+					request,
+					head,
 				);
 
 				const result: unknown = await route.run({
@@ -607,8 +614,8 @@ export class Router<
 	): Router<ContextFrom, NextContext, RequiredParams, Routes, Input> => {
 		return new Router<ContextFrom, NextContext, RequiredParams, Routes, Input>({
 			...this.#state,
-			through: (context, params) => {
-				const next = this.#state.through(context, params);
+			through: (context, params, request, head) => {
+				const next = this.#state.through(context, params, request, head);
 				if (next instanceof Promise) {
 					return next.then(next => through(next, params));
 				}
