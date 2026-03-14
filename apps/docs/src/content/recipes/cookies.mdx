@@ -22,15 +22,14 @@ const app = create({
 	getContext: (req, head) => ({req, head}),
 })
 	.pipe(
-		fami([
-			'theme',
-			{
-				name: 'session',
+		fami({
+			theme: {},
+			session: {
 				httpOnly: true,
 				secure: true,
 				maxAge: 3600,
 			},
-		]),
+		}),
 	)
 	.get('/cookies', ({ctx}) => {
 		// ctx.cookies is lazily parsed and fully typed
