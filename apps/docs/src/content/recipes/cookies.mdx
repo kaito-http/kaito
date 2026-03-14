@@ -12,27 +12,26 @@ bun i fami
 
 ### With `fami/kaito`
 
-The `fami/kaito` adapter wraps your existing context function and adds `cookies`, `setCookie`, and `deleteCookie` to your context automatically.
+The `fami/kaito` adapter works with kaito's `.pipe()` method to add `cookies`, `setCookie`, and `deleteCookie` to your context automatically.
 
 ```ts
 import {create} from '@kaito-http/core';
-import {createFami} from 'fami/kaito';
+import {fami} from 'fami/kaito';
 
-const context = createFami([
-	'theme',
-	{
-		name: 'session',
-		httpOnly: true,
-		secure: true,
-		maxAge: 3600,
-	},
-]);
-
-const router = create({
-	getContext: context((req, head) => ({req, head})),
-});
-
-const app = router
+const app = create({
+	getContext: (req, head) => ({req, head}),
+})
+	.pipe(
+		fami([
+			'theme',
+			{
+				name: 'session',
+				httpOnly: true,
+				secure: true,
+				maxAge: 3600,
+			},
+		]),
+	)
 	.get('/cookies', ({ctx}) => {
 		// ctx.cookies is lazily parsed and fully typed
 		return ctx.cookies;
