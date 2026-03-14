@@ -12,17 +12,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        node: ['20.x', '22.x', '23.x', '24.x']
+        node: ['20.x', '22.x', '24.x']
         os: [ubuntu-latest, windows-latest]
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Install Node ${{ matrix.node }}
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
+          cache: yarn
 
       - name: Install dependencies
         run: yarn

@@ -1,57 +1,43 @@
 import assert from 'node:assert';
 import {describe, it} from 'node:test';
-import {z} from 'zod';
 import {KaitoError} from '../error.ts';
+import type {KaitoRequest} from '../request.ts';
+import {k} from '../schema/schema.ts';
+import {sse} from '../stream/stream.ts';
+import type {KaitoMethod} from '../util.ts';
 import {Router} from './router.ts';
 
-type Context = {
-	userId: string;
-};
-
-type AuthContext = Context & {
-	isAdmin: boolean;
-};
+type Tc = {req: KaitoRequest};
+const router = Router.create<Tc>({
+	getContext: req => ({req}),
+	onError: e => ({status: 500, message: e.message}),
+});
 
 describe('Router', () => {
 	describe('create', () => {
 		it('should create an empty router', () => {
-			const router = Router.create<Context>();
 			assert.strictEqual(router.routes.size, 0);
 		});
 	});
 
 	describe('route handling', () => {
 		it('should handle GET requests', async () => {
-			const router = Router.create<Context>().get('/users', {
-				run: async () => ({users: []}),
-			});
-
-			const handler = router.freeze({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = router.get('/users', () => ({users: []})).serve();
 
 			const response = await handler(new Request('http://localhost/users', {method: 'GET'}));
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: {users: []},
-				message: 'OK',
-			});
+			assert.deepStrictEqual(data, {users: []});
 		});
 
 		it('should handle POST requests with body parsing', async () => {
-			const router = Router.create<Context>().post('/users', {
-				body: z.object({name: z.string()}),
+			const r = router.post('/users', {
+				body: k.object({name: k.string()}),
 				run: async ({body}) => ({id: '1', name: body.name}),
 			});
 
-			const handler = router.freeze({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(
 				new Request('http://localhost/users', {
@@ -60,45 +46,32 @@ describe('Router', () => {
 					body: JSON.stringify({name: 'John'}),
 				}),
 			);
+
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: {id: '1', name: 'John'},
-				message: 'OK',
-			});
+			assert.deepStrictEqual(data, {id: '1', name: 'John'});
 		});
 
 		it('should handle URL parameters', async () => {
-			const router = Router.create<Context>().get('/users/:id', {
+			const r = router.get('/users/:id', {
 				run: async ({params}) => ({id: params.id}),
 			});
 
-			const handler = router.freeze({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(new Request('http://localhost/users/456', {method: 'GET'}));
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: {id: '456'},
-				message: 'OK',
-			});
+			assert.deepStrictEqual(data, {id: '456'});
 		});
 
 		it('should handle query parameters', async () => {
-			const router = Router.create<Context>().get('/search', {
+			const r = router.get('/search', {
 				query: {
-					q: z.string(),
-					limit: z
-						.string()
-						.transform(value => Number(value))
-						.pipe(z.number()),
+					q: k.string(),
+					limit: k.string(),
 				},
 				run: async ({query}) => ({
 					query: query.q,
@@ -106,96 +79,76 @@ describe('Router', () => {
 				}),
 			});
 
-			const handler = router.freeze({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(new Request('http://localhost/search?q=test&limit=10', {method: 'GET'}));
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: {query: 'test', limit: 10},
-				message: 'OK',
-			});
+			assert.deepStrictEqual(data, {query: 'test', limit: '10'});
 		});
 	});
 
-	describe('middleware and context', () => {
-		it('should transform context through middleware', async () => {
-			const router = Router.create<Context>()
-				.through(async ctx => ({
+	describe('.pipe() and context', () => {
+		it('should transform context with .pipe()', async () => {
+			const r = router
+				.pipe(ctx => ({
 					...ctx,
-					isAdmin: ctx.userId === 'admin',
+					isAdmin: ctx.req.headers.get('Authorization') === 'Bearer admin-token',
 				}))
-				.get('/admin', {
-					run: async ({ctx}) => ({
-						isAdmin: (ctx as AuthContext).isAdmin,
-					}),
-				});
+				.get('/admin', ({ctx}) => ({isAdmin: ctx.isAdmin}));
 
-			const handler = router.freeze({
-				getContext: async () => ({userId: 'admin'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
-			const response = await handler(new Request('http://localhost/admin', {method: 'GET'}));
+			const response = await handler(
+				new Request('http://localhost/admin', {
+					method: 'GET',
+					headers: {Authorization: 'Bearer admin-token'},
+				}),
+			);
+
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: {isAdmin: true},
-				message: 'OK',
-			});
+			assert.deepStrictEqual(data, {isAdmin: true});
 		});
 	});
 
 	describe('error handling', () => {
 		it('should handle KaitoError with custom status', async () => {
-			const router = Router.create<Context>().get('/error', {
+			const r = router.get('/error', {
 				run: async () => {
 					throw new KaitoError(403, 'Forbidden');
 				},
 			});
 
-			const handler = router.freeze({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(new Request('http://localhost/error', {method: 'GET'}));
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 403);
 			assert.deepStrictEqual(data, {
-				success: false,
-				data: null,
 				message: 'Forbidden',
 			});
 		});
 
 		it('should handle generic errors with server error handler', async () => {
-			const router = Router.create<Context>().get('/error', {
+			const r = Router.create({
+				onError: () => ({status: 500, message: 'Custom Error Message'}),
+			}).get('/error', {
 				run: async () => {
 					throw new Error('Something went wrong');
 				},
 			});
 
-			const handler = router.freeze({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Custom Error Message'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(new Request('http://localhost/error', {method: 'GET'}));
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 500);
 			assert.deepStrictEqual(data, {
-				success: false,
-				data: null,
 				message: 'Custom Error Message',
 			});
 		});
@@ -203,66 +156,561 @@ describe('Router', () => {
 
 	describe('router merging', () => {
 		it('should merge routers with prefix', async () => {
-			const userRouter = Router.create<Context>().get('/me', {
-				run: async ({ctx}) => ({id: ctx.userId}),
-			});
+			const userRouter = router.get('/:user_id', ({params}) => params.user_id);
 
-			const mainRouter = Router.create<Context>().merge('/api', userRouter);
+			const mainRouter = router.merge('/api', userRouter);
 
-			const handler = mainRouter.freeze({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = mainRouter.serve();
 
-			const response = await handler(new Request('http://localhost/api/me', {method: 'GET'}));
+			const response = await handler(new Request('http://localhost/api/1', {method: 'GET'}));
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 200);
-			assert.deepStrictEqual(data, {
-				success: true,
-				data: {id: '123'},
-				message: 'OK',
+			assert.deepStrictEqual(data, '1');
+		});
+
+		it('should handle merging on /', () => {
+			const child = router.get('/', {
+				run: () => 'child',
 			});
+
+			const namedChild = router.get('/', () => 'named child').get('/child', () => 'named child');
+
+			const parent = router
+				.post('/', () => 'parent')
+				.delete('/', () => 'parent')
+				.merge('/', child)
+				.merge('/named', namedChild);
+
+			// Copying into Array.from, easier access methods than the SetIterator
+			const routes = Array.from(parent.routes.values());
+
+			// Ensure that the path of the GET merged is simply /
+			const getChildRoute = routes.find(r => r.method === 'GET' && r.path === '/');
+			assert.strictEqual(getChildRoute?.path, '/');
+
+			// Ensure the named child is unaffected, and not missing any slashes
+			const getNamedChildRoute = routes.find(r => r.method === 'GET' && r.path === '/named');
+			assert.strictEqual(getNamedChildRoute?.path, '/named');
+
+			const getNestedNameChildRoute = routes.find(r => r.method === 'GET' && r.path === '/named/child');
+			assert.strictEqual(getNestedNameChildRoute?.path, '/named/child');
 		});
 	});
 
 	describe('404 handling', () => {
 		it('should return 404 for non-existent routes', async () => {
-			const router = Router.create<Context>();
-			const handler = router.freeze({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = router.serve();
 
 			const response = await handler(new Request('http://localhost/not-found', {method: 'GET'}));
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 404);
 			assert.deepStrictEqual(data, {
-				success: false,
-				data: null,
 				message: 'Cannot GET /not-found',
 			});
 		});
 
 		it('should return 404 for wrong method on existing path', async () => {
-			const router = Router.create<Context>().get('/users', {
+			const r = router.get('/users', {
 				run: async () => ({users: []}),
 			});
 
-			const handler = router.freeze({
-				getContext: async () => ({userId: '123'}),
-				onError: async () => ({status: 500, message: 'Internal Server Error'}),
-			});
+			const handler = r.serve();
 
 			const response = await handler(new Request('http://localhost/users', {method: 'POST'}));
 			const data = await response.json();
 
 			assert.strictEqual(response.status, 404);
 			assert.deepStrictEqual(data, {
-				success: false,
-				data: null,
 				message: 'Cannot POST /users',
+			});
+		});
+	});
+
+	describe('findRoute', () => {
+		const dummyHandler = () => {};
+
+		const routes = new Map<KaitoMethod, Map<string, () => void>>([
+			[
+				'GET',
+				new Map([
+					['/users/:id', dummyHandler],
+					['/health', dummyHandler],
+					['/', dummyHandler],
+					['/users/:id/posts/:slug', dummyHandler],
+				]),
+			],
+			[
+				'DELETE',
+				new Map([
+					['/users/:id/posts/:slug', dummyHandler],
+					['/posts/:postId/comments/:commentId', dummyHandler],
+				]),
+			],
+			['PUT', new Map([['/users/:id', dummyHandler]])],
+		]);
+
+		class ExposedInternalsRouter extends Router<never, never, never, never, never> {
+			public static override getFindRoute = Router.getFindRoute;
+		}
+
+		const findRoute = ExposedInternalsRouter.getFindRoute(routes);
+
+		it('should match exact routes', () => {
+			const result = findRoute('GET', '/health');
+			assert.deepStrictEqual(result, {
+				route: dummyHandler,
+				params: {},
+			});
+		});
+
+		it('should match routes with single parameter', () => {
+			const result = findRoute('GET', '/users/123');
+			assert.deepStrictEqual(result, {
+				route: dummyHandler,
+				params: {
+					id: '123',
+				},
+			});
+		});
+
+		it('should match routes with multiple parameters', () => {
+			const result = findRoute('DELETE', '/posts/456/comments/789');
+			assert.deepStrictEqual(result, {
+				route: dummyHandler,
+				params: {
+					postId: '456',
+					commentId: '789',
+				},
+			});
+		});
+
+		it('should return empty object for non-existent paths', () => {
+			const result = findRoute('GET', '/nonexistent');
+			assert.deepStrictEqual(result, {});
+		});
+
+		it('should return empty object for non-existent methods on valid paths', () => {
+			const result = findRoute('DELETE', '/users/123');
+			assert.deepStrictEqual(result, {});
+		});
+
+		it('should handle root path correctly', () => {
+			const result = findRoute('GET', '/');
+			assert.deepStrictEqual(result, {
+				route: dummyHandler,
+				params: {},
+			});
+		});
+
+		it('should handle paths with trailing slashes', () => {
+			const result = findRoute('GET', '/users/123/');
+			assert.deepStrictEqual(result, {
+				route: dummyHandler,
+				params: {
+					id: '123',
+				},
+			});
+		});
+
+		it('should handle paths with multiple consecutive slashes', () => {
+			const result = findRoute('GET', '/users///123');
+			assert.deepStrictEqual(result, {
+				route: dummyHandler,
+				params: {
+					id: '123',
+				},
+			});
+		});
+
+		it('should not match partial paths', () => {
+			const result = findRoute('GET', '/users/123/extra');
+			assert.deepStrictEqual(result, {});
+		});
+
+		it('should match numeric and special character parameters', () => {
+			const result = findRoute('GET', '/users/123/posts/hello-world@2');
+
+			assert.deepStrictEqual(result, {
+				route: dummyHandler,
+				params: {
+					id: '123',
+					slug: 'hello-world@2',
+				},
+			});
+		});
+
+		it('should be case sensitive for non-parameter parts', () => {
+			const result = findRoute('GET', '/USERS/123');
+			assert.deepStrictEqual(result, {});
+		});
+
+		it('should handle empty parameter values', () => {
+			const result = findRoute('GET', '/users//');
+			assert.deepStrictEqual(result, {});
+		});
+	});
+
+	describe('Lifecycle hooks', () => {
+		it('should short-circuit route execution when before hook returns a Response', async () => {
+			const beforeRouter = Router.create({
+				before: () => Response.json({blocked: true}, {status: 403}),
+			}).get('/should-not-run', {
+				run: () => ({should: 'not-run'}),
+			});
+
+			const handler = beforeRouter.serve();
+			const response = await handler(new Request('http://localhost/should-not-run', {method: 'GET'}));
+			const data = await response.json();
+
+			assert.strictEqual(response.status, 403);
+			assert.deepStrictEqual(data, {blocked: true});
+		});
+
+		it('should modify the route response using transform hook', async () => {
+			const transformRouter = Router.create({
+				transform: async (_req, res) => {
+					const originalData = await res.json();
+					return Response.json({...originalData, transformed: true});
+				},
+			}).get('/transform-test', {
+				run: async () => ({result: 'original'}),
+			});
+
+			const handler = transformRouter.serve();
+			const response = await handler(new Request('http://localhost/transform-test', {method: 'GET'}));
+			const data = await response.json();
+
+			assert.strictEqual(response.status, 200);
+			assert.deepStrictEqual(data, {
+				result: 'original',
+				transformed: true,
+			});
+		});
+
+		it('should not apply transform hook to a before hook response', async () => {
+			const beforeTransformRouter = Router.create({
+				before: () => Response.json({blocked: true}, {status: 403}),
+				// Even though transform returns a new response, its return is ignored because the before hook short-circuits.
+				transform: () => Response.json({shouldNot: 'modify'}, {status: 200}),
+			}).get('/no-run', {
+				run: async () => ({should: 'not-run'}),
+			});
+
+			const handler = beforeTransformRouter.serve();
+			const response = await handler(new Request('http://localhost/no-run', {method: 'GET'}));
+			const data = await response.json();
+
+			assert.strictEqual(response.status, 403);
+			assert.deepStrictEqual(data, {blocked: true});
+		});
+	});
+
+	describe('params() validation', () => {
+		it('should work with merged routers and params', async () => {
+			const postRouter = router.params<'postId' | 'userId'>().get('/test', {
+				run: async ({params}) => ({
+					postId: params.postId,
+					userId: params.userId,
+					hello: 'world',
+				}),
+			});
+
+			const mainRouter = router.merge('/users/:userId/posts/:postId', postRouter);
+
+			const handler = mainRouter.serve();
+
+			const validResponse = await handler(new Request('http://localhost/users/123/posts/456/test', {method: 'GET'}));
+			const validData = await validResponse.json();
+
+			assert.strictEqual(validResponse.status, 200);
+			assert.deepStrictEqual(validData, {
+				postId: '456',
+				userId: '123',
+				hello: 'world',
+			});
+		});
+	});
+
+	describe('Custom Response handling', () => {
+		it('should return the Response object as is if route handler returns a Response', async () => {
+			const customResponseRouter = router.get('/custom', {
+				run: async () => new Response('Custom Response', {status: 201}),
+			});
+
+			const handler = customResponseRouter.serve();
+			const response = await handler(new Request('http://localhost/custom', {method: 'GET'}));
+			const text = await response.text();
+
+			assert.strictEqual(response.status, 201);
+			assert.strictEqual(text, 'Custom Response');
+		});
+	});
+
+	describe('Invalid JSON body handling', () => {
+		it('should return 500 when invalid JSON is provided for a POST request', async () => {
+			const invalidJsonRouter = router.post('/invalid', {
+				body: k.object({name: k.string()}),
+				run: async ({body}) => ({received: body.name}),
+			});
+
+			const handler = invalidJsonRouter.serve();
+			const response = await handler(
+				new Request('http://localhost/invalid', {
+					method: 'POST',
+					headers: {'Content-Type': 'application/json'},
+					body: 'this is not valid json',
+				}),
+			);
+
+			const data = await response.json();
+
+			assert.strictEqual(response.status, 500);
+			assert.match(data.message, /Unexpected token 'h', "this is not"... is not valid JSON|Failed to parse JSON/);
+		});
+	});
+
+	describe('OpenAPI endpoint', () => {
+		it('should serve the OpenAPI documentation at /openapi.json', async () => {
+			const apiTitle = 'Test API';
+			const apiVersion = '1.0.0';
+			const openapiRouter = router.openapi({
+				info: {
+					title: apiTitle,
+					version: apiVersion,
+					description: 'This is a test API',
+				},
+				servers: {
+					'http://localhost': 'Localhost development server',
+				},
+			});
+
+			const handler = openapiRouter.serve();
+			const response = await handler(new Request('http://localhost/openapi.json', {method: 'GET'}));
+			const data = await response.json();
+
+			assert.strictEqual(data.openapi, '3.1.0');
+			assert.strictEqual(data.info.title, apiTitle);
+			assert.strictEqual(data.info.version, apiVersion);
+		});
+	});
+
+	describe('OpenAPI', () => {
+		it('simple', async () => {
+			const app = router.get('/@me', {
+				openapi: {
+					description: 'Get the current user',
+					type: 'json',
+					schema: k.object({
+						id: k.string().example('1234567890').description('The id of the user'),
+						username: k.string().example('ali').description('The username of the user'),
+					}),
+				},
+				run: () => ({
+					id: '1234567890',
+					username: 'ali',
+				}),
+			});
+
+			const handler = app.serve();
+
+			const response = await handler(new Request('http://localhost/@me', {method: 'GET'}));
+			const data = await response.json();
+
+			assert.strictEqual(response.status, 200);
+			assert.deepStrictEqual(data, {
+				id: '1234567890',
+				username: 'ali',
+			});
+		});
+
+		it('serializes the values correctly in a type safe way', async () => {
+			const app = router.get('/@me', {
+				openapi: {
+					description: 'Get the current user',
+					type: 'json',
+					schema: k.scalar({
+						schema: k.string(),
+						toServer: value => BigInt(value),
+						toClient: value => value.toString(),
+					}),
+				},
+				run: () => BigInt(1234567890),
+			});
+
+			const handler = app.serve();
+			const response = await handler(new Request('http://localhost/@me', {method: 'GET'}));
+			const data = await response.json();
+
+			assert.deepStrictEqual(data, '1234567890');
+			assert.strictEqual(response.status, 200);
+		});
+	});
+
+	it('infers the correct output type for scalar body fields', () => {
+		const EntityID = k.scalar({
+			schema: k.string(),
+			toServer: v => BigInt(v),
+			toClient: v => v.toString(),
+		});
+
+		router.post('/test/:id', {
+			body: k.object({
+				nodeId: EntityID,
+			}),
+			run({body}) {
+				const nodeId: bigint = body.nodeId;
+				console.log(nodeId);
+			},
+		});
+	});
+
+	describe('OpenAPISpecFor type-level regression tests', () => {
+		it('JSON: errors on mismatched enum values in output schema', () => {
+			const NodeSchema = k.ref('TypeTestNode', {
+				id: k.string(),
+				region: k.enum(['us-east-1', 'us-east-2']),
+			});
+
+			router.get('/node', {
+				openapi: {
+					type: 'json',
+					// @ts-expect-error - run() returns region: string which is not assignable to "us-east-1" | "us-east-2"
+					schema: k.object({node: NodeSchema}),
+				},
+				run: () => ({
+					node: {
+						id: '123',
+						region: 'us-east-3',
+					},
+				}),
+			});
+		});
+
+		it('JSON: errors on wrong primitive type in output schema', () => {
+			router.get('/num', {
+				openapi: {
+					type: 'json',
+					// @ts-expect-error - run() returns string but schema expects number
+					schema: k.object({count: k.number()}),
+				},
+				run: () => ({count: 'not a number'}),
+			});
+		});
+
+		it('JSON: errors when run() returns subset of schema fields', () => {
+			router.get('/user', {
+				openapi: {
+					type: 'json',
+					// @ts-expect-error - run() returns {id} but schema serialize expects {id, name}
+					schema: k.object({id: k.string(), name: k.string()}),
+				},
+				run: () => ({id: '123'}),
+			});
+		});
+
+		it('JSON: accepts correct output matching schema', () => {
+			router.get('/ok', {
+				openapi: {
+					type: 'json',
+					schema: k.object({id: k.string(), active: k.boolean()}),
+				},
+				run: () => ({id: '123', active: true}),
+			});
+		});
+
+		it('JSON: constrains scalar output types pipe schema', () => {
+			const EntityID = k.scalar({
+				schema: k.string(),
+				toServer: v => BigInt(v),
+				toClient: v => v.toString(),
+			});
+
+			router.get('/scalar', {
+				openapi: {
+					type: 'json',
+					// @ts-expect-error - run() returns string but scalar server type is bigint
+					schema: k.object({id: EntityID}),
+				},
+				run: () => ({id: '123'}),
+			});
+		});
+
+		it('JSON: accepts correct scalar output type', () => {
+			const EntityID = k.scalar({
+				schema: k.string(),
+				toServer: v => BigInt(v),
+				toClient: v => v.toString(),
+			});
+
+			router.get('/scalar-ok', {
+				openapi: {
+					type: 'json',
+					schema: k.object({id: EntityID}),
+				},
+				run: () => ({id: BigInt(123)}),
+			});
+		});
+
+		it('SSE: errors on mismatched event name in output schema', () => {
+			router.get('/sse-bad-event', {
+				openapi: {
+					type: 'sse',
+					// @ts-expect-error - run() yields event "wrong" but schema expects "update"
+					schema: k.object({
+						data: k.string(),
+						event: k.literal('update'),
+					}),
+				},
+				run: () =>
+					sse(async function* () {
+						yield {data: 'hi', event: 'wrong' as const};
+					}),
+			});
+		});
+
+		it('SSE: errors on wrong data type in output schema', () => {
+			router.get('/sse-bad-data', {
+				openapi: {
+					type: 'sse',
+					// @ts-expect-error - run() yields string data but schema expects number
+					schema: k.object({
+						data: k.number(),
+						event: k.literal('tick'),
+					}),
+				},
+				run: () =>
+					sse(async function* () {
+						yield {data: 'not a number', event: 'tick' as const};
+					}),
+			});
+		});
+
+		it('SSE: accepts correct event shape', () => {
+			router.get('/sse-ok', {
+				openapi: {
+					type: 'sse',
+					schema: k.object({
+						data: k.string(),
+						event: k.literal('msg'),
+						retry: k.number(),
+					}),
+				},
+				run: () =>
+					sse(async function* () {
+						yield {data: 'hello', event: 'msg' as const, retry: 1000};
+					}),
+			});
+		});
+
+		it('Response: accepts Response return type', () => {
+			router.get('/raw', {
+				openapi: {
+					type: 'response',
+					description: 'raw response',
+				},
+				run: () => new Response('ok'),
 			});
 		});
 	});

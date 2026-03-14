@@ -3,5 +3,10 @@
 	"compilerOptions": {
 		"resolveJsonModule": true
 	},
-	"include": ["package.json", "src/**/*.ts"]
+	"include": ["package.json", "src/**/*.ts"],
+	"references": [
+		{
+			"path": "../core"
+		}
+	]
 }

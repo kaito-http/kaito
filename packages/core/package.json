@@ -1,13 +1,16 @@
 {
 	"name": "@kaito-http/core",
-	"version": "3.2.1",
 	"type": "module",
+	"version": "4.0.0-beta.33",
 	"author": "Alistair Smith <hi@alistair.sh>",
-	"description": "Functional HTTP Framework for TypeScript",
-	"scripts": {
-		"build": "tsup",
-		"attw": "attw --profile node16 --pack .",
-		"test": "node --test --import=tsx ./src/**/*.test.ts"
+	"repository": "https://github.com/kaito-http/kaito",
+	"dependencies": {
+		"openapi3-ts": "^4.5.0"
+	},
+	"devDependencies": {
+		"@arethetypeswrong/cli": "^0.17.2",
+		"tsup": "^8.3.5",
+		"typescript": "5.9.2"
 	},
 	"exports": {
 		"./package.json": "./package.json",
@@ -24,26 +27,25 @@
 			"require": "./dist/cors/cors.cjs"
 		}
 	},
+	"bugs": {
+		"url": "https://github.com/kaito-http/kaito/issues"
+	},
+	"description": "Functional HTTP Framework for TypeScript",
+	"files": [
+		"package.json",
+		"README.md",
+		"dist"
+	],
 	"homepage": "https://github.com/kaito-http/kaito",
-	"repository": "https://github.com/kaito-http/kaito",
 	"keywords": [
 		"typescript",
 		"http",
 		"framework"
 	],
 	"license": "MIT",
-	"devDependencies": {
-		"@arethetypeswrong/cli": "^0.17.2",
-		"@types/node": "^22.10.2",
-		"tsup": "^8.3.5",
-		"typescript": "^5.7.2"
-	},
-	"files": [
-		"package.json",
-		"README.md",
-		"dist"
-	],
-	"bugs": {
-		"url": "https://github.com/kaito-http/kaito/issues"
+	"scripts": {
+		"build": "tsup",
+		"attw": "attw --profile node16 --pack .",
+		"test": "node --test --import=tsx ./src/**/*.test.ts"
 	}
 }

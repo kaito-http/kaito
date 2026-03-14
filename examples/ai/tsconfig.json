@@ -1,3 +1,4 @@
 {
-	"extends": "../../tsconfig.options.json"
+	"extends": "../../tsconfig.options.json",
+	"references": [{"path": "../../packages/core"}, {"path": "../../packages/uws"}, {"path": "../../packages/client"}]
 }

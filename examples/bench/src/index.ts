@@ -1,13 +1,43 @@
-import {createKaitoHandler} from '@kaito-http/core';
+import {create, k, KaitoHead, KaitoRequest, type Params} from '@kaito-http/core';
 import {sse} from '@kaito-http/core/stream';
-import {KaitoServer} from '@kaito-http/uws';
-import {getContext, router} from './context.ts';
+import {Server} from '@kaito-http/uws';
+import {setTimeout as sleep} from 'node:timers/promises';
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+interface MyPluginOptions {
+	log: string;
+}
 
-const root = router()
-	.get('/hello', () => 'hi' as const)
-	.get('/stream', async () => {
+function myPlugin(options: MyPluginOptions) {
+	console.log('My Plugin is setting up');
+
+	return <C>(context: C, params: Params, request: KaitoRequest, head: KaitoHead) => {
+		console.log('My Plugin ran on a request with params:', params, 'and request url:', request.url, 'and head:', head);
+
+		return {
+			...(context ?? {}),
+			myPluginSetThis: options,
+		};
+	};
+}
+
+const router = create()
+	.pipe(myPlugin({log: 'hi'}))
+	.get('/', async ({ctx}) => {
+		ctx.myPluginSetThis.log; // 'hi'
+	});
+
+const sub = router.params<'user_id'>().get('/', ({params}) => {
+	return params.user_id;
+});
+
+const app = router
+	.get('/hello/:test', {
+		query: {
+			limit: k.number(),
+		},
+		run: () => 'hi' as const,
+	})
+	.post('/stream', () => {
 		const text = "This is an example of text being streamed every 100ms by using Kaito's sse() function";
 
 		return sse(async function* () {
@@ -17,27 +47,15 @@ const root = router()
 				await sleep(100);
 			}
 		});
-	});
+	})
+	.merge('/:user_id', sub);
 
-const fetch = createKaitoHandler({
-	router: root,
-	getContext,
-
-	onError: async ({error}) => ({
-		status: 500,
-		message: error.message,
-	}),
-});
-
-const server = await KaitoServer.serve({
-	fetch,
+const server = await Server.serve({
+	fetch: app.serve(),
 	port: 3000,
 	host: '127.0.0.1',
-	// static: {
-	// 	'/static/file.txt': new Response('Hello, world!'),
-	// },
 });
 
 console.log('Server listening at', server.url);
 
-export type App = typeof root;
+export type App = typeof app;

@@ -1,9 +1,9 @@
-import {type Parsable} from '../../src/util.ts';
+import {k} from '../../src/index.ts';
 import {router} from './router.ts';
 
-declare const schema: Parsable<{hello: string}, string>;
+const schema = k.object({hello: k.string()});
 
-export const mountMe = router()
+export const mountMe = router
 	.post('/post', {
 		query: {
 			name: schema,

@@ -1,0 +1,77 @@
+---
+title: Advanced Routing
+description: Learn about advanced routing features in Kaito, including router merging, params, and middleware patterns
+---
+
+import {Callout} from 'nextra/components';
+
+# Advanced Routing
+
+## Router Merging
+
+Routers can be merged, which brings one router's routes into another, with a prefix. This is incredibly useful for larger apps, for example when you have multiple versions of an API.
+
+```ts filename="api.ts"
+import {v1} from './routers/v1.ts';
+import {v2} from './routers/v2.ts';
+
+export const api = router.merge('/v1', v1).merge('/v2', v2);
+```
+
+All type information, route names, and correct prefixes are preserved during merging.
+
+## Router Parameters
+
+The `.params()` method lets you declare what URL parameters a router expects when it gets merged. Pass the param names as a type argument, like `.params<'userId'>()` — no runtime validation needed, params are always strings extracted from the URL. This only matters when the router is merged somewhere that provides those parameters.
+
+### Basic Parameters
+
+```ts
+// Declare that this router needs a userId parameter
+const userRouter = router.params<'userId'>().get('/', async ({params}) => {
+	// params.userId is guaranteed to exist and is a string
+	return {id: params.userId};
+});
+
+// This works - we're mounting at a path that provides userId
+const app = router.merge('/users/:userId', userRouter);
+
+// This would be a type error - we're not providing userId
+const badApp = router.merge('/users', userRouter);
+```
+
+### Nested Parameters
+
+Parameters become especially powerful with deeply nested routers:
+
+```ts
+// This router needs both userId and postId
+const commentsRouter = router.params<'userId' | 'postId'>().pipe(async (ctx, params) => {
+	const [user, post] = await Promise.all([db.users.findById(params.userId), db.posts.findById(params.postId)]);
+
+	if (!user || !post) {
+		throw new KaitoError(404, 'Not found');
+	}
+
+	return {
+		...ctx,
+		user,
+		post,
+	};
+});
+
+// This router provides postId and forwards userId
+const postsRouter = router.params<'userId'>().merge('/posts/:postId/comments', commentsRouter);
+
+// Finally, we provide userId at the top level
+const app = router.merge('/users/:userId', postsRouter);
+```
+
+<Callout>
+	You can only call `.params()` once on a router. Multiple calls will result in a type error to prevent breaking
+	existing routes.
+</Callout>
+
+## Pipes
+
+Kaito uses `.pipe()` instead of traditional middleware to transform context before routes run. Pipes are type-safe, composable, and chainable. See the dedicated [Pipes](/documentation/pipes) page for full documentation, including chaining, plugins, reusable routers, and advanced generic patterns.

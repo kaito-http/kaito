@@ -1,0 +1,97 @@
+---
+title: Handling CORS with Kaito
+description: Use Kaito's transform and before lifecycle methods to handle CORS
+---
+
+# Handling CORS with Kaito
+
+Kaito does not include any CORS handling out of the box. This is by design to keep the library lightweight and unopinionated. You can easily implement CORS handling in your server by using the [`before & transform`](/documentation/router-basics#request-lifecycle) lifecycle methods.
+
+## Manual Implementation (Recommended)
+
+```ts
+const ALLOWED_ORIGINS = ['http://localhost:3000', 'https://app.example.com'];
+
+export const router = create({
+	getContext,
+	before: async req => {
+		if (req.method === 'OPTIONS') {
+			return new Response(null, {status: 204}); // Return early to skip the router. This response will be passed to `.transform()`
+		}
+	},
+
+	transform: async (request, response) => {
+		const origin = request.headers.get('origin');
+
+		// Include CORS headers if the origin is allowed
+		if (origin && ALLOWED_ORIGINS.includes(origin)) {
+			response.headers.set('Access-Control-Allow-Origin', origin);
+			response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+			response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+			response.headers.set('Access-Control-Max-Age', '86400');
+			response.headers.set('Access-Control-Allow-Credentials', 'true');
+		}
+	},
+});
+```
+
+## Experimental CORS API
+
+Kaito also provides an experimental CORS API that can simplify the setup. **⚠️ This API is experimental and may change or be removed at any time. We recommend using the manual implementation above for production applications.**
+
+```ts
+import {create} from '@kaito-http/core';
+import {experimental_createCORSTransform} from '@kaito-http/core/cors';
+
+// The origin matcher supports exact matches and protocol-specific wildcard subdomains
+const ALLOWED_ORIGINS = [
+	// Exact matches - protocol required
+	'https://example.com', // matches only https://example.com
+	'http://localhost:3000', // matches only http://localhost:3000
+
+	// Wildcard subdomain matches - protocol required
+	'https://*.myapp.com', // matches https://dashboard.myapp.com
+	// does NOT match https://myapp.com or http://dashboard.myapp.com
+
+	// To match both HTTP and HTTPS, include both
+	'https://*.staging.com', // matches https://app.staging.com
+	'http://*.staging.com', // matches http://app.staging.com
+
+	// To match both subdomain and root domain, include both
+	'https://*.production.com', // matches https://app.production.com
+	'https://production.com', // matches https://production.com
+];
+
+const cors = experimental_createCORSTransform(ALLOWED_ORIGINS);
+
+export const router = create({
+	getContext,
+	before: cors.before,
+	transform: cors.transform,
+});
+```
+
+`experimental_createCORSTransform()` gives you an object with `.before` and `.transform` that you can pass straight into your router config. It also lets you manage origins dynamically at runtime:
+
+- `cors.addOrigins('https://new.example.com')` — add new allowed origins
+- `cors.removeOrigins('https://old.example.com')` — remove origins
+- `cors.setOrigins(['https://only-this.example.com'])` — replace all origins
+- `cors.getOrigins()` — see what's currently allowed
+
+The experimental CORS API includes a powerful origin matcher that supports both exact matches and wildcard subdomains. Important rules to note:
+
+- Protocol (http:// or https://) must be specified for all patterns
+- Wildcard patterns (e.g., `https://*.example.com`) will ONLY match subdomains, NOT the root domain
+- To match both HTTP and HTTPS for a domain, include both patterns
+- To match both subdomains and root domain, include both patterns
+
+Examples:
+
+- `https://example.com` - Matches exactly this origin with HTTPS
+- `https://*.example.com` - Matches HTTPS subdomains like `https://app.example.com`, but NOT `https://example.com` or `http://app.example.com`
+- `http://localhost:3000` - Matches exactly this origin with HTTP
+
+## References
+
+- [MDN: CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS)
+- [MDN: Access-Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Access-Control-Allow-Origin)

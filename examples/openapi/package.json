@@ -1,0 +1,27 @@
+{
+	"name": "@kaito-http-examples/openapi",
+	"private": true,
+	"type": "module",
+	"author": "Alistair Smith <hi@alistair.sh>",
+	"description": "Functional HTTP Framework for TypeScript",
+	"homepage": "https://github.com/kaito-http/kaito",
+	"repository": "https://github.com/kaito-http/kaito",
+	"license": "MIT",
+	"version": "4.0.0-beta.33",
+	"scripts": {
+		"dev": "node --import=tsx --watch src/index.ts",
+		"start": "node --import=tsx src/index.ts"
+	},
+	"dependencies": {
+		"@kaito-http/core": "workspace:^"
+	},
+	"devDependencies": {
+		"tsx": "^4.19.2",
+		"typescript": "5.9.2"
+	},
+	"keywords": [
+		"typescript",
+		"http",
+		"framework"
+	]
+}

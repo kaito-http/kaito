@@ -3,7 +3,7 @@ import {once} from 'node:events';
 import {type AddressInfo, createServer} from 'node:net';
 import {text} from 'node:stream/consumers';
 import {describe, test} from 'node:test';
-import {KaitoServer, type ServeUserOptions} from './index.ts';
+import {getRemoteAddress, KaitoServer, type ServeUserOptions} from './index.ts';
 
 async function getPort(): Promise<number> {
 	const server = createServer();
@@ -251,6 +251,77 @@ describe('KaitoServer', () => {
 		assert.deepEqual(responseData, binaryData);
 	});
 
+	test('Accessing remote ip', async () => {
+		using server = await createTestServer({
+			fetch: async req => new Response(`Your IP is ${getRemoteAddress(req)}`),
+		});
+
+		const res = await fetch(server.url);
+		assert.equal(await res.text(), 'Your IP is 127.0.0.1');
+	});
+
+	// test('static routes', async () => {
+	// 	using server = await createTestServer({
+	// 		static: {
+	// 			'/static/file.txt': new Response('Hello, world!'),
+	// 			'/static/stream': new Response(
+	// 				new ReadableStream({
+	// 					async start(controller) {
+	// 						controller.enqueue(new TextEncoder().encode('Hello, world!'));
+	// 						controller.close();
+	// 					},
+	// 				}),
+	// 			),
+	// 		},
+	// 	});
+
+	// 	const res = await fetch(server.url + '/static/file.txt');
+	// 	assert.equal(await res.text(), 'Hello, world!');
+
+	// 	const streamed = await fetch(server.url + '/static/file.txt');
+	// 	assert.equal(await streamed.text(), 'Hello, world!');
+	// });
+
+	test('server detects client disconnect during streaming response', async () => {
+		let disconnectDetected = false;
+		const encoder = new TextEncoder();
+
+		using server = await createTestServer({
+			fetch: async () => {
+				const stream = new ReadableStream({
+					async start(controller) {
+						controller.enqueue(encoder.encode('chunk1'));
+						await new Promise(r => setTimeout(r, 200));
+						controller.enqueue(encoder.encode('chunk2'));
+						await new Promise(r => setTimeout(r, 200));
+						controller.enqueue(encoder.encode('chunk3'));
+						controller.close();
+					},
+					cancel() {
+						disconnectDetected = true;
+					},
+				});
+
+				return new Response(stream);
+			},
+		});
+
+		try {
+			const controller = new AbortController();
+			const res = await fetch(server.url, {signal: controller.signal});
+			const reader = res.body!.getReader();
+
+			await reader.read();
+			controller.abort(); // disconnect before next chunks
+
+			await new Promise(r => setTimeout(r, 200)); // short processing time so server can detect disconnect
+
+			assert.equal(disconnectDetected, true, 'Server should detect client disconnect');
+		} finally {
+			server.close();
+		}
+	});
+
 	test('request.signal property for abort handling', async () => {
 		let signalWasValid = false;
 		let requestAborted = false;
@@ -281,23 +352,28 @@ describe('KaitoServer', () => {
 			},
 		});
 
-		const responsePromise = fetch(server.url);
-		await new Promise(resolve => setTimeout(resolve, 100));
-
-		server.close();
-
-		let didError = false;
-
 		try {
-			await responsePromise;
-		} catch (error) {
-			didError = true;
-			assert.ok(error instanceof TypeError, 'request should be an error');
-		}
+			const responsePromise = fetch(server.url);
+			await new Promise(resolve => setTimeout(resolve, 100));
 
-		assert.equal(didError, true, 'request should have errored');
-		assert.equal(requestAborted, true, 'request should have been aborted');
-		assert.equal(signalWasValid, true, 'request.signal should have been a valid AbortSignal');
+			server.close();
+
+			let didError = false;
+
+			try {
+				await responsePromise;
+			} catch (error) {
+				didError = true;
+				assert.ok(error instanceof TypeError, 'request should be an error');
+			}
+
+			assert.equal(didError, true, 'request should have errored');
+
+			assert.equal(requestAborted, true, 'request should have been aborted');
+			assert.equal(signalWasValid, true, 'request.signal should have been a valid AbortSignal');
+		} finally {
+			server.close();
+		}
 	});
 
 	test('request signal abort state', async () => {
@@ -329,22 +405,6 @@ describe('KaitoServer', () => {
 		assert.equal(signalChecks[1]!.aborted, false);
 	});
 
-	test('request context', async () => {
-		let remoteAddress: string | undefined;
-
-		using server = await createTestServer({
-			fetch: async (_request, context) => {
-				assert.equal(context.remoteAddress, '127.0.0.1');
-				remoteAddress = context.remoteAddress;
-				return new Response(context.remoteAddress);
-			},
-		});
-
-		const res = await fetch(server.url);
-		assert.equal(await res.text(), '127.0.0.1');
-		assert.ok(typeof remoteAddress === 'string', 'remoteAddress should be a string');
-	});
-
 	test('server properties', async () => {
 		const port = await getPort();
 		const host = '127.0.0.1';
@@ -358,187 +418,4 @@ describe('KaitoServer', () => {
 		assert.equal(server.address, `${host}:${port}`);
 		assert.equal(server.url, `http://${host}:${port}`);
 	});
-
-	test('errors in fetch handler return 500 Internal Server Error', async () => {
-		using server = await createTestServer({
-			fetch: async () => {
-				throw new Error('Something went wrong');
-			},
-		});
-
-		const res = await fetch(server.url);
-		assert.equal(res.status, 500);
-		assert.equal(await res.text(), 'Internal Server Error');
-	});
-
-	test('async errors in fetch handler are caught and handled', async () => {
-		using server = await createTestServer({
-			fetch: async () => {
-				await new Promise(resolve => setTimeout(resolve, 10));
-				throw new Error('Async error occurred');
-			},
-		});
-
-		const res = await fetch(server.url);
-		assert.equal(res.status, 500);
-		assert.equal(await res.text(), 'Internal Server Error');
-	});
-
-	test('synchronous errors in fetch handler are caught and handled', async () => {
-		using server = await createTestServer({
-			fetch: () => {
-				throw new Error('Sync error occurred');
-			},
-		});
-
-		const res = await fetch(server.url);
-		assert.equal(res.status, 500);
-		assert.equal(await res.text(), 'Internal Server Error');
-	});
-
-	test('custom onError handler receives error and can return custom response', async () => {
-		let errorReceived: Error | undefined;
-		let requestReceived: Request | undefined;
-
-		using server = await createTestServer({
-			fetch: async () => {
-				throw new Error('Test error message');
-			},
-			onError: (error, request) => {
-				errorReceived = error as Error;
-				requestReceived = request;
-				return new Response('Custom error response', {
-					status: 418,
-					statusText: "I'm a teapot",
-				});
-			},
-		});
-
-		const res = await fetch(server.url);
-		assert.equal(res.status, 418);
-		assert.equal(res.statusText, "I'm a teapot");
-		assert.equal(await res.text(), 'Custom error response');
-		assert.ok(errorReceived instanceof Error);
-		assert.equal(errorReceived.message, 'Test error message');
-		assert.ok(requestReceived instanceof Request);
-	});
-
-	test('async custom onError handler works correctly', async () => {
-		using server = await createTestServer({
-			fetch: async () => {
-				throw new Error('Async fetch error');
-			},
-			onError: async error => {
-				await new Promise(resolve => setTimeout(resolve, 10));
-				return new Response(`Handled: ${(error as Error).message}`, {
-					status: 503,
-					statusText: 'Service Unavailable',
-				});
-			},
-		});
-
-		const res = await fetch(server.url);
-		assert.equal(res.status, 503);
-		assert.equal(res.statusText, 'Service Unavailable');
-		assert.equal(await res.text(), 'Handled: Async fetch error');
-	});
-
-	test('errors thrown in onError handler fallback to default error handler', async () => {
-		using server = await createTestServer({
-			fetch: async () => {
-				throw new Error('Original error');
-			},
-			onError: () => {
-				throw new Error('Error in error handler');
-			},
-		});
-
-		const res = await fetch(server.url);
-		assert.equal(res.status, 500);
-		assert.equal(await res.text(), 'Internal Server Error');
-	});
-
-	test('async errors thrown in onError handler fallback to default error handler', async () => {
-		using server = await createTestServer({
-			fetch: async () => {
-				throw new Error('Original async error');
-			},
-			onError: async () => {
-				await new Promise(resolve => setTimeout(resolve, 10));
-				throw new Error('Async error in error handler');
-			},
-		});
-
-		const res = await fetch(server.url);
-		assert.equal(res.status, 500);
-		assert.equal(await res.text(), 'Internal Server Error');
-	});
-
-	test('rejecting promises in onError handler fallback to default error handler', async () => {
-		using server = await createTestServer({
-			fetch: async () => {
-				throw new Error('Original error');
-			},
-			onError: () => {
-				return Promise.reject(new Error('Promise rejection in error handler'));
-			},
-		});
-
-		const res = await fetch(server.url);
-		assert.equal(res.status, 500);
-		assert.equal(await res.text(), 'Internal Server Error');
-	});
-
-	test('error handling preserves request details when onError fails', async () => {
-		using server = await createTestServer({
-			fetch: async request => {
-				assert.ok(request.url.includes(server.url));
-				throw new Error('Test error with request details');
-			},
-			onError: (error, request) => {
-				// Verify we receive both error and request in onError
-				assert.ok(error instanceof Error);
-				assert.ok(request instanceof Request);
-				// But then fail in the error handler
-				throw new Error('onError handler failed');
-			},
-		});
-
-		const res = await fetch(`${server.url}/test-path?param=value`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify({test: 'data'}),
-		});
-
-		assert.equal(res.status, 500);
-		assert.equal(await res.text(), 'Internal Server Error');
-	});
-
-	// test('static routes', async () => {
-	// 	const server = await createTestServer({
-	// 		static: {
-	// 			'/static/file.txt': new Response('Hello, world!'),
-	// 			'/static/stream': new Response(
-	// 				new ReadableStream({
-	// 					async start(controller) {
-	// 						controller.enqueue(new TextEncoder().encode('Hello, world!'));
-	// 						controller.close();
-	// 					},
-	// 				}),
-	// 			),
-	// 		},
-	// 	});
-
-	// 	try {
-	// 		const res = await fetch(server.url + '/static/file.txt');
-	// 		assert.equal(await res.text(), 'Hello, world!');
-
-	// 		const streamed = await fetch(server.url + '/static/file.txt');
-	// 		assert.equal(await streamed.text(), 'Hello, world!');
-	// 	} finally {
-	// 		server.close();
-	// 	}
-	// });
 });

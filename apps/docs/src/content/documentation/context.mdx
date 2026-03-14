@@ -1,0 +1,70 @@
+---
+title: Context
+description: Context is a way to pass common data to all routes
+---
+
+import {Callout} from 'nextra/components';
+
+# Context
+
+In Kaito, context is information shared across every single route. You provide it at the root of your application, and Kaito generates it on every single request.
+
+Below is an example of things that you could include, but it's really up to you and what you would find useful to include in your app.
+
+In the documentation about routers, you'll learn about how routers can create their own context for enabling powerful separation of concerns. See [Pipes](/documentation/pipes) for how to transform and enrich context per-router.
+
+<Callout>
+	Passing the request/response objects to context is ok, but we firmly recommend you read the
+	[routes](/documentation/routes) documentation for information on the Request/Response model.
+</Callout>
+
+```ts filename="context.ts"
+import {create} from '@kaito-http/core';
+import {db} from './db.ts';
+
+// Create a new router with context
+export const router = create({
+	getContext: async (req, head) => {
+		return {
+			req,
+			head,
+			time: new Date(),
+
+			searchForUser: async (query: string) => {
+				return await db.users.search(query);
+			},
+
+			// This is just an example
+			getSession: async () => {
+				const cookies = req.headers.get('cookie');
+
+				// this is bad code, use a cookie parser library! npmjs.com/package/cookie is a good one
+				const token = cookies
+					?.split(';')
+					.find(cookie => cookie.startsWith('token='))
+					?.split('=')[1];
+
+				return await db.sessions.findByToken(token);
+			},
+		};
+	},
+});
+```
+
+You can then use this context, when setup correctly with a router, inside every single route. E.g.
+
+```ts filename="routes/users.ts"
+import {k} from '@kaito-http/core';
+import {router} from '../context.ts';
+
+export const users = router.get('/users/search', {
+	query: {
+		search: k.string().max(200),
+	},
+
+	async run({ctx, query}) {
+		const users = await ctx.searchForUser(query.search);
+		return users;
+	},
+});
+```

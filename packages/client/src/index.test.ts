@@ -10,12 +10,7 @@ describe('KaitoHTTPClient', () => {
 			const mockFetch = async (req: Request) => {
 				assert.equal(req.method, 'GET');
 				assert.equal(req.url, 'http://api.example.com/users?limit=10');
-				return new Response(
-					JSON.stringify({
-						success: true,
-						data: [{id: 1, name: 'Test User'}],
-					}),
-				);
+				return new Response(JSON.stringify({id: 1, name: 'Test User'}));
 			};
 
 			const client = createKaitoHTTPClient<App>({
@@ -27,7 +22,7 @@ describe('KaitoHTTPClient', () => {
 				query: {limit: '10'},
 			});
 
-			assert.deepEqual(result, [{id: 1, name: 'Test User'}]);
+			assert.deepEqual(result, {id: 1, name: 'Test User'});
 		});
 
 		test('should make POST requests with body', async () => {
@@ -36,12 +31,7 @@ describe('KaitoHTTPClient', () => {
 				assert.equal(req.url, 'http://api.example.com/users');
 				const body = await req.json();
 				assert.deepEqual(body, {name: 'New User'});
-				return new Response(
-					JSON.stringify({
-						success: true,
-						data: {id: 1, name: 'New User'},
-					}),
-				);
+				return Response.json({id: 1, name: 'New User'});
 			};
 
 			const client = createKaitoHTTPClient<App>({
@@ -52,6 +42,7 @@ describe('KaitoHTTPClient', () => {
 			const result = await client.post('/users', {
 				body: {name: 'New User'},
 			});
+
 			assert.deepEqual(result, {id: 1, name: 'New User'});
 		});
 
@@ -59,12 +50,8 @@ describe('KaitoHTTPClient', () => {
 			const mockFetch = async (req: Request) => {
 				assert.equal(req.method, 'GET');
 				assert.equal(req.url, 'http://api.example.com/users/123');
-				return new Response(
-					JSON.stringify({
-						success: true,
-						data: {id: 123, name: 'Test User'},
-					}),
-				);
+
+				return Response.json({id: 123, name: 'Test User'});
 			};
 
 			const client = createKaitoHTTPClient<App>({
@@ -75,6 +62,7 @@ describe('KaitoHTTPClient', () => {
 			const result = await client.get('/users/:id', {
 				params: {id: '123'},
 			});
+
 			assert.deepEqual(result, {id: 123, name: 'Test User'});
 		});
 
@@ -83,12 +71,7 @@ describe('KaitoHTTPClient', () => {
 				assert.equal(req.method, 'GET');
 				const url = new URL(req.url);
 				assert.equal(url.searchParams.get('limit'), '10');
-				return new Response(
-					JSON.stringify({
-						success: true,
-						data: [{id: 1, name: 'Test User'}],
-					}),
-				);
+				return Response.json([{id: 1, name: 'Test User'}]);
 			};
 
 			const client = createKaitoHTTPClient<App>({
@@ -107,14 +90,7 @@ describe('KaitoHTTPClient', () => {
 	describe('Error handling', () => {
 		test('should throw KaitoClientHTTPError for error responses', async () => {
 			const mockFetch = async () => {
-				return Response.json(
-					{
-						success: false,
-						message: 'Not Found',
-						data: null,
-					},
-					{status: 404},
-				);
+				return Response.json({message: 'Not Found'}, {status: 404});
 			};
 
 			const client = createKaitoHTTPClient<App>({
@@ -132,9 +108,7 @@ describe('KaitoHTTPClient', () => {
 					assert(error instanceof KaitoClientHTTPError);
 					assert.equal(error.response.status, 404);
 					assert.deepEqual(error.body, {
-						success: false,
 						message: 'Not Found',
-						data: null,
 					});
 					return true;
 				},
@@ -227,12 +201,7 @@ describe('KaitoHTTPClient', () => {
 				},
 				fetch: async req => {
 					assert.equal(req.headers.get('Authorization'), 'Bearer test-token');
-					return new Response(
-						JSON.stringify({
-							success: true,
-							data: [{id: 1, name: 'Test User'}],
-						}),
-					);
+					return new Response(JSON.stringify({id: 1, name: 'Test User'}));
 				},
 			});
 
@@ -240,7 +209,7 @@ describe('KaitoHTTPClient', () => {
 				query: {limit: '10'},
 			});
 
-			assert.deepEqual(result, [{id: 1, name: 'Test User'}]);
+			assert.deepEqual(result, {id: 1, name: 'Test User'});
 		});
 
 		test('should handle AbortController signals', async () => {

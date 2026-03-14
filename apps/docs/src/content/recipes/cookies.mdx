@@ -1,0 +1,106 @@
+# Handling cookies with Kaito
+
+Kaito does not include cookie handling. You can add it yourself in your context — here's how.
+
+## Using fami (recommended)
+
+We recommend the [`fami`](https://www.npmjs.com/package/fami) package. It has zero dependencies, a tiny footprint, and first-class Kaito support with full type safety via `fami/kaito`.
+
+```bash
+bun i fami
+```
+
+### With `fami/kaito`
+
+The `fami/kaito` adapter works with kaito's `.pipe()` method to add `cookies`, `setCookie`, and `deleteCookie` to your context automatically.
+
+```ts
+import {create} from '@kaito-http/core';
+import {fami} from 'fami/kaito';
+
+const app = create({
+	getContext: (req, head) => ({req, head}),
+})
+	.pipe(
+		fami({
+			theme: {},
+			session: {
+				httpOnly: true,
+				secure: true,
+				maxAge: 3600,
+			},
+		}),
+	)
+	.get('/cookies', ({ctx}) => {
+		// ctx.cookies is lazily parsed and fully typed
+		return ctx.cookies;
+	})
+	.get('/set-cookie', ({ctx}) => {
+		ctx.setCookie('session', 'abc123');
+		return 'Cookie set';
+	})
+	.get('/delete-cookie', ({ctx}) => {
+		ctx.deleteCookie('session');
+		return 'Cookie deleted';
+	});
+```
+
+### With the low-level API
+
+If you prefer to handle cookies manually, you can use `fami`'s `parse` and `serialize` functions directly.
+
+```ts
+import {create} from '@kaito-http/core';
+import {parse, serialize, type CookieAttributes} from 'fami';
+
+export const router = create({
+	getContext: async (req, head) => {
+		return {
+			req,
+			head,
+			get cookies() {
+				const header = req.headers.get('cookie');
+				return header ? parse(header) : {};
+			},
+			setCookie(name: string, value: string, attributes?: CookieAttributes) {
+				head.headers.append('Set-Cookie', serialize(name, value, attributes));
+			},
+		};
+	},
+});
+```
+
+## Using cookie
+
+The [`cookie`](https://www.npmjs.com/package/cookie) package is another solid option. It has a tiny footprint and zero dependencies.
+
+```bash
+bun i cookie
+```
+
+```ts
+import {create} from '@kaito-http/core';
+import {serialize, parse, type SerializeOptions} from 'cookie';
+
+export const router = create({
+	getContext: async (req, head) => {
+		return {
+			req,
+			head,
+			get cookies() {
+				const header = req.headers.get('cookie');
+				return header ? parse(header) : {};
+			},
+			setCookie(name: string, value: string, options?: SerializeOptions) {
+				head.headers.append('Set-Cookie', serialize(name, value, options));
+			},
+		};
+	},
+});
+```
+
+## References
+
+- [fami on GitHub](https://github.com/pxseu/fami)
+- [cookie on GitHub](https://github.com/jshttp/cookie)
+- [MDN: Cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cookie)

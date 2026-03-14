@@ -1,15 +1,29 @@
-import {createUtilities} from '@kaito-http/core';
+import {create} from '@kaito-http/core';
+import {getRemoteAddress} from '@kaito-http/uws';
 
 const serverStarted = Date.now();
 
-export const {getContext, router} = createUtilities(async (req, _res) => {
-	// Passing req is OK, but I personally prefer to avoid it.
-	// Instead, the logic I would have used req for should be
-	// included in this context file, allowing for it to be
-	// shared between routes.
+export const router = create({
+	getContext: async (req, head) => {
+		// Use `getRemoteAddress()` in Kaito 3.0.0+ in Node.js. Can only be called
+		// inside this getContext function, or inside of a route (or the callstack of a route)
+		const ip = getRemoteAddress(req);
 
-	return {
-		req,
-		uptime: Date.now() - serverStarted,
-	};
+		// Passing req is OK, but I personally prefer to avoid it.
+		// Instead, the logic I would have used req for should be
+		// included in this context file, allowing for it to be
+		// shared between routes.
+
+		return {
+			req,
+			ip,
+			head,
+			uptime: Date.now() - serverStarted,
+		};
+	},
+
+	onError: async error => ({
+		status: 500,
+		message: error.message,
+	}),
 });

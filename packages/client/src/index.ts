@@ -1,4 +1,4 @@
-import type {APIResponse, ErroredAPIResponse, InferParsable, InferRoutes, KaitoMethod, Router} from '@kaito-http/core';
+import type {AnyRoute, ExtractRouteParams, KaitoMethod, Router} from '@kaito-http/core';
 import type {KaitoSSEResponse, SSEEvent} from '@kaito-http/core/stream';
 import {pathcat} from 'pathcat';
 import pkg from '../package.json' with {type: 'json'};
@@ -26,25 +26,18 @@ export type UndefinedKeysToOptional<T> = {
 	[K in keyof T as undefined extends T[K] ? never : K]: T[K];
 };
 
-export type IsExactly<T, A, True, False> = T extends A ? (A extends T ? True : False) : False;
+export type IsExactly<T, A, True = true, False = false> = T extends A ? (A extends T ? True : False) : False;
 
 export type AlwaysEnabledOptions = {
 	signal?: AbortSignal | null | undefined;
+	headers?: HeadersInit;
 };
-
-export type ExtractRouteParams<T extends string> = string extends T
-	? string
-	: T extends `${string}:${infer Param}/${infer Rest}`
-		? Param | ExtractRouteParams<Rest>
-		: T extends `${string}:${infer Param}`
-			? Param
-			: never;
 
 export class KaitoClientHTTPError extends Error {
 	constructor(
 		public readonly request: Request,
 		public readonly response: Response,
-		public readonly body: ErroredAPIResponse,
+		public readonly body: {message: string},
 	) {
 		super(body.message);
 	}
@@ -118,7 +111,7 @@ export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements Asyn
 	// - Cuts an event in the middle
 	private buffer = '';
 
-	public constructor(stream: ReadableStream<Uint8Array>) {
+	public constructor(stream: ReadableStream<Uint8Array<ArrayBuffer>>) {
 		this.stream = stream.pipeThrough(new TextDecoderStream());
 	}
 
@@ -159,7 +152,7 @@ export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements Asyn
 		for await (const chunk of this.stream) {
 			this.buffer += chunk;
 			const events = this.buffer.split('\n\n');
-			this.buffer = events.pop() || '';
+			this.buffer = events.pop() ?? '';
 
 			for (const eventText of events) {
 				const event = this.parseEvent(eventText);
@@ -176,36 +169,42 @@ export class KaitoSSEStream<T extends SSEEvent<unknown, string>> implements Asyn
 	}
 }
 
-export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>(
+export function createKaitoHTTPClient<APP extends Router<any, any, any, any, any> = never>(
 	rootOptions: KaitoHTTPClientRootOptions,
 ) {
-	type ROUTES = InferRoutes<APP>;
+	type ROUTES = Extract<APP['routes'] extends Set<infer R> ? R : never, AnyRoute>;
+
+	type ReturnTypeFor<M extends KaitoMethod, Path extends Extract<ROUTES, {method: M}>['path']> = Awaited<
+		ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>
+	>;
 
 	type RequestOptionsFor<M extends KaitoMethod, Path extends Extract<ROUTES, {method: M}>['path']> = {
-		body: IfNeverThenUndefined<InferParsable<NonNullable<Extract<ROUTES, {method: M; path: Path}>['body']>>['input']>;
+		body: IfNeverThenUndefined<NonNullable<Extract<ROUTES, {method: M; path: Path}>['body']>['_input']>;
 
 		params: IfNoKeysThenUndefined<Record<ExtractRouteParams<Path>, string>>;
 
 		query: MakeQueryUndefinedIfNoRequiredKeys<
 			Prettify<
 				UndefinedKeysToOptional<{
-					[Key in keyof NonNullable<Extract<ROUTES, {method: M; path: Path}>['query']>]: InferParsable<
+					[Key in keyof NonNullable<Extract<ROUTES, {method: M; path: Path}>['query']>]: NonNullable<
 						NonNullable<Extract<ROUTES, {method: M; path: Path}>['query']>[Key]
-					>['input'];
+					>['_input'];
 				}>
 			>
 		>;
 
-		sse: IfNeverThenUndefined<
-			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<any>
-				? true
-				: never
-		>;
+		sse: IfNeverThenUndefined<ReturnTypeFor<M, Path> extends KaitoSSEResponse<any> ? true : never>;
 
-		response: IfNeverThenUndefined<
-			IsExactly<JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>>, Response, true, never>
-		>;
+		response: IfNeverThenUndefined<IsExactly<ReturnTypeFor<M, Path>, Response, true, never>>;
 	};
+
+	function* iterateHeaders(init: HeadersInit): Generator<[key: string, value: string], void, void> {
+		const iter = init instanceof Headers ? init.entries() : Array.isArray(init) ? init : Object.entries(init);
+
+		for (const entry of iter) {
+			yield entry;
+		}
+	}
 
 	const create = <M extends KaitoMethod>(method: M) => {
 		return async <Path extends Extract<ROUTES, {method: M}>['path']>(
@@ -214,7 +213,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 				? [options?: AlwaysEnabledOptions]
 				: [options: RemoveOnlyUndefinedKeys<UndefinedKeysToOptional<RequestOptionsFor<M, Path>>> & AlwaysEnabledOptions]
 		): Promise<
-			JSONIFY<Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>>> extends KaitoSSEResponse<
+			Awaited<ReturnType<Extract<ROUTES, {method: M; path: Path}>['run']>> extends KaitoSSEResponse<
 				infer U extends SSEEvent<unknown, string>
 			>
 				? KaitoSSEStream<U>
@@ -231,7 +230,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 			});
 
 			if (typeof window === 'undefined' && !headers.has('User-Agent')) {
-				headers.set('User-Agent', `kaito-http/client ${pkg.version}`);
+				headers.append('User-Agent', `kaito-http/client ${pkg.version}`);
 			}
 
 			const init: RequestInit = {
@@ -239,12 +238,18 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 				method,
 			};
 
+			if (options.headers !== undefined) {
+				for (const [key, value] of iterateHeaders(options.headers)) {
+					headers.append(key, value);
+				}
+			}
+
 			if (options.signal !== undefined) {
 				init.signal = options.signal;
 			}
 
 			if (body !== undefined) {
-				headers.set('Content-Type', 'application/json');
+				headers.append('Content-Type', 'application/json');
 				init.body = JSON.stringify(body);
 			}
 
@@ -261,7 +266,7 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 					// an error with the status text and status code
 
 					const json = await response.json().then(
-						data => data as ErroredAPIResponse,
+						data => data as {message: string},
 						() => null,
 					);
 
@@ -272,8 +277,6 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 
 				throw new KaitoClientHTTPError(request, response, {
 					message: `Request to ${url} failed with status ${response.status} and no obvious body`,
-					success: false,
-					data: null,
 				});
 			}
 
@@ -289,14 +292,11 @@ export function createKaitoHTTPClient<APP extends Router<any, any, any> = never>
 				return new KaitoSSEStream(response.body) as never;
 			}
 
-			const result = (await response.json()) as APIResponse<never>;
-
-			if (!result.success) {
-				// In theory success is always true because we've already checked the response status
-				throw new KaitoClientHTTPError(request, response, result);
+			if (response.headers.get('Content-Length') === '0') {
+				return undefined as never;
 			}
 
-			return result.data;
+			return await response.json();
 		};
 	};
 

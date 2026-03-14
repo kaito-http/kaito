@@ -1,64 +1,20 @@
 import uWS from 'uWebSockets.js';
 
-export interface RequestContext {
-	/**
-	 * The remote address of the client
-	 */
-	remoteAddress: string;
-}
-
 export interface ServeOptions {
-	/**
-	 * The port to listen on
-	 */
 	port: number;
-
-	/**
-	 * The host to listen on
-	 */
-	host: string;
-
+	host?: string;
 	// static?: Record<`/${string}`, Response>;
-
-	/**
-	 * This function is called for every request.
-	 *
-	 * @param request - The request that was made
-	 * @returns A response to send to the client
-	 */
-	fetch: (request: Request, context: RequestContext) => Response | PromiseLike<Response>;
-
-	/**
-	 * This function is called when an error occurs in the fetch handler.
-	 *
-	 * @param error - The error that occurred
-	 * @param request - The request that caused the error
-	 * @returns A response to send to the client
-	 */
-	onError: (error: unknown, request: Request) => Response | PromiseLike<Response>;
+	fetch: (request: Request) => Promise<Response> | Response;
 }
 
-type ExpandOptions<T> = {[K in keyof T]: T[K]} & {};
-export type ServeUserOptions = ExpandOptions<
-	Omit<ServeOptions, 'host' | 'onError'> & Partial<Pick<ServeOptions, 'host' | 'onError'>>
->;
-
-async function asyncTry<T, A extends unknown[] = []>(fn: (...args: A) => T | PromiseLike<T>, ...args: A): Promise<T> {
-	try {
-		return await fn(...args);
-	} catch (error) {
-		throw error;
-	}
-}
+export type ServeUserOptions = Omit<ServeOptions, 'host'> & Partial<Pick<ServeOptions, 'host'>>;
 
 const SPACE = ' ';
 const GET = 'get';
 const HEAD = 'head';
 const CONTENT_LENGTH = 'content-length';
-const QMARK = '?';
-const EMPTY = '';
 
-function context(res: uWS.HttpResponse): RequestContext {
+function inflightRequestStore(res: uWS.HttpResponse) {
 	return {
 		get remoteAddress() {
 			const value = Buffer.from(res.getRemoteAddressAsText()).toString('ascii');
@@ -68,12 +24,54 @@ function context(res: uWS.HttpResponse): RequestContext {
 	};
 }
 
+export type RequestMetadata = ReturnType<typeof inflightRequestStore>;
+
+const inflightRequestMetadataMap = new WeakMap<Request, RequestMetadata>();
+
+// technically kaito's uws server could be used without using kaito core.
+// so we should support the case where a user is trying to resolve a kaito request, or an actual request
+export type RequestOrKaitoRequest = Request | {request: Request};
+const requestFrom = (request: RequestOrKaitoRequest) => (request instanceof Request ? request : request.request);
+
+export function getRequestMetadata(request: RequestOrKaitoRequest) {
+	const metadata = inflightRequestMetadataMap.get(requestFrom(request));
+
+	if (!metadata) {
+		throw new Error('Request not found or used after request finished.');
+	}
+
+	return metadata;
+}
+
 /**
- * The main class for creating a Kaito server
+ * Get the remote address (ip address) of the request
+ *
+ * You can only use this function while a request is in flight.
+ *
+ * Be warned that if you a serving behind a reverse proxy (like Cloudflare, nginx, etc), this will return the ip address of the proxy, not the client.
+ * You should consult the docs of your reverse proxy to see how to get the client's ip address. Usually that is
+ * done by looking at a header like `x-forwarded-for` or `cf-connecting-ip`.
+ *
+ * @returns The remote address of the request
+ * @example
+ * ```typescript
+ * import {getRemoteAddress} from '@kaito-http/uws';
+ *
+ * await KaitoServer.serve({
+ * 	port: 3000,
+ * 	fetch: async (request, server) => {
+ * 		return new Response(`Your IP is ${server.getRemoteAddress(request)}`);
+ * 	}
+ * });
+ * ```
  */
-export class KaitoServer implements Disposable {
-	private static getRequestBodyStream(res: uWS.HttpResponse) {
-		return new ReadableStream<Uint8Array>({
+export function getRemoteAddress(request: RequestOrKaitoRequest) {
+	return getRequestMetadata(request).remoteAddress;
+}
+
+export class Server {
+	private static getRequestBodyStream(res: uWS.HttpResponse): ReadableStream<Uint8Array<ArrayBuffer>> {
+		return new ReadableStream<Uint8Array<ArrayBuffer>>({
 			start(controller) {
 				res.onData((ab, isLast) => {
 					const chunk = new Uint8Array(ab.slice(0));
@@ -92,66 +90,62 @@ export class KaitoServer implements Disposable {
 		});
 	}
 
-	// this function must not throw by any means
-	private static readonly DEFAULT_ON_ERROR: ServeOptions['onError'] = error => {
-		console.error('[@kaito-http/uws] Error in fetch handler:');
-		console.error(error);
-
-		return new Response('Internal Server Error', {
-			status: 500,
-			statusText: 'Internal Server Error',
-		});
-	};
-
 	/**
-	 * Create a new Kaito server
+	 * Start a new server on a specified port [& host]
+	 * @param options The options for the server
+	 * @returns A server instance
 	 *
-	 * @param options - The options for the server
-	 * @returns A Kaito server instance
 	 * @example
-	 * ```typescript
-	 * using server = await KaitoServer.serve({
-	 *   port: 3000,
-	 *   fetch: async request => new Response('Hello, world!'),
+	 * ```ts
+	 * import {Server} from '@kaito-http/uws';
+	 *
+	 * using server = await Server.serve({
+	 * 	port: 3000,
+	 * 	fetch: () => Response.json("Hello world"),
 	 * });
 	 * ```
 	 */
 	public static async serve(options: ServeUserOptions) {
-		const fullOptions: ServeOptions = {
+		const fullOptions = {
 			host: '0.0.0.0',
-			onError: this.DEFAULT_ON_ERROR,
 			...options,
-		};
+		} satisfies ServeOptions;
 
 		const {origin} = new URL('http://' + fullOptions.host + ':' + fullOptions.port);
 
 		const app = uWS.App();
 
-		// for await (const [path, response] of Object.entries(fullOptions.static ?? {})) {
+		// const staticPromises = Object.entries(fullOptions.static ?? {}).map(async ([path, response]) => {
 		// 	const buffer = await response.arrayBuffer();
+
 		// 	const statusAsBuffer = Buffer.from(response.status.toString().concat(SPACE, response.statusText));
 		// 	const headersFastArray = Array.from(response.headers.entries());
 
 		// 	app.any(path, res => {
 		// 		res.writeStatus(statusAsBuffer);
+
 		// 		for (const [header, value] of headersFastArray) {
 		// 			res.writeHeader(header, value);
 		// 		}
-		// 		res.end(buffer);
+
+		// 		res.end(buffer, true);
 		// 	});
-		// }
+		// });
+
+		// await Promise.all(staticPromises);
 
 		app.any('/*', async (res, req) => {
+			const controller = new AbortController();
+			res.onAborted(controller.abort.bind(controller));
+
 			const headers = new Headers();
 			req.forEach((k, v) => headers.set(k, v));
 
-			const method = req.getMethod();
 			//  req.getUrl does not include the query string in the url
 			const query = req.getQuery();
+			const method = req.getMethod();
 
-			const url = origin.concat(req.getUrl(), query ? QMARK + query : EMPTY);
-
-			const controller = new AbortController();
+			const url = origin.concat(req.getUrl(), query ? '?' + query : '');
 
 			const request = new Request(url, {
 				headers,
@@ -162,13 +156,8 @@ export class KaitoServer implements Disposable {
 				duplex: 'half',
 			});
 
-			res.onAborted(() => {
-				controller.abort();
-			});
-
-			const response = await asyncTry(options.fetch, request, context(res))
-				.catch(error => fullOptions.onError(error, request))
-				.catch(error => this.DEFAULT_ON_ERROR(error, request));
+			inflightRequestMetadataMap.set(request, inflightRequestStore(res));
+			const response = await options.fetch(request);
 
 			// request was aborted before the handler was finished
 			if (controller.signal.aborted) {
@@ -256,6 +245,9 @@ export class KaitoServer implements Disposable {
 						await writeNext(value);
 					}
 				}
+				if (controller.signal.aborted) {
+					await reader.cancel('Request aborted');
+				}
 			} finally {
 				if (!controller.signal.aborted) {
 					res.cork(() => res.end());
@@ -273,7 +265,7 @@ export class KaitoServer implements Disposable {
 			});
 		});
 
-		return new KaitoServer(app, fullOptions);
+		return new Server(app, fullOptions);
 	}
 
 	private readonly app: ReturnType<typeof uWS.App>;
@@ -284,7 +276,7 @@ export class KaitoServer implements Disposable {
 		this.options = options;
 	}
 
-	[Symbol.dispose](): void {
+	public [Symbol.dispose](): void {
 		return this.close();
 	}
 
@@ -300,3 +292,8 @@ export class KaitoServer implements Disposable {
 		return `http://${this.address}`;
 	}
 }
+
+/**
+ * @deprecated Use {@link Server} instead
+ */
+export const KaitoServer = Server;

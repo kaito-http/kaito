@@ -1,6 +1,6 @@
 {
 	"extends": "./tsconfig.options.json",
-	"exclude": ["./apps/docs/**/*"],
+	"files": [],
 	"references": [
 		{
 			"path": "./packages/client"
@@ -25,6 +25,9 @@
 		},
 		{
 			"path": "./examples/deno"
+		},
+		{
+			"path": "./examples/openapi"
 		}
 	]
 }

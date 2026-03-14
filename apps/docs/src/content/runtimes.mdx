@@ -1,0 +1,142 @@
+---
+title: Runtimes
+description: Learn how to use Kaito with different runtimes
+---
+
+# Runtimes
+
+Kaito is designed to work with any runtime, including serverless runtimes like Cloudflare Workers or the Vercel Edge Runtime.
+
+## Bun
+
+Bun is the runtime most suited for Kaito, as it has the fastest Request/Response server built in.
+
+```ts
+import {router} from './router.ts';
+
+const app = router.get('/', () => 'hi' as const);
+
+const handle = app.serve();
+
+const server = Bun.serve({
+	fetch: handle,
+	port: 3000,
+});
+
+console.log(`Listening at ${server.url}`);
+```
+
+## Node.js
+
+Node.js does NOT have a native Request/Response based HTTP server built in, so we built one ourselves! It's based on `uWebSockets.js`, which is a stupidly fast HTTP server written in C++ with Node.js bindings. It's actually the same server that Bun uses, so it offers almost as good performance as Bun.
+
+### Installation
+
+```bash
+bun i @kaito-http/uws
+```
+
+To be absolutely clear: `@kaito-http/uws` works ONLY with Node.js. While we use Bun in the installation command above, you can use any package manager (`npm`, `yarn`, etc.) to install it.
+
+### Usage
+
+```ts
+import {router} from './router.ts';
+import {Server} from '@kaito-http/uws';
+
+const app = router.get('/', () => 'hi' as const);
+
+const handle = app.serve();
+
+const server = await Server.serve({
+	fetch: handle,
+	port: 3000,
+});
+
+console.log(`Listening at ${server.url}`);
+```
+
+## Deno
+
+Deno supports the Fetch API natively, so you can use Kaito with Deno without any extra work.
+
+```ts
+import {router} from './router.ts';
+
+const app = router.get('/', () => 'hi' as const);
+
+const handle = app.serve();
+
+const server = Deno.serve(
+	{
+		port: 3000,
+	},
+	handle,
+);
+
+console.log(`Listening on`, server.addr);
+```
+
+## Cloudflare Workers
+
+Cloudflare Workers supports the Fetch API natively, so you can use Kaito with Cloudflare Workers without any extra work.
+
+```ts
+import {router} from './router.ts';
+
+const app = router.get('/', () => 'hi' as const);
+
+const handle = app.serve();
+
+export default {
+	fetch: handle,
+} satisfies ExportedHandler;
+```
+
+### Environment variables
+
+Cloudflare Workers passes environment variables to the handler function, which is a little awkward with Kaito. Our recommendation is to use AsyncLocalStorage to pass info between the handler and the router. This requires you to enable the node compatibility mode on your Cloudflare Worker.
+
+```ts filename="router.ts"
+import {AsyncLocalStorage} from 'node:async_hooks';
+import {create} from '@kaito-http/core';
+
+export interface Env {
+	STRIPE_SECRET_KEY: string;
+}
+
+export const storage = new AsyncLocalStorage<{
+	env: Env;
+	cfCtx: ExecutionContext; // has .waitUntil() and .passThroughOnException()
+}>();
+
+export const router = create({
+	getContext: async req => {
+		const store = storage.getStore()!;
+
+		return {
+			env: store.env,
+			waitUntil: store.cfCtx.waitUntil.bind(store.cfCtx), // use .bind() in case these functions depend on `this` being the cf context
+			passThroughOnException: store.cfCtx.passThroughOnException.bind(store.cfCtx),
+		};
+	},
+});
+```
+
+```ts filename="app.ts"
+import {router, storage, type Env} from './router.ts';
+
+const app = router.get('/', async ({ctx}) => {
+	ctx.waitUntil(doSomeWork()); // https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil
+
+	return {
+		freeStripeKey: ctx.env.STRIPE_SECRET_KEY, // obviously don't send your stripe key to the client lol
+	};
+});
+
+const handle = app.serve();
+
+export default {
+	fetch: async (request, env, ctx) => storage.run({env, cfCtx: ctx}, () => handle(request)),
+} satisfies ExportedHandler<Env>;
+```

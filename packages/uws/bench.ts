@@ -1,6 +1,9 @@
 import {KaitoServer} from './src/index.ts';
 
-await KaitoServer.serve({
+const b = 'ok';
+const server = await KaitoServer.serve({
 	port: 3000,
-	fetch: () => new Response('Hello, world!'),
+	fetch: () => Response.json(b),
 });
+
+console.log(`Listening at ${server.url}`);
