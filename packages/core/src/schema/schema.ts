@@ -1074,11 +1074,11 @@ export class KObject<
 
 export class KObjectFromURLSearchParams<
 	Input extends Record<keyof Output, JSONValue>,
-	Output extends Record<keyof Input, JSONValue>,
+	Output extends Record<keyof Input, unknown>,
 > extends KObject<Input, Output> {
 	public static override create = <
 		Input extends Record<keyof Output, JSONValue>,
-		Output extends Record<keyof Input, JSONValue>,
+		Output extends Record<keyof Input, unknown>,
 	>(shape: {
 		[K in keyof Input | keyof Output]: BaseSchema<Input[K], Output[K], BaseSchemaDef<Input[K]>>;
 	}) => new KObjectFromURLSearchParams({shape});
