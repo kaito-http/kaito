@@ -142,6 +142,36 @@ export abstract class BaseSchema<Input extends JSONValue, Output, Def extends Ba
 		return k.union([this, other]);
 	}
 
+	/**
+	 * Makes the schema accept `undefined`. Mainly useful for object properties,
+	 * where an optional property is also excluded from the `required` list.
+	 */
+	public optional(): KOptional<Input, Output> {
+		return new KOptional(this);
+	}
+
+	/**
+	 * Makes the schema also accept `null` (equivalent to `.or(k.null())`).
+	 */
+	public nullable(): KUnion<Input | null, Output | null> {
+		return this.or(k.null());
+	}
+
+	/**
+	 * Makes the schema accept both `null` and `undefined`.
+	 */
+	public nullish(): KOptional<Input | null, Output | null> {
+		return this.nullable().optional();
+	}
+
+	/**
+	 * Falls back to `defaultValue` when the value is `undefined`. As with
+	 * {@link optional}, the property is excluded from the `required` list.
+	 */
+	public default(defaultValue: Output): KDefault<Input, Output> {
+		return new KDefault(this, defaultValue);
+	}
+
 	example(example: Input): this;
 	example(): Input | undefined;
 	example(example?: Input) {
@@ -166,6 +196,106 @@ export abstract class BaseSchema<Input extends JSONValue, Output, Def extends Ba
 	 * Traverse immediate children schemas.
 	 */
 	abstract visit(visitor: (schema: BaseSchema<any, any, any>) => void): void;
+}
+
+/////////////////////////////////////////////////////
+///////////////////// KOPTIONAL /////////////////////
+/////////////////////////////////////////////////////
+
+export class KOptional<Input extends JSONValue, Output> extends BaseSchema<
+	Input,
+	Output | undefined,
+	BaseSchemaDef<Input>
+> {
+	public constructor(private readonly schema: BaseSchema<Input, Output, BaseSchemaDef<Input>>) {
+		super({});
+	}
+
+	public override serialize(value: Output | undefined): Input {
+		if (value === undefined) {
+			return undefined as unknown as Input;
+		}
+
+		return this.schema.serialize(value);
+	}
+
+	public override toOpenAPI(): SchemaObject | ReferenceObject {
+		return this.schema.toOpenAPI();
+	}
+
+	public override parseSafe(json: unknown): ParseResult<Output | undefined> {
+		if (json === undefined) {
+			return {success: true, result: undefined};
+		}
+
+		return this.schema.parseSafe(json);
+	}
+
+	public override parse(json: unknown): Output | undefined {
+		const result = this.parseSafe(json);
+
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+
+		return result.result;
+	}
+
+	public override visit(visitor: (schema: BaseSchema<any, any, any>) => void): void {
+		visitor(this.schema);
+		this.schema.visit(visitor);
+	}
+}
+
+/////////////////////////////////////////////////////
+////////////////////// KDEFAULT /////////////////////
+/////////////////////////////////////////////////////
+
+export class KDefault<Input extends JSONValue, Output> extends BaseSchema<
+	Input,
+	Exclude<Output, undefined>,
+	BaseSchemaDef<Input>
+> {
+	public constructor(
+		private readonly schema: BaseSchema<Input, Output, BaseSchemaDef<Input>>,
+		private readonly defaultValue: Output,
+	) {
+		super({});
+	}
+
+	public override serialize(value: Exclude<Output, undefined>): Input {
+		return this.schema.serialize((value === undefined ? this.defaultValue : value) as Output);
+	}
+
+	public override toOpenAPI(): SchemaObject | ReferenceObject {
+		return {
+			...this.schema.toOpenAPI(),
+			default: this.schema.serialize(this.defaultValue),
+		} as SchemaObject;
+	}
+
+	public override parseSafe(json: unknown): ParseResult<Exclude<Output, undefined>> {
+		if (json === undefined) {
+			return {success: true, result: this.defaultValue as Exclude<Output, undefined>};
+		}
+
+		return this.schema.parseSafe(json) as ParseResult<Exclude<Output, undefined>>;
+	}
+
+	public override parse(json: unknown): Exclude<Output, undefined> {
+		const result = this.parseSafe(json);
+
+		if (!result.success) {
+			throw new SchemaError(result.issues);
+		}
+
+		return result.result;
+	}
+
+	public override visit(visitor: (schema: BaseSchema<any, any, any>) => void): void {
+		visitor(this.schema);
+		this.schema.visit(visitor);
+	}
 }
 
 type Check<T extends string, P extends {} = {}> = {type: T; message?: string | undefined} & Omit<P, 'message'>;
@@ -597,6 +727,36 @@ export class KNumber extends BaseSchema<number, number, NumberDef> {
 }
 
 /////////////////////////////////////////////////////
+/////////////////// KCOERCEDNUMBER //////////////////
+/////////////////////////////////////////////////////
+
+/**
+ * A {@link KNumber} that coerces numeric strings (e.g. from query params or
+ * form data) into numbers before applying the usual number validation.
+ */
+export class KCoercedNumber extends KNumber {
+	public static override create = () => new KCoercedNumber({});
+
+	public override parseSafe(json: unknown): ParseResult<number> {
+		if (typeof json === 'string') {
+			if (json.trim() === '') {
+				return {success: false, issues: new Set([{message: 'Expected number', path: []}])};
+			}
+
+			const coerced = Number(json);
+
+			if (!Number.isFinite(coerced)) {
+				return {success: false, issues: new Set([{message: 'Expected number', path: []}])};
+			}
+
+			return super.parseSafe(coerced);
+		}
+
+		return super.parseSafe(json);
+	}
+}
+
+/////////////////////////////////////////////////////
 ////////////////////// KBOOLEAN //////////////////////
 /////////////////////////////////////////////////////
 
@@ -818,6 +978,10 @@ export class KObject<
 				const fieldValue = value[key];
 
 				if (fieldValue === undefined) {
+					if (this.def.shape[key] instanceof KOptional) {
+						continue;
+					}
+
 					throw new Error(`Missing required property: ${key}`);
 				}
 
@@ -843,7 +1007,9 @@ export class KObject<
 					return [key, value.toOpenAPI()];
 				}),
 			),
-			required: Object.keys(this.def.shape),
+			required: Object.entries(this.def.shape)
+				.filter(([, value]) => !(value instanceof KOptional) && !(value instanceof KDefault))
+				.map(([key]) => key),
 		};
 	}
 
@@ -858,11 +1024,13 @@ export class KObject<
 			for (const key in this.def.shape) {
 				if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
 					const value = (json as {[key: string]: unknown})[key];
-					if (value === undefined) {
+					const fieldSchema = this.def.shape[key]!;
+
+					if (value === undefined && !(fieldSchema instanceof KOptional) && !(fieldSchema instanceof KDefault)) {
 						return ctx.addIssue(`Missing required property: ${key}`, [key]);
 					}
 
-					const parseResult = this.def.shape[key]!.parseSafe(value);
+					const parseResult = fieldSchema.parseSafe(value);
 
 					if (!parseResult.success) {
 						return ctx.addIssues(parseResult.issues, [key]);
@@ -933,13 +1101,14 @@ export class KObjectFromURLSearchParams<
 
 			for (const key in this.def.shape) {
 				if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
-					const value = json.get(key);
+					const value = json.get(key) ?? undefined;
+					const fieldSchema = this.def.shape[key]!;
 
-					if (value === null) {
+					if (value === undefined && !(fieldSchema instanceof KOptional) && !(fieldSchema instanceof KDefault)) {
 						return ctx.addIssue(`Missing required property: ${key}`, [key]);
 					}
 
-					const parseResult = this.def.shape[key]!.parseSafe(value);
+					const parseResult = fieldSchema.parseSafe(value);
 
 					if (!parseResult.success) {
 						return ctx.addIssues(parseResult.issues, [key]);
@@ -983,6 +1152,10 @@ export class KRef<
 				const fieldValue = value[key];
 
 				if (fieldValue === undefined) {
+					if (this.def.shape[key] instanceof KOptional) {
+						continue;
+					}
+
 					throw new Error(`Missing required property: ${key}`);
 				}
 
@@ -1029,11 +1202,13 @@ export class KRef<
 			for (const key in this.def.shape) {
 				if (Object.prototype.hasOwnProperty.call(this.def.shape, key)) {
 					const value = (json as {[key: string]: unknown})[key];
-					if (value === undefined) {
+					const fieldSchema = this.def.shape[key]!;
+
+					if (value === undefined && !(fieldSchema instanceof KOptional) && !(fieldSchema instanceof KDefault)) {
 						return ctx.addIssue(`Missing required property: ${key}`, [key]);
 					}
 
-					const parseResult = this.def.shape[key]!.parseSafe(value);
+					const parseResult = fieldSchema.parseSafe(value);
 
 					if (!parseResult.success) {
 						return ctx.addIssues(parseResult.issues, [key]);
@@ -1481,6 +1656,9 @@ export class KLazy<Input extends JSONValue, Output> extends BaseSchema<Input, Ou
 export const k = {
 	string: KString.create,
 	number: KNumber.create,
+	coerce: {
+		number: KCoercedNumber.create,
+	},
 	boolean: KBoolean.create,
 	array: KArray.create,
 	null: KNull.create,

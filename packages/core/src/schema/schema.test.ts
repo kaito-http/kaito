@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import {describe, it} from 'node:test';
-import {BaseSchema, k, KArray, KBoolean, KLazy, KNull, KNumber, KRef, KString, KUnion} from './schema.ts';
+import {type BaseSchema, KArray, KBoolean, KLazy, KNull, KNumber, KRef, KString, KUnion, k} from './schema.ts';
 
 describe('Schema', () => {
 	describe('KString', () => {
@@ -564,7 +564,15 @@ describe('Schema', () => {
 			});
 
 			it('should validate property types', () => {
-				assert.throws(() => userSchema.parse({id: '1', name: 'John', email: 'john@example.com'}), /Expected number/);
+				assert.throws(
+					() =>
+						userSchema.parse({
+							id: '1',
+							name: 'John',
+							email: 'john@example.com',
+						}),
+					/Expected number/,
+				);
 				assert.throws(() => userSchema.parse({id: 1, name: 123, email: 'john@example.com'}), /Expected string/);
 				assert.throws(() => userSchema.parse({id: 1, name: 'John', email: 'invalid-email'}), /Invalid email format/);
 			});
@@ -1412,7 +1420,10 @@ describe('Schema', () => {
 		it('should accept objects', () => {
 			assert.deepStrictEqual(schema.parse({}), {});
 			assert.deepStrictEqual(schema.parse({a: 1}), {a: 1});
-			assert.deepStrictEqual(schema.parse({name: 'test', age: 30}), {name: 'test', age: 30});
+			assert.deepStrictEqual(schema.parse({name: 'test', age: 30}), {
+				name: 'test',
+				age: 30,
+			});
 		});
 
 		it('should accept nested structures', () => {
@@ -1492,7 +1503,11 @@ describe('Schema', () => {
 			it('should accept valid record objects', () => {
 				assert.deepStrictEqual(schema.parse({}), {});
 				assert.deepStrictEqual(schema.parse({a: 1}), {a: 1});
-				assert.deepStrictEqual(schema.parse({a: 1, b: 2, c: 3}), {a: 1, b: 2, c: 3});
+				assert.deepStrictEqual(schema.parse({a: 1, b: 2, c: 3}), {
+					a: 1,
+					b: 2,
+					c: 3,
+				});
 			});
 
 			it('should reject non-objects', () => {
@@ -1526,7 +1541,10 @@ describe('Schema', () => {
 			const schema = k.record(k.string().regex(/^[a-z]+$/), k.number());
 
 			it('should validate keys match the pattern', () => {
-				assert.deepStrictEqual(schema.parse({abc: 1, def: 2}), {abc: 1, def: 2});
+				assert.deepStrictEqual(schema.parse({abc: 1, def: 2}), {
+					abc: 1,
+					def: 2,
+				});
 			});
 
 			it("should reject keys that don't match the pattern", () => {
@@ -1778,7 +1796,9 @@ describe('Schema', () => {
 			const schema = k.record(k.literal('constant'), k.number());
 
 			it('should only accept the literal key', () => {
-				assert.deepStrictEqual(schema.parse({constant: 42}), {constant: 42});
+				assert.deepStrictEqual(schema.parse({constant: 42}), {
+					constant: 42,
+				});
 			});
 
 			it('should reject other keys', () => {
@@ -1853,10 +1873,106 @@ describe('Schema', () => {
 				const objectSchema = k.object({a: k.number(), b: k.number()});
 
 				// Record accepts any string keys
-				assert.deepStrictEqual(recordSchema.parse({x: 1, y: 2}), {x: 1, y: 2});
+				assert.deepStrictEqual(recordSchema.parse({x: 1, y: 2}), {
+					x: 1,
+					y: 2,
+				});
 
 				// Object requires specific keys
 				assert.throws(() => objectSchema.parse({x: 1, y: 2}), /Missing required property/);
+			});
+		});
+	});
+
+	describe('modifiers', () => {
+		describe('optional', () => {
+			const schema = k.object({a: k.string(), b: k.string().optional()});
+
+			it('allows the property to be absent', () => {
+				assert.strictEqual(schema.parse({a: 'x'}).b, undefined);
+				assert.deepStrictEqual(schema.parse({a: 'x', b: 'y'}), {
+					a: 'x',
+					b: 'y',
+				});
+			});
+
+			it('still requires non-optional properties', () => {
+				assert.throws(() => schema.parse({b: 'y'}), /Missing required property: a/);
+			});
+
+			it('omits optional properties from the OpenAPI required list', () => {
+				assert.deepStrictEqual((schema.toOpenAPI() as {required: string[]}).required, ['a']);
+			});
+
+			it('drops absent optional properties on serialize', () => {
+				assert.deepStrictEqual(schema.serialize({a: 'x'} as never), {
+					a: 'x',
+				});
+			});
+		});
+
+		describe('nullable / nullish', () => {
+			it('nullable accepts null and the base type', () => {
+				const schema = k.string().nullable();
+				assert.strictEqual(schema.parse(null), null);
+				assert.strictEqual(schema.parse('hello'), 'hello');
+				assert.throws(() => schema.parse(123), /No union option matched|Expected/);
+			});
+
+			it('nullish accepts null and undefined', () => {
+				const schema = k.string().nullish();
+				assert.strictEqual(schema.parse(null), null);
+				assert.strictEqual(schema.parse(undefined), undefined);
+				assert.strictEqual(schema.parse('hello'), 'hello');
+			});
+		});
+
+		describe('default', () => {
+			const schema = k.object({n: k.number().default(42)});
+
+			it('falls back to the default when undefined', () => {
+				assert.deepStrictEqual(schema.parse({}), {n: 42});
+			});
+
+			it('uses the provided value when present', () => {
+				assert.deepStrictEqual(schema.parse({n: 7}), {n: 7});
+			});
+
+			it('exposes the default in OpenAPI and omits it from required', () => {
+				const openapi = schema.toOpenAPI() as {
+					properties: {n: {default: number}};
+					required: string[];
+				};
+				assert.strictEqual(openapi.properties.n.default, 42);
+				assert.deepStrictEqual(openapi.required, []);
+			});
+		});
+
+		describe('coerce.number', () => {
+			it('coerces numeric strings to numbers', () => {
+				assert.strictEqual(k.coerce.number().parse('123'), 123);
+				assert.strictEqual(k.coerce.number().parse(5), 5);
+			});
+
+			it('rejects non-numeric and empty strings', () => {
+				assert.throws(() => k.coerce.number().parse('abc'), /Expected number/);
+				assert.throws(() => k.coerce.number().parse(''), /Expected number/);
+			});
+
+			it('still applies number checks after coercion', () => {
+				assert.throws(() => k.coerce.number().min(10).parse('5'), /greater than or equal to 10/);
+			});
+		});
+
+		describe('with objectFromURLSearchParams', () => {
+			const schema = k.objectFromURLSearchParams({
+				page: k.coerce.number().default(1),
+				q: k.string().optional(),
+			});
+
+			it('applies defaults and optionals to missing params', () => {
+				assert.strictEqual(schema.parse(new URLSearchParams('')).page, 1);
+				assert.deepStrictEqual(schema.parse(new URLSearchParams('page=3&q=hi')), {page: 3, q: 'hi'});
 			});
 		});
 	});
